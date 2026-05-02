@@ -1,0 +1,29 @@
+@namespace MyStackBlazor.Components.Overlays
+
+<div class="relative inline-block @Class">
+    <div @onclick="Toggle">@Trigger</div>
+    @if (IsOpen)
+    {
+        <div class="absolute z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none animate-fade-in @AlignClass top-full mt-1">
+            @Content
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public RenderFragment? Trigger { get; set; }
+    [Parameter] public RenderFragment? Content { get; set; }
+    [Parameter] public string Align { get; set; } = "start";
+    [Parameter] public string? Class { get; set; }
+
+    private bool IsOpen { get; set; }
+
+    private string AlignClass => Align switch
+    {
+        "end"    => "right-0",
+        "center" => "left-1/2 -translate-x-1/2",
+        _        => "left-0",
+    };
+
+    private void Toggle() => IsOpen = !IsOpen;
+}

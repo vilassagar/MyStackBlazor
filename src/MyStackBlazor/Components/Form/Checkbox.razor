@@ -1,0 +1,50 @@
+@namespace MyStackBlazor.Components.Form
+
+<div class="flex items-center space-x-2">
+    <button type="button"
+            role="checkbox"
+            id="@Id"
+            aria-checked="@Checked.ToString().ToLower()"
+            disabled="@Disabled"
+            class="@ComputedClass"
+            @onclick="Toggle"
+            @attributes="AdditionalAttributes">
+        @if (Checked)
+        {
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+        }
+    </button>
+    @if (Label is not null)
+    {
+        <label for="@Id" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer" @onclick="Toggle">
+            @Label
+        </label>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public bool Checked { get; set; }
+    [Parameter] public EventCallback<bool> CheckedChanged { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string ComputedClass =>
+        $"peer h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background " +
+        $"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
+        $"disabled:cursor-not-allowed disabled:opacity-50 " +
+        $"{(Checked ? "bg-primary text-primary-foreground flex items-center justify-center" : "bg-background")} {Class}".Trim();
+
+    private async Task Toggle()
+    {
+        if (!Disabled)
+        {
+            Checked = !Checked;
+            await CheckedChanged.InvokeAsync(Checked);
+        }
+    }
+}

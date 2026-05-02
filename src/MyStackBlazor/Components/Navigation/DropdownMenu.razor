@@ -1,0 +1,43 @@
+@namespace MyStackBlazor.Components.Navigation
+
+<CascadingValue Value="this">
+    <div class="relative inline-block @Class" @attributes="AdditionalAttributes">
+        <div @onclick="Toggle">@Trigger</div>
+
+        @if (IsOpen)
+        {
+            <div class="absolute z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-fade-in @AlignClass top-full mt-1">
+                @Content
+            </div>
+        }
+    </div>
+</CascadingValue>
+
+@code {
+    [Parameter] public RenderFragment? Trigger { get; set; }
+    [Parameter] public RenderFragment? Content { get; set; }
+    [Parameter] public string Align { get; set; } = "start";
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool IsOpen { get; set; }
+
+    private string AlignClass => Align switch
+    {
+        "end"    => "right-0",
+        "center" => "left-1/2 -translate-x-1/2",
+        _        => "left-0",
+    };
+
+    internal void Toggle()
+    {
+        IsOpen = !IsOpen;
+        StateHasChanged();
+    }
+
+    internal void Close()
+    {
+        IsOpen = false;
+        StateHasChanged();
+    }
+}

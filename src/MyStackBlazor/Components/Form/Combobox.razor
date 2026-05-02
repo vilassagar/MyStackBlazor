@@ -1,0 +1,73 @@
+@namespace MyStackBlazor.Components.Form
+
+<div class="relative @Class">
+    <div class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background cursor-pointer"
+         @onclick="ToggleOpen">
+        <span class="@(SelectedLabel is null ? "text-muted-foreground" : "")">
+            @(SelectedLabel ?? Placeholder ?? "Select...")
+        </span>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-50 @(IsOpen ? "rotate-180" : "")" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+    </div>
+
+    @if (IsOpen)
+    {
+        <div class="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md animate-fade-in">
+            <div class="p-1">
+                <input type="text"
+                       placeholder="@SearchPlaceholder"
+                       class="flex h-9 w-full rounded-sm border-0 bg-transparent px-2 py-1 text-sm outline-none placeholder:text-muted-foreground"
+                       @bind="SearchText"
+                       @bind:event="oninput" />
+            </div>
+            <div class="max-h-60 overflow-auto p-1">
+                @foreach (var item in FilteredItems)
+                {
+                    <div class="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                         @onclick="() => SelectItem(item)">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="mr-2 h-4 w-4 @(item.Value == Value ? "opacity-100" : "opacity-0")" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        @item.Label
+                    </div>
+                }
+                @if (!FilteredItems.Any())
+                {
+                    <p class="py-6 text-center text-sm text-muted-foreground">No results found.</p>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public List<ComboboxItem> Items { get; set; } = [];
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string SearchPlaceholder { get; set; } = "Search...";
+    [Parameter] public string? Class { get; set; }
+
+    private bool IsOpen { get; set; }
+    private string? SearchText { get; set; }
+
+    private string? SelectedLabel => Items.FirstOrDefault(i => i.Value == Value)?.Label;
+
+    private IEnumerable<ComboboxItem> FilteredItems =>
+        string.IsNullOrWhiteSpace(SearchText)
+            ? Items
+            : Items.Where(i => i.Label.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
+
+    private void ToggleOpen() => IsOpen = !IsOpen;
+
+    private async Task SelectItem(ComboboxItem item)
+    {
+        Value = item.Value;
+        IsOpen = false;
+        SearchText = null;
+        await ValueChanged.InvokeAsync(Value);
+    }
+
+    public record ComboboxItem(string Value, string Label);
+}

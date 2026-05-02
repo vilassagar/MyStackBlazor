@@ -1,0 +1,29 @@
+@namespace MyStackBlazor.Components.Data
+
+<div role="alert"
+     class="@ComputedClass"
+     @attributes="AdditionalAttributes">
+    @if (Icon is not null)
+    {
+        <span class="[&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground">@Icon</span>
+    }
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Icon { get; set; }
+    [Parameter] public string Variant { get; set; } = "default";
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string ComputedClass =>
+        $"relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] " +
+        $"{VariantClass} {Class}".Trim();
+
+    private string VariantClass => Variant switch
+    {
+        "destructive" => "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive",
+        _             => "bg-background text-foreground",
+    };
+}

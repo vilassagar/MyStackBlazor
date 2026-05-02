@@ -1,0 +1,631 @@
+@page "/"
+@inject ToastService Toast
+@inject ThemeService ThemeService
+@implements IDisposable
+
+<PageTitle>MyStackBlazor — Component Showcase</PageTitle>
+
+<div class="container mx-auto p-8 space-y-12">
+
+    <div class="flex items-start justify-between">
+        <div>
+            <Typography Variant="h1">MyStackBlazor</Typography>
+            <Typography Variant="lead">A modern Blazor component library styled with Tailwind CSS.</Typography>
+        </div>
+    </div>
+
+    <!-- ===== THEME ===== -->
+    <section class="space-y-4">
+        <Typography Variant="h2">Theme</Typography>
+        <div class="flex flex-wrap gap-3">
+            <Button Variant="@(ThemeService.Theme == AppTheme.Light ? "default" : "outline")"
+                    @onclick='() => ThemeService.SetTheme(AppTheme.Light)'>
+                Light
+            </Button>
+            <Button Variant="@(ThemeService.Theme == AppTheme.Dark ? "default" : "outline")"
+                    @onclick='() => ThemeService.SetTheme(AppTheme.Dark)'>
+                Dark
+            </Button>
+            <Button Variant="@(ThemeService.Theme == AppTheme.System ? "default" : "outline")"
+                    @onclick='() => ThemeService.SetTheme(AppTheme.System)'>
+                System
+            </Button>
+        </div>
+        <Typography Variant="muted">Current: @ThemeService.Theme — Dark mode active: @ThemeService.IsDark</Typography>
+    </section>
+
+    <Separator />
+
+    <!-- ===== COMMON ===== -->
+    <section class="space-y-4">
+        <Typography Variant="h2">Common &amp; Basic Elements</Typography>
+
+        <!-- Buttons -->
+        <div>
+            <Typography Variant="h3">Button</Typography>
+            <div class="flex flex-wrap gap-2 mt-2">
+                <Button>Default</Button>
+                <Button Variant="secondary">Secondary</Button>
+                <Button Variant="destructive">Destructive</Button>
+                <Button Variant="outline">Outline</Button>
+                <Button Variant="ghost">Ghost</Button>
+                <Button Variant="link">Link</Button>
+                <Button Size="sm">Small</Button>
+                <Button Size="lg">Large</Button>
+                <Button IsLoading="true">Loading</Button>
+                <Button Disabled="true">Disabled</Button>
+            </div>
+        </div>
+
+        <!-- Badges -->
+        <div>
+            <Typography Variant="h3">Badge</Typography>
+            <div class="flex flex-wrap gap-2 mt-2">
+                <Badge>Default</Badge>
+                <Badge Variant="secondary">Secondary</Badge>
+                <Badge Variant="destructive">Destructive</Badge>
+                <Badge Variant="outline">Outline</Badge>
+            </div>
+        </div>
+
+        <!-- Skeleton -->
+        <div>
+            <Typography Variant="h3">Skeleton</Typography>
+            <div class="space-y-2 mt-2">
+                <Skeleton Class="h-4 w-[250px]" />
+                <Skeleton Class="h-4 w-[200px]" />
+                <Skeleton Class="h-4 w-[150px]" />
+            </div>
+        </div>
+
+        <!-- Separator -->
+        <div>
+            <Typography Variant="h3">Separator</Typography>
+            <div class="mt-2 space-y-2">
+                <Separator />
+                <div class="flex h-6 items-center gap-4 text-sm">
+                    <span>Blog</span>
+                    <Separator Orientation="vertical" />
+                    <span>Docs</span>
+                    <Separator Orientation="vertical" />
+                    <span>Source</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Typography -->
+        <div>
+            <Typography Variant="h3">Typography</Typography>
+            <div class="mt-2 space-y-1">
+                <Typography Variant="h1">Heading 1</Typography>
+                <Typography Variant="h2">Heading 2</Typography>
+                <Typography Variant="h3">Heading 3</Typography>
+                <Typography Variant="h4">Heading 4</Typography>
+                <Typography Variant="p">Paragraph text with normal weight.</Typography>
+                <Typography Variant="muted">Muted / secondary text.</Typography>
+                <Typography Variant="code">console.log("Hello World")</Typography>
+            </div>
+        </div>
+    </section>
+
+    <Separator />
+
+    <!-- ===== FORM ===== -->
+    <section class="space-y-4">
+        <Typography Variant="h2">Form &amp; Input</Typography>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Input -->
+            <div class="space-y-2">
+                <Label For="demo-input">Input</Label>
+                <Input Id="demo-input" Placeholder="Enter text..." @bind-Value="_inputValue" />
+                <Typography Variant="muted">Value: @_inputValue</Typography>
+            </div>
+
+            <!-- Textarea -->
+            <div class="space-y-2">
+                <Label For="demo-textarea">Textarea</Label>
+                <Textarea Id="demo-textarea" Placeholder="Type here..." @bind-Value="_textareaValue" />
+            </div>
+
+            <!-- Checkbox -->
+            <div class="space-y-2">
+                <Typography Variant="h4">Checkbox</Typography>
+                <Checkbox Label="Accept terms and conditions" @bind-Checked="_checkboxValue" />
+                <Typography Variant="muted">Checked: @_checkboxValue</Typography>
+            </div>
+
+            <!-- Switch -->
+            <div class="space-y-2">
+                <Typography Variant="h4">Switch</Typography>
+                <Switch Label="Enable notifications" @bind-Checked="_switchValue" />
+                <Typography Variant="muted">On: @_switchValue</Typography>
+            </div>
+
+            <!-- Select -->
+            <div class="space-y-2">
+                <Label>Select</Label>
+                <Select Placeholder="Choose fruit" @bind-Value="_selectValue">
+                    <option value="apple">Apple</option>
+                    <option value="banana">Banana</option>
+                    <option value="cherry">Cherry</option>
+                </Select>
+                <Typography Variant="muted">Selected: @_selectValue</Typography>
+            </div>
+
+            <!-- Combobox -->
+            <div class="space-y-2">
+                <Label>Combobox</Label>
+                <Combobox Items="_comboItems" @bind-Value="_comboValue" Placeholder="Select framework..." />
+                <Typography Variant="muted">Selected: @_comboValue</Typography>
+            </div>
+
+            <!-- Slider -->
+            <div class="space-y-2">
+                <Label>Slider</Label>
+                <Slider @bind-Value="_sliderValue" Min="0" Max="100" Step="1" />
+                <Typography Variant="muted">Value: @_sliderValue</Typography>
+            </div>
+
+            <!-- Date Picker -->
+            <div class="space-y-2">
+                <Label>Date Picker</Label>
+                <DatePicker @bind-Value="_dateValue" />
+                <Typography Variant="muted">Date: @(_dateValue?.ToString("yyyy-MM-dd") ?? "none")</Typography>
+            </div>
+
+            <!-- RadioGroup -->
+            <div class="space-y-2">
+                <Typography Variant="h4">Radio Group</Typography>
+                <RadioGroup @bind-Value="_radioValue">
+                    <RadioGroupItem Value="opt1" Label="Option 1" />
+                    <RadioGroupItem Value="opt2" Label="Option 2" />
+                    <RadioGroupItem Value="opt3" Label="Option 3" />
+                </RadioGroup>
+                <Typography Variant="muted">Selected: @_radioValue</Typography>
+            </div>
+
+            <!-- InputOtp -->
+            <div class="space-y-2">
+                <Label>Input OTP</Label>
+                <InputOtp @bind-Value="_otpValue" Length="6" GroupAt="3" />
+                <Typography Variant="muted">OTP: @_otpValue</Typography>
+            </div>
+        </div>
+    </section>
+
+    <Separator />
+
+    <!-- ===== NAVIGATION ===== -->
+    <section class="space-y-6">
+        <Typography Variant="h2">Navigation &amp; Menus</Typography>
+
+        <!-- Tabs -->
+        <div>
+            <Typography Variant="h3">Tabs</Typography>
+            <Tabs @bind-ActiveTab="_activeTab" Class="mt-2">
+                <TabsList>
+                    <TabsTrigger Value="account">Account</TabsTrigger>
+                    <TabsTrigger Value="password">Password</TabsTrigger>
+                    <TabsTrigger Value="settings">Settings</TabsTrigger>
+                </TabsList>
+                <TabsContent Value="account">
+                    <Card>
+                        <CardContent Class="pt-6">
+                            <Typography Variant="p">Account settings tab content.</Typography>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                <TabsContent Value="password">
+                    <Card>
+                        <CardContent Class="pt-6">
+                            <Typography Variant="p">Password change tab content.</Typography>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                <TabsContent Value="settings">
+                    <Card>
+                        <CardContent Class="pt-6">
+                            <Typography Variant="p">General settings tab content.</Typography>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
+        </div>
+
+        <!-- Breadcrumb -->
+        <div>
+            <Typography Variant="h3">Breadcrumb</Typography>
+            <Breadcrumb Class="mt-2">
+                <BreadcrumbItem Href="/">Home</BreadcrumbItem>
+                <BreadcrumbItem Href="/components">Components</BreadcrumbItem>
+                <BreadcrumbItem IsCurrentPage="true" ShowSeparator="false">Breadcrumb</BreadcrumbItem>
+            </Breadcrumb>
+        </div>
+
+        <!-- Pagination -->
+        <div>
+            <Typography Variant="h3">Pagination</Typography>
+            <Pagination @bind-CurrentPage="_page" TotalPages="10" Class="mt-2" />
+            <Typography Variant="muted" Class="text-center mt-1">Page @_page of 10</Typography>
+        </div>
+
+        <!-- Dropdown Menu -->
+        <div>
+            <Typography Variant="h3">Dropdown Menu</Typography>
+            <div class="mt-2">
+                <DropdownMenu>
+                    <Trigger>
+                        <Button Variant="outline">Open Menu</Button>
+                    </Trigger>
+                    <Content>
+                        <DropdownMenuItem>Profile</DropdownMenuItem>
+                        <DropdownMenuItem>Settings</DropdownMenuItem>
+                        <DropdownMenuItem Destructive="true">Logout</DropdownMenuItem>
+                    </Content>
+                </DropdownMenu>
+            </div>
+        </div>
+
+        <!-- Context Menu -->
+        <div>
+            <Typography Variant="h3">Context Menu</Typography>
+            <ContextMenu>
+                <ChildContent>
+                    <div class="mt-2 flex h-[150px] w-[300px] items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
+                        Right-click here
+                    </div>
+                </ChildContent>
+                <MenuContent>
+                    <ContextMenuItem>Back</ContextMenuItem>
+                    <ContextMenuItem>Forward</ContextMenuItem>
+                    <ContextMenuItem>Reload</ContextMenuItem>
+                    <Separator />
+                    <ContextMenuItem Destructive="true">Delete</ContextMenuItem>
+                </MenuContent>
+            </ContextMenu>
+        </div>
+
+        <!-- Menubar -->
+        <div>
+            <Typography Variant="h3">Menubar</Typography>
+            <Menubar Class="mt-2">
+                <MenubarMenu Label="File">
+                    <ContextMenuItem>New File</ContextMenuItem>
+                    <ContextMenuItem>Open</ContextMenuItem>
+                    <Separator />
+                    <ContextMenuItem>Save</ContextMenuItem>
+                </MenubarMenu>
+                <MenubarMenu Label="Edit">
+                    <ContextMenuItem>Undo</ContextMenuItem>
+                    <ContextMenuItem>Redo</ContextMenuItem>
+                    <Separator />
+                    <ContextMenuItem>Cut</ContextMenuItem>
+                    <ContextMenuItem>Copy</ContextMenuItem>
+                </MenubarMenu>
+                <MenubarMenu Label="View">
+                    <ContextMenuItem>Zoom In</ContextMenuItem>
+                    <ContextMenuItem>Zoom Out</ContextMenuItem>
+                </MenubarMenu>
+            </Menubar>
+        </div>
+    </section>
+
+    <Separator />
+
+    <!-- ===== LAYOUT ===== -->
+    <section class="space-y-6">
+        <Typography Variant="h2">Layout &amp; Containers</Typography>
+
+        <!-- Card -->
+        <div>
+            <Typography Variant="h3">Card</Typography>
+            <Card Class="max-w-sm mt-2">
+                <CardHeader>
+                    <CardTitle>Card Title</CardTitle>
+                    <CardDescription>Card description goes here.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Typography Variant="p">Card body content.</Typography>
+                </CardContent>
+                <CardFooter>
+                    <Button>Action</Button>
+                    <Button Variant="outline" Class="ml-2">Cancel</Button>
+                </CardFooter>
+            </Card>
+        </div>
+
+        <!-- Accordion -->
+        <div>
+            <Typography Variant="h3">Accordion</Typography>
+            <Accordion Class="w-full max-w-md mt-2" AllowMultiple="false">
+                <AccordionItem Title="Is it accessible?" Value="a1">
+                    Yes. It adheres to the WAI-ARIA design pattern.
+                </AccordionItem>
+                <AccordionItem Title="Is it styled?" Value="a2">
+                    Yes. It comes with default styles that match the other components.
+                </AccordionItem>
+                <AccordionItem Title="Is it animated?" Value="a3">
+                    Yes. It's animated by default, but you can disable it if you prefer.
+                </AccordionItem>
+            </Accordion>
+        </div>
+
+        <!-- Collapsible -->
+        <div>
+            <Typography Variant="h3">Collapsible</Typography>
+            <Collapsible Class="w-full max-w-sm mt-2" @bind-IsOpen="_collapsibleOpen">
+                <Trigger>
+                    <div class="flex items-center justify-between p-2 border rounded">
+                        <span class="text-sm font-medium">Toggle Content</span>
+                        <Button Variant="ghost" Size="sm">@(_collapsibleOpen ? "Hide" : "Show")</Button>
+                    </div>
+                </Trigger>
+                <ChildContent>
+                    <div class="p-2 text-sm text-muted-foreground">
+                        This is the collapsible content area.
+                    </div>
+                </ChildContent>
+            </Collapsible>
+        </div>
+
+        <!-- Aspect Ratio -->
+        <div>
+            <Typography Variant="h3">Aspect Ratio (16:9)</Typography>
+            <AspectRatio Ratio="@(16.0/9.0)" Class="bg-muted rounded-md overflow-hidden max-w-sm mt-2">
+                <div class="flex items-center justify-center h-full text-muted-foreground text-sm">16 / 9</div>
+            </AspectRatio>
+        </div>
+    </section>
+
+    <Separator />
+
+    <!-- ===== OVERLAYS ===== -->
+    <section class="space-y-6">
+        <Typography Variant="h2">Overlays &amp; Notifications</Typography>
+
+        <div class="flex flex-wrap gap-3">
+            <!-- Dialog -->
+            <Button @onclick='() => _dialogOpen = true'>Open Dialog</Button>
+            <Dialog @bind-IsOpen="_dialogOpen">
+                <DialogHeader>
+                    <DialogTitle>Edit Profile</DialogTitle>
+                    <p class="text-sm text-muted-foreground">Make changes to your profile here.</p>
+                </DialogHeader>
+                <div class="space-y-4 py-4">
+                    <Input Placeholder="Enter your name..." />
+                </div>
+                <DialogFooter>
+                    <Button Variant="outline" @onclick='() => _dialogOpen = false'>Cancel</Button>
+                    <Button @onclick='() => _dialogOpen = false'>Save</Button>
+                </DialogFooter>
+            </Dialog>
+
+            <!-- Alert Dialog -->
+            <Button Variant="destructive" @onclick='() => _alertDialogOpen = true'>Delete Item</Button>
+            <AlertDialog @bind-IsOpen="_alertDialogOpen"
+                         Title="Are you absolutely sure?"
+                         Description="This action cannot be undone."
+                         ConfirmText="Delete"
+                         OnConfirm="@(() => Toast.Success("Item deleted"))" />
+
+            <!-- Sheet -->
+            <Button Variant="outline" @onclick='() => _sheetOpen = true'>Open Sheet</Button>
+            <Sheet @bind-IsOpen="_sheetOpen" Side="right">
+                <div>
+                    <h2 class="text-lg font-semibold">Sheet Title</h2>
+                    <p class="text-sm text-muted-foreground mt-2">Sheet description text.</p>
+                </div>
+            </Sheet>
+
+            <!-- Drawer -->
+            <Button Variant="outline" @onclick='() => _drawerOpen = true'>Open Drawer</Button>
+            <Drawer @bind-IsOpen="_drawerOpen">
+                <div class="p-4">
+                    <h2 class="text-lg font-semibold">Drawer Title</h2>
+                    <p class="text-sm text-muted-foreground mt-2">Pull up from the bottom.</p>
+                </div>
+            </Drawer>
+
+            <!-- Toast triggers -->
+            <Button @onclick='() => Toast.Success("Saved!", "Success")'>Toast Success</Button>
+            <Button Variant="destructive" @onclick='() => Toast.Error("Something went wrong.", "Error")'>Toast Error</Button>
+        </div>
+
+        <!-- Tooltip -->
+        <div>
+            <Typography Variant="h3">Tooltip</Typography>
+            <div class="flex gap-4 mt-2">
+                <Tooltip Text="This is a tooltip" Side="top">
+                    <Button Variant="outline">Hover (top)</Button>
+                </Tooltip>
+                <Tooltip Text="Tooltip on bottom" Side="bottom">
+                    <Button Variant="outline">Hover (bottom)</Button>
+                </Tooltip>
+            </div>
+        </div>
+
+        <!-- Popover -->
+        <div>
+            <Typography Variant="h3">Popover</Typography>
+            <Popover Class="mt-2">
+                <Trigger>
+                    <Button Variant="outline">Open Popover</Button>
+                </Trigger>
+                <Content>
+                    <Typography Variant="h4">Dimensions</Typography>
+                    <div class="grid gap-2 mt-2">
+                        <div class="grid grid-cols-3 items-center gap-4">
+                            <Label>Width</Label>
+                            <Input Class="col-span-2 h-8" Value="100%" />
+                        </div>
+                    </div>
+                </Content>
+            </Popover>
+        </div>
+
+        <!-- Hover Card -->
+        <div>
+            <Typography Variant="h3">Hover Card</Typography>
+            <HoverCard Class="mt-2">
+                <Trigger>
+                    <a href="#" class="text-primary underline">&#64;MyStackBlazor</a>
+                </Trigger>
+                <Content>
+                    <div class="space-y-1">
+                        <Typography Variant="h4">MyStackBlazor</Typography>
+                        <Typography Variant="muted">A Blazor component library using Tailwind CSS.</Typography>
+                    </div>
+                </Content>
+            </HoverCard>
+        </div>
+    </section>
+
+    <Separator />
+
+    <!-- ===== DATA ===== -->
+    <section class="space-y-6">
+        <Typography Variant="h2">Data &amp; Feedback</Typography>
+
+        <!-- Alert -->
+        <div>
+            <Typography Variant="h3">Alert</Typography>
+            <div class="space-y-2 mt-2">
+                <Alert>
+                    <AlertTitle>Heads up!</AlertTitle>
+                    <AlertDescription>You can add components to your app using the CLI.</AlertDescription>
+                </Alert>
+                <Alert Variant="destructive">
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>Your session has expired. Please log in again.</AlertDescription>
+                </Alert>
+            </div>
+        </div>
+
+        <!-- Progress -->
+        <div>
+            <Typography Variant="h3">Progress</Typography>
+            <div class="space-y-2 mt-2 max-w-md">
+                <Progress Value="33" />
+                <Progress Value="66" />
+                <Progress Value="100" />
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div>
+            <Typography Variant="h3">Table</Typography>
+            <Table Class="mt-2 max-w-2xl">
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Invoice</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Method</TableHead>
+                        <TableHead Class="text-right">Amount</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    <TableRow>
+                        <TableCell>INV001</TableCell>
+                        <TableCell><Badge>Paid</Badge></TableCell>
+                        <TableCell>Credit Card</TableCell>
+                        <TableCell Class="text-right">$250.00</TableCell>
+                    </TableRow>
+                    <TableRow>
+                        <TableCell>INV002</TableCell>
+                        <TableCell><Badge Variant="secondary">Pending</Badge></TableCell>
+                        <TableCell>PayPal</TableCell>
+                        <TableCell Class="text-right">$150.00</TableCell>
+                    </TableRow>
+                    <TableRow>
+                        <TableCell>INV003</TableCell>
+                        <TableCell><Badge Variant="destructive">Unpaid</Badge></TableCell>
+                        <TableCell>Bank Transfer</TableCell>
+                        <TableCell Class="text-right">$350.00</TableCell>
+                    </TableRow>
+                </TableBody>
+            </Table>
+        </div>
+
+        <!-- DataTable -->
+        <div>
+            <Typography Variant="h3">Data Table (sortable, filterable, paginated)</Typography>
+            <div class="mt-2">
+                <DataTable TItem="Invoice"
+                           Items="_invoices"
+                           Columns="_invoiceColumns"
+                           PageSize="5" />
+            </div>
+        </div>
+    </section>
+
+</div>
+
+@code {
+    protected override void OnInitialized() =>
+        ThemeService.OnThemeChanged += StateHasChanged;
+
+    public void Dispose() =>
+        ThemeService.OnThemeChanged -= StateHasChanged;
+
+    // Form state
+    string? _inputValue;
+    string? _textareaValue;
+    bool _checkboxValue;
+    bool _switchValue;
+    string? _selectValue;
+    string? _comboValue;
+    double _sliderValue = 50;
+    DateTime? _dateValue;
+    string? _radioValue = "opt1";
+    string? _otpValue;
+
+    // Navigation state
+    string? _activeTab = "account";
+    int _page = 1;
+
+    // Overlay state
+    bool _dialogOpen;
+    bool _alertDialogOpen;
+    bool _sheetOpen;
+    bool _drawerOpen;
+    bool _collapsibleOpen;
+
+    // Combobox items
+    List<Combobox.ComboboxItem> _comboItems =
+    [
+        new("nextjs", "Next.js"),
+        new("svelte", "SvelteKit"),
+        new("nuxt", "Nuxt.js"),
+        new("remix", "Remix"),
+        new("astro", "Astro"),
+        new("blazor", "Blazor"),
+    ];
+
+    // DataTable data
+    record Invoice(string Id, string Status, string Method, decimal Amount);
+
+    List<Invoice> _invoices =
+    [
+        new("INV001", "Paid", "Credit Card", 250m),
+        new("INV002", "Pending", "PayPal", 150m),
+        new("INV003", "Unpaid", "Bank Transfer", 350m),
+        new("INV004", "Paid", "Credit Card", 450m),
+        new("INV005", "Paid", "PayPal", 550m),
+        new("INV006", "Pending", "Bank Transfer", 200m),
+        new("INV007", "Unpaid", "Credit Card", 300m),
+        new("INV008", "Paid", "PayPal", 400m),
+        new("INV009", "Paid", "Bank Transfer", 500m),
+        new("INV010", "Pending", "Credit Card", 600m),
+        new("INV011", "Paid", "PayPal", 700m),
+        new("INV012", "Unpaid", "Bank Transfer", 800m),
+    ];
+
+    List<DataTableColumn<Invoice>> _invoiceColumns =
+    [
+        new() { Key = "id",     Header = "Invoice", Value = i => i.Id },
+        new() { Key = "status", Header = "Status",  Value = i => i.Status },
+        new() { Key = "method", Header = "Method",  Value = i => i.Method },
+        new() { Key = "amount", Header = "Amount",  Value = i => $"${i.Amount:F2}" },
+    ];
+}

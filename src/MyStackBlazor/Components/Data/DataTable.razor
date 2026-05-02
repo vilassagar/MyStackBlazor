@@ -1,0 +1,160 @@
+@namespace MyStackBlazor.Components.Data
+@typeparam TItem
+
+<div class="space-y-4">
+    <!-- Toolbar -->
+    @if (ShowSearch || ToolbarContent is not null)
+    {
+        <div class="flex items-center justify-between gap-2">
+            @if (ShowSearch)
+            {
+                <input type="text"
+                       placeholder="@SearchPlaceholder"
+                       class="flex h-9 w-full max-w-sm rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                       @bind="_searchText"
+                       @bind:event="oninput" />
+            }
+            @ToolbarContent
+        </div>
+    }
+
+    <!-- Table -->
+    <div class="rounded-md border">
+        <table class="w-full caption-bottom text-sm">
+            <thead class="[&_tr]:border-b">
+                <tr class="border-b transition-colors hover:bg-muted/50">
+                    @foreach (var col in Columns)
+                    {
+                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground cursor-pointer select-none"
+                            @onclick="() => SortBy(col)">
+                            <div class="flex items-center gap-1">
+                                @col.Header
+                                @if (col.Sortable)
+                                {
+                                    @if (_sortColumn == col.Key)
+                                    {
+                                        <svg class="h-4 w-4 @(_sortAscending ? "" : "rotate-180")" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <polyline points="18 15 12 9 6 15"></polyline>
+                                        </svg>
+                                    }
+                                    else
+                                    {
+                                        <svg class="h-4 w-4 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                                            <polyline points="19 12 12 5 5 12"></polyline>
+                                        </svg>
+                                    }
+                                }
+                            </div>
+                        </th>
+                    }
+                </tr>
+            </thead>
+            <tbody class="[&_tr:last-child]:border-0">
+                @if (!PagedItems.Any())
+                {
+                    <tr>
+                        <td colspan="@Columns.Count" class="h-24 text-center text-muted-foreground">
+                            @EmptyText
+                        </td>
+                    </tr>
+                }
+                @foreach (var item in PagedItems)
+                {
+                    <tr class="border-b transition-colors hover:bg-muted/50">
+                        @foreach (var col in Columns)
+                        {
+                            <td class="p-4 align-middle">
+                                @if (col.Template is not null)
+                                {
+                                    @col.Template(item)
+                                }
+                                else
+                                {
+                                    @col.Value?.Invoke(item)
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination footer -->
+    <div class="flex items-center justify-between px-2">
+        <div class="text-sm text-muted-foreground">
+            @(FilteredItems.Count()) of @(Items.Count()) row(s)
+        </div>
+        @if (ShowPagination && TotalPages > 1)
+        {
+            <Pagination CurrentPage="_currentPage"
+                        TotalPages="TotalPages"
+                        CurrentPageChanged="p => _currentPage = p" />
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public IEnumerable<TItem> Items { get; set; } = [];
+    [Parameter] public List<DataTableColumn<TItem>> Columns { get; set; } = [];
+    [Parameter] public bool ShowSearch { get; set; } = true;
+    [Parameter] public string SearchPlaceholder { get; set; } = "Filter...";
+    [Parameter] public bool ShowPagination { get; set; } = true;
+    [Parameter] public int PageSize { get; set; } = 10;
+    [Parameter] public string EmptyText { get; set; } = "No results.";
+    [Parameter] public RenderFragment? ToolbarContent { get; set; }
+    [Parameter] public Func<TItem, string, bool>? SearchFilter { get; set; }
+
+    private string? _searchText;
+    private string? _sortColumn;
+    private bool _sortAscending = true;
+    private int _currentPage = 1;
+
+    private IEnumerable<TItem> FilteredItems
+    {
+        get
+        {
+            var items = Items;
+            if (!string.IsNullOrWhiteSpace(_searchText))
+            {
+                items = SearchFilter is not null
+                    ? items.Where(i => SearchFilter(i, _searchText))
+                    : items.Where(i => Columns
+                        .Select(c => c.Value?.Invoke(i)?.ToString() ?? "")
+                        .Any(v => v.Contains(_searchText, StringComparison.OrdinalIgnoreCase)));
+            }
+            if (_sortColumn is not null)
+            {
+                var col = Columns.FirstOrDefault(c => c.Key == _sortColumn);
+                if (col?.Value is not null)
+                {
+                    items = _sortAscending
+                        ? items.OrderBy(i => col.Value(i)?.ToString())
+                        : items.OrderByDescending(i => col.Value(i)?.ToString());
+                }
+            }
+            return items;
+        }
+    }
+
+    private IEnumerable<TItem> PagedItems =>
+        ShowPagination
+            ? FilteredItems.Skip((_currentPage - 1) * PageSize).Take(PageSize)
+            : FilteredItems;
+
+    private int TotalPages => (int)Math.Ceiling(FilteredItems.Count() / (double)PageSize);
+
+    private void SortBy(DataTableColumn<TItem> col)
+    {
+        if (!col.Sortable) return;
+        if (_sortColumn == col.Key)
+            _sortAscending = !_sortAscending;
+        else
+        {
+            _sortColumn = col.Key;
+            _sortAscending = true;
+        }
+        _currentPage = 1;
+    }
+}

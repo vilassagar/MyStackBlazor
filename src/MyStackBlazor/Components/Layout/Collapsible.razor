@@ -1,0 +1,24 @@
+@namespace MyStackBlazor.Components.Layout
+
+<div class="@Class" @attributes="AdditionalAttributes">
+    <div @onclick="Toggle" class="cursor-pointer">@Trigger</div>
+    @if (IsOpen)
+    {
+        <div>@ChildContent</div>
+    }
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Trigger { get; set; }
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private async Task Toggle()
+    {
+        IsOpen = !IsOpen;
+        await IsOpenChanged.InvokeAsync(IsOpen);
+    }
+}

@@ -1,0 +1,32 @@
+@namespace MyStackBlazor.Components.Navigation
+
+<div class="relative" @oncontextmenu="OnContextMenu" @oncontextmenu:preventDefault="true">
+    @ChildContent
+
+    @if (_isOpen)
+    {
+        <div class="fixed z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-fade-in"
+             style="top:@(_y)px;left:@(_x)px;">
+            @MenuContent
+        </div>
+        <!-- Click-away overlay -->
+        <div class="fixed inset-0 z-40" @onclick="Close"></div>
+    }
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? MenuContent { get; set; }
+
+    private bool _isOpen;
+    private double _x, _y;
+
+    private void OnContextMenu(MouseEventArgs e)
+    {
+        _x = e.ClientX;
+        _y = e.ClientY;
+        _isOpen = true;
+    }
+
+    private void Close() => _isOpen = false;
+}

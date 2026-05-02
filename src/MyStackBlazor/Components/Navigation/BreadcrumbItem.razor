@@ -1,0 +1,32 @@
+@namespace MyStackBlazor.Components.Navigation
+
+<li class="inline-flex items-center gap-1.5">
+    @if (!string.IsNullOrEmpty(Href))
+    {
+        <a href="@Href" class="transition-colors hover:text-foreground @Class">@ChildContent</a>
+    }
+    else if (IsCurrentPage)
+    {
+        <span role="link" aria-disabled="true" aria-current="page" class="font-normal text-foreground @Class">@ChildContent</span>
+    }
+    else
+    {
+        <span class="@Class">@ChildContent</span>
+    }
+</li>
+@if (ShowSeparator)
+{
+    <li role="presentation" aria-hidden="true" class="[&>svg]:size-3.5">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+    </li>
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Href { get; set; }
+    [Parameter] public bool IsCurrentPage { get; set; }
+    [Parameter] public bool ShowSeparator { get; set; } = true;
+    [Parameter] public string? Class { get; set; }
+}

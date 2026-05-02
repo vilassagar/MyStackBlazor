@@ -1,0 +1,21 @@
+@namespace MyStackBlazor.Components.Data
+
+<div role="progressbar"
+     aria-valuemin="0"
+     aria-valuemax="@Max"
+     aria-valuenow="@Value"
+     class="@($"relative h-4 w-full overflow-hidden rounded-full bg-secondary {Class}".Trim())"
+     @attributes="AdditionalAttributes">
+    <div class="h-full bg-primary transition-all duration-300 ease-in-out"
+         style="width: @(Percent)%">
+    </div>
+</div>
+
+@code {
+    [Parameter] public double Value { get; set; }
+    [Parameter] public double Max { get; set; } = 100;
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private double Percent => Max > 0 ? Math.Clamp(Value / Max * 100, 0, 100) : 0;
+}

@@ -1,0 +1,19 @@
+@namespace MyStackBlazor.Components.Layout
+
+<div class="@($"relative overflow-hidden {Class}".Trim())" @attributes="AdditionalAttributes">
+    <div class="h-full w-full overflow-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border"
+         style="@Style">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? MaxHeight { get; set; }
+    [Parameter] public string? MaxWidth { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string Style =>
+        $"{(MaxHeight is not null ? $"max-height:{MaxHeight};" : "")}{(MaxWidth is not null ? $"max-width:{MaxWidth};" : "")}";
+}

@@ -1,0 +1,67 @@
+@namespace MyStackBlazor.Components.Overlays
+
+@if (IsOpen)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center">
+        <div class="fixed inset-0 bg-black/80 animate-fade-in"></div>
+        <div role="alertdialog"
+             aria-modal="true"
+             class="@($"relative z-50 grid w-full max-w-lg gap-4 border bg-background p-6 shadow-lg animate-fade-in sm:rounded-lg {Class}".Trim())"
+             @attributes="AdditionalAttributes">
+            <div class="flex flex-col space-y-2 text-center sm:text-left">
+                @if (Title is not null)
+                {
+                    <h2 class="text-lg font-semibold">@Title</h2>
+                }
+                @if (Description is not null)
+                {
+                    <p class="text-sm text-muted-foreground">@Description</p>
+                }
+            </div>
+            @if (ChildContent is not null)
+            {
+                @ChildContent
+            }
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
+                <button type="button"
+                        class="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+                        @onclick="Cancel">
+                    @CancelText
+                </button>
+                <button type="button"
+                        class="inline-flex h-10 items-center justify-center rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90"
+                        @onclick="Confirm">
+                    @ConfirmText
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    [Parameter] public string ConfirmText { get; set; } = "Continue";
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private async Task Confirm()
+    {
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+        await OnConfirm.InvokeAsync();
+    }
+
+    private async Task Cancel()
+    {
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+        await OnCancel.InvokeAsync();
+    }
+}

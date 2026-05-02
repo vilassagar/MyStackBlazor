@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/demo/">
+    <Project Path="demo/MyStackBlazor.Demo/MyStackBlazor.Demo.csproj" />
+    <Project Path="demo/MyStackBlazor.Maui/MyStackBlazor.Maui.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/MyStackBlazor/MyStackBlazor.csproj" />
+  </Folder>
+</Solution>

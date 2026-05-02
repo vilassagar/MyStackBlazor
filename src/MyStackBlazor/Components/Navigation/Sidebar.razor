@@ -1,0 +1,51 @@
+@namespace MyStackBlazor.Components.Navigation
+
+<div class="flex h-full">
+    <!-- Sidebar panel -->
+    <aside class="@ComputedClass">
+        @if (ShowToggle)
+        {
+            <button type="button"
+                    class="absolute right-2 top-2 p-1.5 rounded-md hover:bg-accent"
+                    @onclick="Toggle"
+                    aria-label="@(IsCollapsed ? "Expand sidebar" : "Collapse sidebar")">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform @(IsCollapsed ? "rotate-180" : "")" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+        }
+        <div class="flex-1 overflow-y-auto py-4 @(IsCollapsed ? "px-2" : "px-4")">
+            @ChildContent
+        </div>
+    </aside>
+
+    <!-- Main content -->
+    @if (MainContent is not null)
+    {
+        <main class="flex-1 overflow-auto">
+            @MainContent
+        </main>
+    }
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? MainContent { get; set; }
+    [Parameter] public bool IsCollapsed { get; set; }
+    [Parameter] public EventCallback<bool> IsCollapsedChanged { get; set; }
+    [Parameter] public bool ShowToggle { get; set; } = true;
+    [Parameter] public string CollapsedWidth { get; set; } = "4rem";
+    [Parameter] public string ExpandedWidth { get; set; } = "16rem";
+    [Parameter] public string? Class { get; set; }
+
+    private string ComputedClass =>
+        $"relative flex flex-col border-r bg-background transition-all duration-300 ease-in-out {Class}".Trim();
+
+    private string Width => IsCollapsed ? CollapsedWidth : ExpandedWidth;
+
+    private async Task Toggle()
+    {
+        IsCollapsed = !IsCollapsed;
+        await IsCollapsedChanged.InvokeAsync(IsCollapsed);
+    }
+}

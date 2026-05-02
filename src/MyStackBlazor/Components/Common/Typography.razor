@@ -1,0 +1,45 @@
+@namespace MyStackBlazor.Components.Common
+
+@switch (Variant)
+{
+    case "h1":
+        <h1 class="@($"scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl {Class}".Trim())" @attributes="AdditionalAttributes">@ChildContent</h1>
+        break;
+    case "h2":
+        <h2 class="@($"scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight first:mt-0 {Class}".Trim())" @attributes="AdditionalAttributes">@ChildContent</h2>
+        break;
+    case "h3":
+        <h3 class="@($"scroll-m-20 text-2xl font-semibold tracking-tight {Class}".Trim())" @attributes="AdditionalAttributes">@ChildContent</h3>
+        break;
+    case "h4":
+        <h4 class="@($"scroll-m-20 text-xl font-semibold tracking-tight {Class}".Trim())" @attributes="AdditionalAttributes">@ChildContent</h4>
+        break;
+    case "large":
+        <p class="@($"text-lg font-semibold {Class}".Trim())" @attributes="AdditionalAttributes">@ChildContent</p>
+        break;
+    case "small":
+        <small class="@($"text-sm font-medium leading-none {Class}".Trim())" @attributes="AdditionalAttributes">@ChildContent</small>
+        break;
+    case "muted":
+        <p class="@($"text-sm text-muted-foreground {Class}".Trim())" @attributes="AdditionalAttributes">@ChildContent</p>
+        break;
+    case "lead":
+        <p class="@($"text-xl text-muted-foreground {Class}".Trim())" @attributes="AdditionalAttributes">@ChildContent</p>
+        break;
+    case "blockquote":
+        <blockquote class="@($"mt-6 border-l-2 pl-6 italic {Class}".Trim())" @attributes="AdditionalAttributes">@ChildContent</blockquote>
+        break;
+    case "code":
+        <code class="@($"relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold {Class}".Trim())" @attributes="AdditionalAttributes">@ChildContent</code>
+        break;
+    default:
+        <p class="@($"leading-7 [&:not(:first-child)]:mt-6 {Class}".Trim())" @attributes="AdditionalAttributes">@ChildContent</p>
+        break;
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string Variant { get; set; } = "p";
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

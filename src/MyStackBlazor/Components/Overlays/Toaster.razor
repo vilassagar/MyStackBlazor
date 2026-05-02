@@ -1,0 +1,58 @@
+@namespace MyStackBlazor.Components.Overlays
+@inject ToastService ToastSvc
+@implements IDisposable
+
+<!-- Place this once in App.razor / MainLayout.razor -->
+<div class="fixed bottom-0 right-0 z-[100] flex flex-col-reverse gap-2 p-4 max-w-[420px] w-full pointer-events-none">
+    @foreach (var toast in ToastSvc.Toasts)
+    {
+        <div class="@ToastClass(toast) pointer-events-auto"
+             role="alert"
+             aria-live="assertive">
+            <div class="flex items-start gap-3">
+                <!-- Icon -->
+                @if (toast.Variant == "success")
+                {
+                    <svg class="h-5 w-5 text-green-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                }
+                else if (toast.Variant == "destructive")
+                {
+                    <svg class="h-5 w-5 text-destructive mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                }
+                <div class="flex-1 grid gap-1">
+                    @if (toast.Title is not null)
+                    {
+                        <p class="text-sm font-semibold">@toast.Title</p>
+                    }
+                    <p class="text-sm opacity-90">@toast.Message</p>
+                </div>
+                <button type="button"
+                        class="shrink-0 rounded-md p-1 opacity-70 hover:opacity-100"
+                        @onclick="() => ToastSvc.Remove(toast.Id)"
+                        aria-label="Dismiss">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    protected override void OnInitialized() =>
+        ToastSvc.OnChanged += StateHasChanged;
+
+    private static string ToastClass(ToastMessage toast) => toast.Variant switch
+    {
+        "destructive" => "group rounded-md border border-destructive bg-destructive text-destructive-foreground p-4 shadow-lg transition-all animate-fade-in",
+        _             => "group rounded-md border bg-background text-foreground p-4 shadow-lg transition-all animate-fade-in",
+    };
+
+    public void Dispose() =>
+        ToastSvc.OnChanged -= StateHasChanged;
+}

@@ -1,0 +1,22 @@
+@namespace MyStackBlazor.Components.Common
+
+<div role="separator"
+     class="@ComputedClass"
+     @attributes="AdditionalAttributes">
+    @if (ChildContent is not null)
+    {
+        <span class="px-2 text-muted-foreground text-xs">@ChildContent</span>
+    }
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string Orientation { get; set; } = "horizontal";
+    [Parameter] public bool Decorative { get; set; } = true;
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string ComputedClass => Orientation == "vertical"
+        ? $"shrink-0 bg-border w-[1px] h-full {Class}".Trim()
+        : $"shrink-0 bg-border h-[1px] w-full {(ChildContent is not null ? "flex items-center" : "")} {Class}".Trim();
+}

@@ -1,0 +1,22 @@
+@namespace MyStackBlazor.Components.Navigation
+
+<div class="@ComputedClass"
+     role="menuitem"
+     @onclick="OnClick"
+     @attributes="AdditionalAttributes">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool Destructive { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string ComputedClass =>
+        $"relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none " +
+        $"{(Disabled ? "pointer-events-none opacity-50" : "hover:bg-accent hover:text-accent-foreground")} " +
+        $"{(Destructive ? "text-destructive" : "")} {Class}".Trim();
+}

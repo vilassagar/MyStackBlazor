@@ -1,0 +1,21 @@
+@namespace MyStackBlazor.Components.Overlays
+
+<div class="relative inline-block @Class" @onmouseenter="Show" @onmouseleave="Hide">
+    @Trigger
+    @if (_visible)
+    {
+        <div class="absolute z-50 w-64 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none animate-fade-in top-full mt-1">
+            @Content
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public RenderFragment? Trigger { get; set; }
+    [Parameter] public RenderFragment? Content { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private bool _visible;
+    private void Show() => _visible = true;
+    private void Hide() => _visible = false;
+}

@@ -1,0 +1,100 @@
+@namespace MyStackBlazor.Components.Form
+
+<div class="relative @Class">
+    <div class="flex h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background cursor-pointer"
+         @onclick="ToggleCalendar">
+        <svg xmlns="http://www.w3.org/2000/svg" class="mr-2 h-4 w-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        <span class="@(Value is null ? "text-muted-foreground" : "")">
+            @(Value?.ToString(Format) ?? Placeholder ?? "Pick a date")
+        </span>
+    </div>
+
+    @if (IsOpen)
+    {
+        <div class="absolute z-50 mt-1 rounded-md border bg-popover p-3 shadow-md animate-fade-in">
+            <!-- Month navigation -->
+            <div class="flex items-center justify-between mb-3">
+                <button type="button" class="p-1 hover:bg-accent rounded" @onclick="PrevMonth">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+                <span class="text-sm font-medium">@_viewDate.ToString("MMMM yyyy")</span>
+                <button type="button" class="p-1 hover:bg-accent rounded" @onclick="NextMonth">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </button>
+            </div>
+            <!-- Day headers -->
+            <div class="grid grid-cols-7 mb-1">
+                @foreach (var day in new[] { "Su", "Mo", "Tu", "We", "Th", "Fr", "Sa" })
+                {
+                    <div class="text-center text-xs text-muted-foreground w-8 h-8 flex items-center justify-center">@day</div>
+                }
+            </div>
+            <!-- Days grid -->
+            <div class="grid grid-cols-7">
+                @foreach (var cell in CalendarCells)
+                {
+                    @if (cell is null)
+                    {
+                        <div class="w-8 h-8"></div>
+                    }
+                    else
+                    {
+                        <button type="button"
+                                class="@DayClass(cell.Value)"
+                                @onclick="() => SelectDate(cell.Value)">
+                            @cell.Value.Day
+                        </button>
+                    }
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public DateTime? Value { get; set; }
+    [Parameter] public EventCallback<DateTime?> ValueChanged { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string Format { get; set; } = "MMM dd, yyyy";
+    [Parameter] public string? Class { get; set; }
+
+    private bool IsOpen { get; set; }
+    private DateTime _viewDate = DateTime.Today;
+
+    private IEnumerable<DateTime?> CalendarCells
+    {
+        get
+        {
+            var first = new DateTime(_viewDate.Year, _viewDate.Month, 1);
+            var blanks = (int)first.DayOfWeek;
+            for (int i = 0; i < blanks; i++) yield return null;
+            var days = DateTime.DaysInMonth(_viewDate.Year, _viewDate.Month);
+            for (int d = 1; d <= days; d++) yield return new DateTime(_viewDate.Year, _viewDate.Month, d);
+        }
+    }
+
+    private string DayClass(DateTime date) =>
+        $"w-8 h-8 text-sm rounded-md flex items-center justify-center " +
+        $"{(Value?.Date == date.Date ? "bg-primary text-primary-foreground" : "hover:bg-accent")} " +
+        $"{(date.Date == DateTime.Today && Value?.Date != date.Date ? "font-bold text-primary" : "")}";
+
+    private void ToggleCalendar() => IsOpen = !IsOpen;
+    private void PrevMonth() => _viewDate = _viewDate.AddMonths(-1);
+    private void NextMonth() => _viewDate = _viewDate.AddMonths(1);
+
+    private async Task SelectDate(DateTime date)
+    {
+        Value = date;
+        IsOpen = false;
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

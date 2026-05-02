@@ -1,0 +1,162 @@
+@page "/"
+@inject ToastService Toast
+@inject ThemeService ThemeService
+@implements IDisposable
+
+<div class="p-4 space-y-8">
+
+    <!-- Theme switcher -->
+    <section class="space-y-3">
+        <Typography Variant="h2">Theme</Typography>
+        <div class="flex gap-2 flex-wrap">
+            <Button Variant="@(ThemeService.Theme == AppTheme.Light ? "default" : "outline")"
+                    @onclick='() => ThemeService.SetTheme(AppTheme.Light)'>Light</Button>
+            <Button Variant="@(ThemeService.Theme == AppTheme.Dark ? "default" : "outline")"
+                    @onclick='() => ThemeService.SetTheme(AppTheme.Dark)'>Dark</Button>
+            <Button Variant="@(ThemeService.Theme == AppTheme.System ? "default" : "outline")"
+                    @onclick='() => ThemeService.SetTheme(AppTheme.System)'>System</Button>
+        </div>
+        <Typography Variant="muted">Active: @ThemeService.Theme (@(ThemeService.IsDark ? "dark" : "light"))</Typography>
+    </section>
+
+    <Separator />
+
+    <!-- Buttons -->
+    <section class="space-y-3">
+        <Typography Variant="h2">Buttons</Typography>
+        <div class="flex flex-wrap gap-2">
+            <Button>Default</Button>
+            <Button Variant="secondary">Secondary</Button>
+            <Button Variant="destructive">Destructive</Button>
+            <Button Variant="outline">Outline</Button>
+            <Button Variant="ghost">Ghost</Button>
+        </div>
+    </section>
+
+    <Separator />
+
+    <!-- Badges -->
+    <section class="space-y-3">
+        <Typography Variant="h2">Badges</Typography>
+        <div class="flex flex-wrap gap-2">
+            <Badge>Default</Badge>
+            <Badge Variant="secondary">Secondary</Badge>
+            <Badge Variant="destructive">Error</Badge>
+            <Badge Variant="outline">Outline</Badge>
+        </div>
+    </section>
+
+    <Separator />
+
+    <!-- Form inputs -->
+    <section class="space-y-3">
+        <Typography Variant="h2">Form Inputs</Typography>
+        <div class="space-y-3 max-w-sm">
+            <div>
+                <Label For="maui-input">Text Input</Label>
+                <Input Id="maui-input" Placeholder="Type here..." @bind-Value="_inputVal" />
+            </div>
+            <Checkbox Label="Enable notifications" @bind-Checked="_checked" />
+            <Switch Label="Dark mode toggle" @bind-Checked="_switched" />
+            <Select Placeholder="Pick a fruit" @bind-Value="_selected">
+                <option value="apple">Apple</option>
+                <option value="banana">Banana</option>
+                <option value="mango">Mango</option>
+            </Select>
+            <div>
+                <Label>Slider — @_sliderVal.ToString("F0")</Label>
+                <Slider @bind-Value="_sliderVal" Min="0" Max="100" />
+            </div>
+        </div>
+    </section>
+
+    <Separator />
+
+    <!-- Card -->
+    <section class="space-y-3">
+        <Typography Variant="h2">Card</Typography>
+        <Card Class="max-w-sm">
+            <CardHeader>
+                <CardTitle>Mobile Card</CardTitle>
+                <CardDescription>Works on MAUI and web.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Typography Variant="muted">This card renders in a .NET MAUI BlazorWebView.</Typography>
+            </CardContent>
+            <CardFooter>
+                <Button @onclick='() => Toast.Success("Tapped!", "Card Action")'>Tap Me</Button>
+            </CardFooter>
+        </Card>
+    </section>
+
+    <Separator />
+
+    <!-- Alert -->
+    <section class="space-y-3">
+        <Typography Variant="h2">Alerts</Typography>
+        <Alert>
+            <AlertTitle>Info</AlertTitle>
+            <AlertDescription>Running inside .NET MAUI BlazorWebView.</AlertDescription>
+        </Alert>
+        <Alert Variant="destructive">
+            <AlertTitle>Warning</AlertTitle>
+            <AlertDescription>Check network connectivity.</AlertDescription>
+        </Alert>
+    </section>
+
+    <Separator />
+
+    <!-- Progress -->
+    <section class="space-y-3">
+        <Typography Variant="h2">Progress</Typography>
+        <div class="space-y-2 max-w-sm">
+            <Progress Value="25" />
+            <Progress Value="60" />
+            <Progress Value="90" />
+        </div>
+    </section>
+
+    <Separator />
+
+    <!-- Accordion -->
+    <section class="space-y-3">
+        <Typography Variant="h2">Accordion</Typography>
+        <Accordion Class="max-w-sm">
+            <AccordionItem Title="Works on MAUI?" Value="q1">
+                Yes! This component works identically on Blazor WASM, Blazor Server, and MAUI Blazor Hybrid.
+            </AccordionItem>
+            <AccordionItem Title="How is theming applied?" Value="q2">
+                Via ThemeProvider which sets a .dark CSS class on the wrapper div, toggling Tailwind dark: variants.
+            </AccordionItem>
+        </Accordion>
+    </section>
+
+    <Separator />
+
+    <!-- Toasts -->
+    <section class="space-y-3">
+        <Typography Variant="h2">Toast Notifications</Typography>
+        <div class="flex flex-wrap gap-2">
+            <Button @onclick='() => Toast.Success("Operation succeeded", "Success")'>Success</Button>
+            <Button Variant="destructive" @onclick='() => Toast.Error("Something failed", "Error")'>Error</Button>
+            <Button Variant="outline" @onclick='() => Toast.Info("FYI message", "Info")'>Info</Button>
+        </div>
+    </section>
+
+    <!-- Bottom padding for mobile safe area -->
+    <div class="h-8"></div>
+</div>
+
+@code {
+    string? _inputVal;
+    bool _checked;
+    bool _switched;
+    string? _selected;
+    double _sliderVal = 40;
+
+    protected override void OnInitialized() =>
+        ThemeService.OnThemeChanged += StateHasChanged;
+
+    public void Dispose() =>
+        ThemeService.OnThemeChanged -= StateHasChanged;
+}

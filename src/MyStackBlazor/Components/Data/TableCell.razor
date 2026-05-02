@@ -1,0 +1,11 @@
+@namespace MyStackBlazor.Components.Data
+
+<td class="@($"p-4 align-middle [&:has([role=checkbox])]:pr-0 {Class}".Trim())" @attributes="AdditionalAttributes">
+    @ChildContent
+</td>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

@@ -1,0 +1,31 @@
+@namespace MyStackBlazor.Components.Navigation
+
+<CascadingValue Value="this">
+    <div role="menubar"
+         class="@($"flex h-10 items-center space-x-1 rounded-md border bg-background p-1 {Class}".Trim())"
+         @attributes="AdditionalAttributes">
+        @ChildContent
+    </div>
+</CascadingValue>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string? _activeMenu;
+
+    internal bool IsActive(string? menu) => _activeMenu == menu;
+
+    internal void SetActive(string? menu)
+    {
+        _activeMenu = _activeMenu == menu ? null : menu;
+        StateHasChanged();
+    }
+
+    internal void CloseAll()
+    {
+        _activeMenu = null;
+        StateHasChanged();
+    }
+}

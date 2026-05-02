@@ -1,0 +1,37 @@
+@namespace MyStackBlazor.Components.Overlays
+
+<div class="relative inline-flex @Class" @onmouseenter="Show" @onmouseleave="Hide">
+    @ChildContent
+    @if (_visible && Content is not null)
+    {
+        <div role="tooltip"
+             class="@TipClass">
+            @Content
+        </div>
+    }
+    @if (_visible && !string.IsNullOrEmpty(Text))
+    {
+        <div role="tooltip" class="@TipClass">@Text</div>
+    }
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Content { get; set; }
+    [Parameter] public string? Text { get; set; }
+    [Parameter] public string Side { get; set; } = "top";
+    [Parameter] public string? Class { get; set; }
+
+    private bool _visible;
+
+    private string TipClass => Side switch
+    {
+        "bottom" => "absolute top-full mt-1 left-1/2 -translate-x-1/2 z-50 overflow-hidden rounded-md border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md animate-fade-in whitespace-nowrap",
+        "left"   => "absolute right-full mr-1 top-1/2 -translate-y-1/2 z-50 overflow-hidden rounded-md border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md animate-fade-in whitespace-nowrap",
+        "right"  => "absolute left-full ml-1 top-1/2 -translate-y-1/2 z-50 overflow-hidden rounded-md border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md animate-fade-in whitespace-nowrap",
+        _        => "absolute bottom-full mb-1 left-1/2 -translate-x-1/2 z-50 overflow-hidden rounded-md border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md animate-fade-in whitespace-nowrap",
+    };
+
+    private void Show() => _visible = true;
+    private void Hide() => _visible = false;
+}

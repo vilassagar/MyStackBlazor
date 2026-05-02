@@ -1,0 +1,59 @@
+@namespace MyStackBlazor.Components.Common
+@inject ThemeService ThemeService
+@inject IJSRuntime JS
+@implements IDisposable
+
+<div id="msb-theme-root"
+     class="@(ThemeService.IsDark ? "dark" : "") contents"
+     style="display:contents">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private DotNetObjectReference<ThemeProvider>? _dotnetRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        _dotnetRef = DotNetObjectReference.Create(this);
+        try
+        {
+            await JS.InvokeVoidAsync("MyStackBlazor.initTheme", _dotnetRef);
+        }
+        catch
+        {
+            // JS not available yet or MAUI startup — safe to ignore
+        }
+    }
+
+    [JSInvokable]
+    public void NotifySystemDark(bool isDark)
+    {
+        ThemeService.NotifySystemPreference(isDark);
+        StateHasChanged();
+    }
+
+    protected override void OnInitialized() =>
+        ThemeService.OnThemeChanged += OnThemeChanged;
+
+    private void OnThemeChanged()
+    {
+        _ = PersistAndRefresh();
+    }
+
+    private async Task PersistAndRefresh()
+    {
+        try { await JS.InvokeVoidAsync("MyStackBlazor.setTheme", ThemeService.IsDark); }
+        catch { }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        ThemeService.OnThemeChanged -= OnThemeChanged;
+        _dotnetRef?.Dispose();
+    }
+}

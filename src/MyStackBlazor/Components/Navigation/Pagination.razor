@@ -1,0 +1,93 @@
+@namespace MyStackBlazor.Components.Navigation
+
+<nav role="navigation" aria-label="pagination" class="@($"mx-auto flex w-full justify-center {Class}".Trim())" @attributes="AdditionalAttributes">
+    <ul class="flex flex-row items-center gap-1">
+        <!-- Previous -->
+        <li>
+            <button type="button"
+                    aria-label="Go to previous page"
+                    disabled="@(CurrentPage <= 1)"
+                    class="inline-flex items-center justify-center gap-1 pl-2.5 h-9 px-3 rounded-md border border-input bg-background text-sm hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+                    @onclick="() => SetPage(CurrentPage - 1)">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                <span>Previous</span>
+            </button>
+        </li>
+
+        @foreach (var pageNum in PageNumbers)
+        {
+            @if (pageNum == -1)
+            {
+                <li>
+                    <span class="flex h-9 w-9 items-center justify-center text-muted-foreground">&#8230;</span>
+                </li>
+            }
+            else
+            {
+                var pn = pageNum;
+                <li>
+                    <button type="button"
+                            aria-label="@($"Go to page {pn}")"
+                            class="@($"h-9 w-9 rounded-md border text-sm {(pn == CurrentPage ? "border-input bg-primary text-primary-foreground" : "border-transparent hover:bg-accent hover:text-accent-foreground")}")"
+                            @onclick="() => SetPage(pn)">
+                        @pn
+                    </button>
+                </li>
+            }
+        }
+
+        <!-- Next -->
+        <li>
+            <button type="button"
+                    aria-label="Go to next page"
+                    disabled="@(CurrentPage >= TotalPages)"
+                    class="inline-flex items-center justify-center gap-1 pr-2.5 h-9 px-3 rounded-md border border-input bg-background text-sm hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+                    @onclick="() => SetPage(CurrentPage + 1)">
+                <span>Next</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </button>
+        </li>
+    </ul>
+</nav>
+
+@code {
+    [Parameter] public int CurrentPage { get; set; } = 1;
+    [Parameter] public int TotalPages { get; set; } = 1;
+    [Parameter] public EventCallback<int> CurrentPageChanged { get; set; }
+    [Parameter] public int SiblingCount { get; set; } = 1;
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private IEnumerable<int> PageNumbers
+    {
+        get
+        {
+            var pages = new List<int>();
+            int left = Math.Max(1, CurrentPage - SiblingCount);
+            int right = Math.Min(TotalPages, CurrentPage + SiblingCount);
+
+            if (left > 2) { pages.Add(1); pages.Add(-1); }
+            else for (int i = 1; i < left; i++) pages.Add(i);
+
+            for (int i = left; i <= right; i++) pages.Add(i);
+
+            if (right < TotalPages - 1) { pages.Add(-1); pages.Add(TotalPages); }
+            else for (int i = right + 1; i <= TotalPages; i++) pages.Add(i);
+
+            return pages;
+        }
+    }
+
+    private async Task SetPage(int pageNum)
+    {
+        if (pageNum >= 1 && pageNum <= TotalPages)
+        {
+            CurrentPage = pageNum;
+            await CurrentPageChanged.InvokeAsync(CurrentPage);
+        }
+    }
+}

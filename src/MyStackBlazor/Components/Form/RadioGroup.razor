@@ -1,0 +1,22 @@
+@namespace MyStackBlazor.Components.Form
+
+<CascadingValue Value="this">
+    <div role="radiogroup" class="@($"grid gap-2 {Class}".Trim())" @attributes="AdditionalAttributes">
+        @ChildContent
+    </div>
+</CascadingValue>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    internal async Task SelectValue(string? val)
+    {
+        Value = val;
+        await ValueChanged.InvokeAsync(val);
+        StateHasChanged();
+    }
+}

@@ -1,0 +1,42 @@
+@namespace MyStackBlazor.Components.Form
+
+<div class="flex items-center space-x-2">
+    <button type="button"
+            role="radio"
+            id="@Id"
+            aria-checked="@IsSelected.ToString().ToLower()"
+            disabled="@Disabled"
+            class="@ComputedClass"
+            @onclick="Select">
+        @if (IsSelected)
+        {
+            <div class="h-2.5 w-2.5 rounded-full bg-primary"></div>
+        }
+    </button>
+    @if (Label is not null)
+    {
+        <label for="@Id" class="text-sm font-medium leading-none cursor-pointer" @onclick="Select">@Label</label>
+    }
+</div>
+
+@code {
+    [CascadingParameter] public RadioGroup? Group { get; set; }
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private bool IsSelected => Group?.Value == Value;
+
+    private string ComputedClass =>
+        $"aspect-square h-4 w-4 rounded-full border border-primary ring-offset-background " +
+        $"focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
+        $"disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center {Class}".Trim();
+
+    private async Task Select()
+    {
+        if (!Disabled && Group is not null)
+            await Group.SelectValue(Value);
+    }
+}

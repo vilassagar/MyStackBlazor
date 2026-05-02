@@ -1,0 +1,32 @@
+@namespace MyStackBlazor.Components.Navigation
+
+<div class="relative">
+    <button type="button"
+            role="menuitem"
+            class="@($"flex cursor-default select-none items-center rounded-sm px-3 py-1.5 text-sm font-medium outline-none {(IsActive ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground")} {Class}".Trim())"
+            @onclick="Toggle">
+        @Label
+    </button>
+    @if (IsActive)
+    {
+        <div class="absolute left-0 top-full z-50 min-w-[12rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-fade-in mt-1">
+            @ChildContent
+        </div>
+    }
+</div>
+
+@code {
+    [CascadingParameter] public Menubar? Bar { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private string _id = Guid.NewGuid().ToString("N")[..8];
+    private bool IsActive => Bar?.IsActive(_id) ?? false;
+
+    private void Toggle()
+    {
+        Bar?.SetActive(_id);
+        StateHasChanged();
+    }
+}
