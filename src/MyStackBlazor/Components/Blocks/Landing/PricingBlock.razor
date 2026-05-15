@@ -1,0 +1,102 @@
+@namespace MyStackBlazor.Components.Blocks.Landing
+@using MyStackBlazor.Components.Blocks
+
+<section class="bg-background py-20 md:py-28 @Class">
+    <div class="mx-auto max-w-6xl px-6 lg:px-8">
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            <div class="mb-16 text-center">
+                @if (!string.IsNullOrEmpty(Subtitle))
+                {
+                    <p class="mb-2 text-sm font-semibold uppercase tracking-widest text-primary">@Subtitle</p>
+                }
+                <h2 class="text-3xl font-bold tracking-tight text-foreground md:text-4xl">@Title</h2>
+                @if (!string.IsNullOrEmpty(Description))
+                {
+                    <p class="mt-4 text-muted-foreground">@Description</p>
+                }
+            </div>
+        }
+
+        <div class="grid gap-8 @GridClass">
+            @foreach (var tier in Items)
+            {
+                <div class="relative flex flex-col rounded-2xl border @(tier.IsPopular ? "border-primary ring-2 ring-primary shadow-lg" : "shadow-sm") bg-card p-8">
+                    @if (tier.IsPopular)
+                    {
+                        <span class="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-primary px-4 py-1 text-xs font-semibold text-primary-foreground">
+                            Most popular
+                        </span>
+                    }
+
+                    <div class="mb-6">
+                        <h3 class="text-lg font-bold text-foreground">@tier.Name</h3>
+                        @if (!string.IsNullOrEmpty(tier.Description))
+                        {
+                            <p class="mt-1 text-sm text-muted-foreground">@tier.Description</p>
+                        }
+                    </div>
+
+                    <div class="mb-8 flex items-baseline gap-1">
+                        <span class="text-5xl font-extrabold tracking-tight text-foreground">@tier.Price</span>
+                        @if (!string.IsNullOrEmpty(tier.Period))
+                        {
+                            <span class="text-sm font-medium text-muted-foreground">/ @tier.Period</span>
+                        }
+                    </div>
+
+                    @if (tier.Features is not null)
+                    {
+                        <ul class="mb-8 flex-1 space-y-3">
+                            @foreach (var f in tier.Features)
+                            {
+                                <li class="flex items-start gap-2.5 text-sm @(f.Included ? "text-foreground" : "text-muted-foreground line-through")">
+                                    @if (f.Included)
+                                    {
+                                        <svg class="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                        </svg>
+                                    }
+                                    else
+                                    {
+                                        <svg class="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                        </svg>
+                                    }
+                                    @f.Text
+                                </li>
+                            }
+                        </ul>
+                    }
+
+                    <button type="button"
+                            class="w-full rounded-lg @(tier.IsPopular ? "bg-primary text-primary-foreground hover:bg-primary/90" : "border border-input bg-background hover:bg-accent") px-4 py-2.5 text-sm font-semibold transition-colors">
+                        @tier.ButtonText
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+@code {
+    [Parameter] public string?             Title       { get; set; } = "Simple, transparent pricing";
+    [Parameter] public string?             Subtitle    { get; set; } = "Pricing";
+    [Parameter] public string?             Description { get; set; }
+    [Parameter] public IList<PricingTier>  Items       { get; set; } = DefaultItems;
+    [Parameter] public string?             Class       { get; set; }
+
+    private string GridClass => Items.Count == 2 ? "sm:grid-cols-2 max-w-3xl mx-auto" : "sm:grid-cols-2 lg:grid-cols-3";
+
+    private static readonly IList<PricingTier> DefaultItems =
+    [
+        new("Starter", "$0",  "month", "Perfect for side projects",
+            [new("5 projects"), new("Community support"), new("Basic analytics"), new("Team features", false)]),
+        new("Pro",     "$19", "month", "For growing teams",
+            [new("Unlimited projects"), new("Priority support"), new("Advanced analytics"), new("Team features")],
+            IsPopular: true),
+        new("Enterprise", "Custom", "", "For large organisations",
+            [new("Unlimited everything"), new("Dedicated support"), new("SLA guarantee"), new("Custom integrations")]),
+    ];
+}

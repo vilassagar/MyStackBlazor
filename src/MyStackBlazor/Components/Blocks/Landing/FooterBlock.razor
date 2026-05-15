@@ -1,0 +1,65 @@
+@namespace MyStackBlazor.Components.Blocks.Landing
+@using MyStackBlazor.Components.Blocks
+
+<footer class="border-t bg-background @Class">
+    <div class="mx-auto max-w-6xl px-6 py-16 lg:px-8">
+        <div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-@(Sections.Count + 1)">
+            <!-- Brand column -->
+            <div class="lg:col-span-1">
+                <span class="text-xl font-bold tracking-tight text-foreground">@Brand</span>
+                @if (!string.IsNullOrEmpty(Description))
+                {
+                    <p class="mt-3 text-sm leading-relaxed text-muted-foreground">@Description</p>
+                }
+                @if (SocialContent is not null)
+                {
+                    <div class="mt-4 flex gap-3">@SocialContent</div>
+                }
+            </div>
+
+            <!-- Link sections -->
+            @foreach (var section in Sections)
+            {
+                <div>
+                    <h3 class="mb-4 text-sm font-semibold uppercase tracking-widest text-foreground">@section.Title</h3>
+                    <ul class="space-y-2.5">
+                        @foreach (var link in section.Links)
+                        {
+                            <li>
+                                <a href="@link.Href"
+                                   class="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                                   target="@(link.IsExternal ? "_blank" : null)"
+                                   rel="@(link.IsExternal ? "noopener noreferrer" : null)">
+                                    @link.Text
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            }
+        </div>
+
+        <!-- Bottom bar -->
+        <div class="mt-12 flex flex-col items-center justify-between gap-4 border-t pt-8 sm:flex-row">
+            <p class="text-xs text-muted-foreground">@Copyright</p>
+            @if (BottomContent is not null) { @BottomContent }
+        </div>
+    </div>
+</footer>
+
+@code {
+    [Parameter] public string               Brand         { get; set; } = "MyStackBlazor";
+    [Parameter] public string?              Description   { get; set; } = "A modern Blazor component library built with Tailwind CSS v4.";
+    [Parameter] public IList<FooterSection> Sections      { get; set; } = DefaultSections;
+    [Parameter] public string               Copyright     { get; set; } = $"© {DateTime.Today.Year} MyStackBlazor. All rights reserved.";
+    [Parameter] public RenderFragment?      SocialContent { get; set; }
+    [Parameter] public RenderFragment?      BottomContent { get; set; }
+    [Parameter] public string?              Class         { get; set; }
+
+    private static readonly IList<FooterSection> DefaultSections =
+    [
+        new("Product",  [new("Components","#"), new("Building Blocks","#"), new("Templates","#"), new("Changelog","#")]),
+        new("Resources",[new("Documentation","#"), new("GitHub","#",true), new("Releases","#")]),
+        new("Company",  [new("About","#"), new("Blog","#"), new("Contact","#")]),
+    ];
+}

@@ -1,0 +1,24 @@
+@namespace MyStackBlazor.Components.Navigation
+
+<header class="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 @Class"
+        @attributes="AdditionalAttributes">
+    <div class="flex h-14 items-center gap-4 px-4">
+        @if (StartContent is not null)
+        {
+            <div class="flex items-center gap-2">@StartContent</div>
+        }
+        <div class="flex flex-1 items-center">@ChildContent</div>
+        @if (EndContent is not null)
+        {
+            <div class="flex items-center gap-2">@EndContent</div>
+        }
+    </div>
+</header>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? StartContent { get; set; }
+    [Parameter] public RenderFragment? EndContent { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

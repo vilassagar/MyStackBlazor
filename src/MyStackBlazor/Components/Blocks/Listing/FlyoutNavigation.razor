@@ -1,0 +1,100 @@
+@namespace MyStackBlazor.Components.Blocks.Listing
+@using MyStackBlazor.Components.Blocks
+
+<!-- Backdrop -->
+@if (IsOpen)
+{
+    <div class="fixed inset-0 z-40 bg-foreground/30 backdrop-blur-sm" @onclick="Close"></div>
+}
+
+<!-- Drawer -->
+<div class="fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-background shadow-xl transition-transform duration-300 @(IsOpen ? "translate-x-0" : "-translate-x-full") @Class">
+    <!-- Header -->
+    <div class="flex items-center justify-between border-b px-5 py-4">
+        <span class="text-lg font-bold tracking-tight text-foreground">@Brand</span>
+        <button @onclick="Close" class="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="flex-1 overflow-y-auto px-4 py-4">
+        <ul class="space-y-1">
+            @foreach (var cat in Categories)
+            {
+                @if (cat.Children?.Count > 0)
+                {
+                    <li>
+                        <button class="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                                @onclick="() => ToggleExpanded(cat.Name)">
+                            @cat.Name
+                            <svg class="h-4 w-4 text-muted-foreground transition-transform @(_expanded.Contains(cat.Name) ? "rotate-180" : "")"
+                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                        @if (_expanded.Contains(cat.Name))
+                        {
+                            <ul class="ml-4 mt-1 space-y-1 border-l pl-3">
+                                @foreach (var child in cat.Children)
+                                {
+                                    <li>
+                                        <a href="@child.Href" class="block rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+                                            @child.Text
+                                        </a>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </li>
+                }
+                else
+                {
+                    <li>
+                        <a href="@cat.Href" class="block rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors">
+                            @cat.Name
+                        </a>
+                    </li>
+                }
+            }
+        </ul>
+    </nav>
+
+    @if (FooterContent is not null)
+    {
+        <div class="border-t px-5 py-4">@FooterContent</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string               Brand         { get; set; } = "MyStore";
+    [Parameter] public IList<NavCategory>   Categories    { get; set; } = DefaultCategories;
+    [Parameter] public bool                 IsOpen        { get; set; }
+    [Parameter] public EventCallback<bool>  IsOpenChanged { get; set; }
+    [Parameter] public RenderFragment?      FooterContent { get; set; }
+    [Parameter] public string?              Class         { get; set; }
+
+    private HashSet<string> _expanded = new();
+
+    private void ToggleExpanded(string name)
+    {
+        if (!_expanded.Add(name)) _expanded.Remove(name);
+    }
+
+    private async Task Close()
+    {
+        await IsOpenChanged.InvokeAsync(false);
+    }
+
+    private static readonly IList<NavCategory> DefaultCategories =
+    [
+        new("Home",        "#"),
+        new("Shop",        "#", [new("All Products","#"), new("New Arrivals","#"), new("Sale","#")]),
+        new("Collections", "#", [new("Summer 2026","#"), new("Basics","#")]),
+        new("About",       "#"),
+        new("Contact",     "#"),
+    ];
+}

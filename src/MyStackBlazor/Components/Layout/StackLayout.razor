@@ -1,0 +1,47 @@
+@namespace MyStackBlazor.Components.Layout
+
+<div class="flex @DirectionClass @WrapClass @AlignClass @JustifyClass @Class"
+     style="gap:@(Gap * 0.25)rem; @Style"
+     @attributes="AdditionalAttributes">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>horizontal | vertical</summary>
+    [Parameter] public string Orientation { get; set; } = "horizontal";
+
+    /// <summary>Gap in Tailwind spacing units (4 = 1rem).</summary>
+    [Parameter] public int Gap { get; set; } = 4;
+
+    [Parameter] public bool Wrap { get; set; }
+
+    /// <summary>start | center | end | stretch</summary>
+    [Parameter] public string Align { get; set; } = "start";
+
+    /// <summary>start | center | end | between | around</summary>
+    [Parameter] public string Justify { get; set; } = "start";
+
+    [Parameter] public string? Style { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string DirectionClass => Orientation == "vertical" ? "flex-col" : "flex-row";
+    private string WrapClass      => Wrap ? "flex-wrap" : "";
+    private string AlignClass     => Align switch
+    {
+        "center"  => "items-center",
+        "end"     => "items-end",
+        "stretch" => "items-stretch",
+        _         => "items-start",
+    };
+    private string JustifyClass => Justify switch
+    {
+        "center"  => "justify-center",
+        "end"     => "justify-end",
+        "between" => "justify-between",
+        "around"  => "justify-around",
+        _         => "justify-start",
+    };
+}

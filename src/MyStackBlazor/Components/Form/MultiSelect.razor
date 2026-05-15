@@ -1,0 +1,95 @@
+@namespace MyStackBlazor.Components.Form
+@typeparam TItem
+
+<div class="relative @Class" @attributes="AdditionalAttributes">
+    <!-- Input area with tags -->
+    <div class="flex min-h-9 cursor-text flex-wrap gap-1 rounded-md border border-input bg-background px-2 py-1 text-sm transition-colors @(_open ? "ring-1 ring-ring" : "")"
+         @onclick="Open">
+        @foreach (var item in _selected)
+        {
+            var current = item;
+            <span class="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
+                @(ItemLabel?.Invoke(current) ?? current?.ToString())
+                <button type="button"
+                        class="ml-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full opacity-60 hover:opacity-100"
+                        @onclick="() => RemoveItem(current)"
+                        @onclick:stopPropagation="true">
+                    <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </span>
+        }
+        <input type="text"
+               placeholder="@(_selected.Count == 0 ? Placeholder : "")"
+               class="flex-1 min-w-[80px] bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+               @bind="_search"
+               @bind:event="oninput" />
+    </div>
+
+    @if (_open)
+    {
+        <div class="fixed inset-0 z-40" @onclick="Close"></div>
+        <div class="absolute left-0 top-full z-50 mt-1 w-full rounded-md border bg-popover shadow-md animate-fade-in">
+            <div class="max-h-48 overflow-y-auto p-1">
+                @foreach (var item in FilteredOptions)
+                {
+                    var current = item;
+                    var isSelected = _selected.Contains(current);
+                    <div class="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                         @onclick="() => ToggleItem(current)"
+                         @onclick:stopPropagation="true">
+                        <svg class="h-4 w-4 text-primary @(isSelected ? "opacity-100" : "opacity-0")" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        @(ItemLabel?.Invoke(current) ?? current?.ToString())
+                    </div>
+                }
+                @if (!FilteredOptions.Any())
+                {
+                    <p class="px-2 py-3 text-center text-sm text-muted-foreground">No options found.</p>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public IEnumerable<TItem>? Options { get; set; }
+    [Parameter] public IList<TItem> SelectedItems { get; set; } = new List<TItem>();
+    [Parameter] public EventCallback<IList<TItem>> SelectedItemsChanged { get; set; }
+    [Parameter] public Func<TItem, string?>? ItemLabel { get; set; }
+    [Parameter] public string? Placeholder { get; set; } = "Select…";
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool _open;
+    private string _search = "";
+
+    private List<TItem> _selected => SelectedItems?.ToList() ?? [];
+
+    private IEnumerable<TItem> FilteredOptions =>
+        (Options ?? []).Where(o =>
+            string.IsNullOrWhiteSpace(_search) ||
+            (ItemLabel?.Invoke(o) ?? o?.ToString() ?? "")
+                .Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+    private void Open()  => _open = true;
+    private void Close() { _open = false; _search = ""; }
+
+    private async Task ToggleItem(TItem item)
+    {
+        var list = _selected;
+        if (list.Contains(item)) list.Remove(item);
+        else list.Add(item);
+        await SelectedItemsChanged.InvokeAsync(list);
+    }
+
+    private async Task RemoveItem(TItem item)
+    {
+        var list = _selected;
+        list.Remove(item);
+        await SelectedItemsChanged.InvokeAsync(list);
+    }
+}

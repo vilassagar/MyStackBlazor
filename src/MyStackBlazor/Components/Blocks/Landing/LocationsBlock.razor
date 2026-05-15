@@ -1,0 +1,70 @@
+@namespace MyStackBlazor.Components.Blocks.Landing
+@using MyStackBlazor.Components.Blocks
+
+<section class="bg-muted/20 py-20 @Class">
+    <div class="mx-auto max-w-6xl px-6 lg:px-8">
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            <div class="mb-14 text-center">
+                @if (!string.IsNullOrEmpty(Subtitle))
+                {
+                    <p class="mb-2 text-sm font-semibold uppercase tracking-widest text-primary">@Subtitle</p>
+                }
+                <h2 class="text-3xl font-bold tracking-tight text-foreground">@Title</h2>
+            </div>
+        }
+
+        <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            @foreach (var loc in Items)
+            {
+                <div class="rounded-xl border bg-card p-6 shadow-sm">
+                    <div class="mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                        <svg class="h-5 w-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="font-semibold text-foreground">@loc.Name</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-muted-foreground">@loc.Address</p>
+                    <dl class="mt-4 space-y-1.5 text-xs text-muted-foreground">
+                        @if (!string.IsNullOrEmpty(loc.Phone))
+                        {
+                            <div class="flex gap-2">
+                                <dt class="font-medium text-foreground">Phone</dt>
+                                <dd>@loc.Phone</dd>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(loc.Email))
+                        {
+                            <div class="flex gap-2">
+                                <dt class="font-medium text-foreground">Email</dt>
+                                <dd>@loc.Email</dd>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(loc.Hours))
+                        {
+                            <div class="flex gap-2">
+                                <dt class="font-medium text-foreground">Hours</dt>
+                                <dd>@loc.Hours</dd>
+                            </div>
+                        }
+                    </dl>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+@code {
+    [Parameter] public string?               Title    { get; set; } = "Our locations";
+    [Parameter] public string?               Subtitle { get; set; } = "Find us";
+    [Parameter] public IList<LocationItem>   Items    { get; set; } = DefaultItems;
+    [Parameter] public string?               Class    { get; set; }
+
+    private static readonly IList<LocationItem> DefaultItems =
+    [
+        new("New York HQ",     "350 Fifth Avenue, New York, NY 10118",       "+1 212 555 0100", "ny@example.com",  "Mon–Fri 9am–6pm"),
+        new("London Office",   "30 St Mary Axe, London EC3A 8BF, UK",        "+44 20 7946 0958","uk@example.com",  "Mon–Fri 9am–5pm"),
+        new("Sydney Branch",   "1 Martin Place, Sydney NSW 2000, Australia", "+61 2 9000 0001", "au@example.com",  "Mon–Fri 8am–5pm"),
+    ];
+}

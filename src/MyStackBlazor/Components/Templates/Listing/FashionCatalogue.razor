@@ -1,0 +1,139 @@
+@namespace MyStackBlazor.Components.Templates.Listing
+@using MyStackBlazor.Components.Blocks
+@using MyStackBlazor.Components.Blocks.Landing
+@using MyStackBlazor.Components.Blocks.Listing
+
+<div class="min-h-screen bg-background">
+    <!-- Header -->
+    <header class="sticky top-0 z-40 border-b bg-background">
+        <div class="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+            <span class="text-xl font-bold tracking-tight text-foreground">Maison&amp;Co</span>
+            <nav class="hidden gap-6 md:flex">
+                @foreach (var cat in new[] { "Women", "Men", "Kids", "Sale" })
+                {
+                    <a href="#" class="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">@cat</a>
+                }
+            </nav>
+            <div class="flex items-center gap-3">
+                <button class="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                        title="Search">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                </button>
+                <button class="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                        title="Cart">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle>
+                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                    </svg>
+                </button>
+                <button class="md:hidden rounded-md p-2 text-muted-foreground hover:bg-muted transition-colors"
+                        @onclick='() => _flyoutOpen = true'>
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Mobile flyout -->
+    <FlyoutNavigation Brand="Maison&Co"
+                      IsOpen="@_flyoutOpen"
+                      IsOpenChanged="v => _flyoutOpen = v"
+                      Categories="@_navCategories" />
+
+    <!-- Page hero -->
+    <div class="bg-muted/30 py-10 text-center">
+        <h1 class="text-3xl font-bold tracking-tight text-foreground">Summer 2026 Collection</h1>
+        <p class="mt-2 text-muted-foreground">Fresh arrivals, curated for the season.</p>
+    </div>
+
+    <!-- Content -->
+    <div class="mx-auto max-w-7xl px-6 py-8">
+        <div class="flex gap-8">
+            <!-- Sidebar -->
+            <aside class="hidden w-56 flex-shrink-0 lg:block">
+                <FilterPanel Title="Filters"
+                             Categories="@_filterCategories"
+                             OnFilterChange="@(async _ => await Task.CompletedTask)" />
+            </aside>
+
+            <!-- Main -->
+            <div class="flex-1 min-w-0">
+                <SortBar ResultCount="@_products.Count"
+                         SelectedSort="_sort"
+                         OnSortChanged="s => _sort = s"
+                         ViewMode="_view"
+                         OnViewModeChanged="v => _view = v" />
+
+                <div class="mt-6 @(_view == "grid" ? "grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4" : "flex flex-col gap-4")">
+                    @foreach (var product in _products)
+                    {
+                        <ProductCard Item="product" OnAddToCart="@(_ => { })" />
+                    }
+                </div>
+
+                <div class="mt-10 flex justify-center">
+                    <button class="rounded-lg border border-primary px-8 py-2.5 text-sm font-medium text-primary transition hover:bg-primary/5">
+                        Load more
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <NewsletterBlock
+        Title="Members get early access"
+        Description="Join the list for new arrivals, exclusive offers, and style inspiration." />
+
+    <FooterBlock
+        Brand="Maison&amp;Co"
+        Description="Contemporary fashion for modern living. Sustainable, stylish, yours."
+        Sections="@_footerSections"
+        Copyright="@($"© {DateTime.Today.Year} Maison&Co. All rights reserved.")" />
+</div>
+
+@code {
+    private bool   _flyoutOpen;
+    private string _sort = "featured";
+    private string _view = "grid";
+
+    private static readonly IList<NavCategory> _navCategories =
+    [
+        new("Women", "#", [new("Dresses","#"), new("Tops","#"), new("Denim","#"), new("Outerwear","#")]),
+        new("Men",   "#", [new("Shirts","#"), new("Trousers","#"), new("Suits","#"), new("Sneakers","#")]),
+        new("Kids",  "#"),
+        new("Sale",  "#"),
+    ];
+
+    private static readonly IList<FilterCategory> _filterCategories =
+    [
+        new("Category", [new("Dresses","dresses",48), new("Tops","tops",92), new("Denim","denim",34), new("Outerwear","outerwear",27)]),
+        new("Size",     [new("XS","xs",15), new("S","s",42), new("M","m",61), new("L","l",38), new("XL","xl",24)]),
+        new("Colour",   [new("Black","black",55), new("White","white",41), new("Navy","navy",28), new("Beige","beige",19)]),
+        new("Price",    [new("Under $50","under50",32), new("$50–$150","50-150",74), new("Over $150","over150",43)]),
+    ];
+
+    private static readonly IList<ProductItem> _products =
+    [
+        new("Linen Blend Midi Dress",    "$129",  null, "New",     4.8m, 64),
+        new("Oversized Cotton Blazer",   "$189",  null, "Trending",4.7m, 38),
+        new("High-Rise Wide-Leg Jeans",  "$99",   null, null,      4.5m, 112),
+        new("Satin Cami Top",            "$59",   null, "Sale",    4.6m, 87),
+        new("Structured Mini Bag",       "$149",  null, null,      4.9m, 203),
+        new("Ribbed Knit Cardigan",      "$85",   null, "New",     4.4m, 51),
+        new("Floral Wrap Skirt",         "$75",   null, null,      4.3m, 29),
+        new("Tailored Trench Coat",      "$295",  null, null,      4.8m, 76),
+    ];
+
+    private static readonly IList<FooterSection> _footerSections =
+    [
+        new("Shop",    [new("New Arrivals","#"), new("Women","#"), new("Men","#"), new("Sale","#")]),
+        new("Help",    [new("Sizing Guide","#"), new("Returns","#"), new("Shipping","#"), new("Contact Us","#")]),
+        new("Company", [new("About","#"), new("Sustainability","#"), new("Press","#"), new("Careers","#")]),
+    ];
+}

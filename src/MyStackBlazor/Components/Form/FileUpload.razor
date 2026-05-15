@@ -1,0 +1,162 @@
+@namespace MyStackBlazor.Components.Form
+@inject IJSRuntime JS
+
+<div class="space-y-3">
+    <!-- Drop zone -->
+    <div id="@_dropzoneId"
+         class="@DropzoneClass"
+         @ondragenter="OnDragEnter"
+         @ondragleave="OnDragLeave"
+         @ondragover:preventDefault="true">
+        <InputFile id="@_inputId"
+                   OnChange="OnFilesChanged"
+                   @attributes="GetFileInputAttributes()" />
+        <label for="@_inputId" class="flex cursor-pointer flex-col items-center justify-center gap-2 p-6">
+            <svg class="h-10 w-10 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                      d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+            </svg>
+            <div class="text-center text-sm text-muted-foreground">
+                <span class="font-medium text-foreground">Click to upload</span> or drag and drop
+            </div>
+            @if (!string.IsNullOrEmpty(HintText))
+            {
+                <p class="text-xs text-muted-foreground">@HintText</p>
+            }
+        </label>
+    </div>
+
+    <!-- File list -->
+    @if (Files.Count > 0)
+    {
+        <ul class="space-y-2">
+            @foreach (var file in Files)
+            {
+                var f = file;
+                <li class="flex items-center gap-3 rounded-md border bg-background px-3 py-2">
+                    @if (IsImage(f) && f.PreviewUrl is not null)
+                    {
+                        <img src="@f.PreviewUrl" alt="@f.Name"
+                             class="h-10 w-10 flex-shrink-0 rounded object-cover" />
+                    }
+                    else
+                    {
+                        <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded bg-muted text-muted-foreground">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </span>
+                    }
+                    <div class="min-w-0 flex-1">
+                        <p class="truncate text-sm font-medium">@f.Name</p>
+                        <p class="text-xs text-muted-foreground">@FormatSize(f.Size)</p>
+                    </div>
+                    <button type="button"
+                            class="text-muted-foreground transition-colors hover:text-destructive"
+                            @onclick="() => RemoveFile(f)">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    public sealed class UploadFile
+    {
+        public string Name { get; set; } = "";
+        public long Size { get; set; }
+        public string ContentType { get; set; } = "";
+        public string? PreviewUrl { get; set; }
+        public IBrowserFile? BrowserFile { get; set; }
+    }
+
+    [Parameter] public List<UploadFile> Files { get; set; } = [];
+    [Parameter] public EventCallback<List<UploadFile>> FilesChanged { get; set; }
+    [Parameter] public bool Multiple { get; set; } = true;
+    [Parameter] public string? Accept { get; set; }
+    [Parameter] public int MaxFiles { get; set; } = 10;
+    [Parameter] public long MaxFileSizeBytes { get; set; } = 10 * 1024 * 1024;
+    [Parameter] public string HintText { get; set; } = "PNG, JPG, PDF up to 10 MB";
+    [Parameter] public string? Class { get; set; }
+
+    private bool _isDragging;
+    private readonly string _dropzoneId = $"dz-{Guid.NewGuid():N}";
+    private readonly string _inputId    = $"fi-{Guid.NewGuid():N}";
+
+    private string DropzoneClass =>
+        $"relative w-full overflow-hidden rounded-lg border-2 border-dashed transition-colors " +
+        $"{(_isDragging ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/50 hover:bg-muted/30")} {Class}";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await JS.InvokeVoidAsync("MyStackBlazor.setupDropzone", _dropzoneId, _inputId);
+    }
+
+    private void OnDragEnter() => _isDragging = true;
+    private void OnDragLeave() => _isDragging = false;
+
+    private async Task OnFilesChanged(InputFileChangeEventArgs e)
+    {
+        _isDragging = false;
+        var incoming = e.GetMultipleFiles(MaxFiles);
+        if (!Multiple) Files.Clear();
+
+        foreach (var file in incoming)
+        {
+            var uf = new UploadFile
+            {
+                Name        = file.Name,
+                Size        = file.Size,
+                ContentType = file.ContentType,
+                BrowserFile = file,
+            };
+
+            if (IsImageContentType(file.ContentType) && file.Size <= 512 * 1024)
+            {
+                try
+                {
+                    var buf = new byte[file.Size];
+                    await file.OpenReadStream(MaxFileSizeBytes).ReadExactlyAsync(buf);
+                    uf.PreviewUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buf)}";
+                }
+                catch { }
+            }
+
+            Files.Add(uf);
+        }
+
+        await FilesChanged.InvokeAsync(Files);
+    }
+
+    private async Task RemoveFile(UploadFile file)
+    {
+        Files.Remove(file);
+        await FilesChanged.InvokeAsync(Files);
+    }
+
+    private Dictionary<string, object> GetFileInputAttributes()
+    {
+        var attrs = new Dictionary<string, object> { ["class"] = "sr-only" };
+        if (Multiple) attrs["multiple"] = true;
+        if (!string.IsNullOrEmpty(Accept)) attrs["accept"] = Accept!;
+        return attrs;
+    }
+
+    private static bool IsImage(UploadFile f)     => IsImageContentType(f.ContentType);
+    private static bool IsImageContentType(string ct) =>
+        ct.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+
+    private static string FormatSize(long bytes) => bytes switch
+    {
+        < 1024            => $"{bytes} B",
+        < 1024 * 1024     => $"{bytes / 1024.0:F1} KB",
+        _                 => $"{bytes / (1024.0 * 1024):F1} MB",
+    };
+}

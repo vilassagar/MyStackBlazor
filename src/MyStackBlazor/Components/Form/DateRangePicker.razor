@@ -1,0 +1,156 @@
+@namespace MyStackBlazor.Components.Form
+
+<div class="flex flex-wrap items-center gap-2 @Class" @attributes="AdditionalAttributes">
+    <div class="relative">
+        <!-- Start date trigger -->
+        <div class="flex h-10 items-center rounded-md border border-input bg-background px-3 py-2 text-sm cursor-pointer"
+             @onclick="() => _activePanel = _activePanel == 'start' ? null : 'start'">
+            <svg class="mr-2 h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span class="@(StartDate is null ? "text-muted-foreground" : "")">
+                @(StartDate?.ToString(Format) ?? StartPlaceholder ?? "Start date")
+            </span>
+        </div>
+        @if (_activePanel == "start")
+        {
+            <div class="fixed inset-0 z-40" @onclick="() => _activePanel = null"></div>
+            <div class="absolute z-50 mt-1 rounded-md border bg-popover p-3 shadow-md animate-fade-in">
+                @CalendarView(_startView, StartDate, d => SelectStart(d))
+            </div>
+        }
+    </div>
+
+    <span class="text-muted-foreground">→</span>
+
+    <div class="relative">
+        <!-- End date trigger -->
+        <div class="flex h-10 items-center rounded-md border border-input bg-background px-3 py-2 text-sm cursor-pointer"
+             @onclick="() => _activePanel = _activePanel == 'end' ? null : 'end'">
+            <svg class="mr-2 h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span class="@(EndDate is null ? "text-muted-foreground" : "")">
+                @(EndDate?.ToString(Format) ?? EndPlaceholder ?? "End date")
+            </span>
+        </div>
+        @if (_activePanel == "end")
+        {
+            <div class="fixed inset-0 z-40" @onclick="() => _activePanel = null"></div>
+            <div class="absolute z-50 mt-1 rounded-md border bg-popover p-3 shadow-md animate-fade-in">
+                @CalendarView(_endView, EndDate, d => SelectEnd(d))
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public DateTime? StartDate { get; set; }
+    [Parameter] public EventCallback<DateTime?> StartDateChanged { get; set; }
+    [Parameter] public DateTime? EndDate { get; set; }
+    [Parameter] public EventCallback<DateTime?> EndDateChanged { get; set; }
+    [Parameter] public EventCallback<(DateTime? Start, DateTime? End)> RangeChanged { get; set; }
+    [Parameter] public string? StartPlaceholder { get; set; }
+    [Parameter] public string? EndPlaceholder { get; set; }
+    [Parameter] public string Format { get; set; } = "MMM dd, yyyy";
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string? _activePanel;
+    private DateTime _startView = DateTime.Today;
+    private DateTime _endView   = DateTime.Today;
+
+    private RenderFragment CalendarView(DateTime view, DateTime? selected, Action<DateTime> onSelect) =>
+        __builder =>
+        {
+            __builder.OpenElement(0, "div");
+            // Month nav
+            __builder.OpenElement(1, "div");
+            __builder.AddAttribute(2, "class", "flex items-center justify-between mb-3");
+            // Prev
+            __builder.OpenElement(3, "button");
+            __builder.AddAttribute(4, "type", "button");
+            __builder.AddAttribute(5, "class", "p-1 hover:bg-accent rounded");
+            __builder.AddAttribute(6, "onclick", EventCallback.Factory.Create(this, () => { if (_activePanel == "start") _startView = _startView.AddMonths(-1); else _endView = _endView.AddMonths(-1); }));
+            __builder.AddContent(7, "‹");
+            __builder.CloseElement();
+            // Label
+            __builder.OpenElement(8, "span");
+            __builder.AddAttribute(9, "class", "text-sm font-medium");
+            __builder.AddContent(10, view.ToString("MMMM yyyy"));
+            __builder.CloseElement();
+            // Next
+            __builder.OpenElement(11, "button");
+            __builder.AddAttribute(12, "type", "button");
+            __builder.AddAttribute(13, "class", "p-1 hover:bg-accent rounded");
+            __builder.AddAttribute(14, "onclick", EventCallback.Factory.Create(this, () => { if (_activePanel == "start") _startView = _startView.AddMonths(1); else _endView = _endView.AddMonths(1); }));
+            __builder.AddContent(15, "›");
+            __builder.CloseElement();
+            __builder.CloseElement();
+            // Day headers
+            __builder.OpenElement(16, "div");
+            __builder.AddAttribute(17, "class", "grid grid-cols-7 mb-1");
+            foreach (var d in new[] { "Su","Mo","Tu","We","Th","Fr","Sa" })
+            {
+                __builder.OpenElement(18, "div");
+                __builder.AddAttribute(19, "class", "flex h-8 w-8 items-center justify-center text-xs text-muted-foreground");
+                __builder.AddContent(20, d);
+                __builder.CloseElement();
+            }
+            __builder.CloseElement();
+            // Cells
+            __builder.OpenElement(21, "div");
+            __builder.AddAttribute(22, "class", "grid grid-cols-7");
+            var first  = new DateTime(view.Year, view.Month, 1);
+            var blanks = (int)first.DayOfWeek;
+            var days   = DateTime.DaysInMonth(view.Year, view.Month);
+            for (var b = 0; b < blanks; b++)
+            {
+                __builder.OpenElement(23, "div");
+                __builder.AddAttribute(24, "class", "h-8 w-8");
+                __builder.CloseElement();
+            }
+            for (var day = 1; day <= days; day++)
+            {
+                var date = new DateTime(view.Year, view.Month, day);
+                var isSelected = selected?.Date == date.Date;
+                var inRange    = StartDate.HasValue && EndDate.HasValue && date > StartDate.Value.Date && date < EndDate.Value.Date;
+                var cls = $"h-8 w-8 text-sm flex items-center justify-center rounded-md " +
+                          (isSelected ? "bg-primary text-primary-foreground" : inRange ? "bg-primary/20" : "hover:bg-accent") +
+                          (date.Date == DateTime.Today && !isSelected ? " font-bold text-primary" : "");
+                var capturedDate = date;
+                __builder.OpenElement(25, "button");
+                __builder.AddAttribute(26, "type", "button");
+                __builder.AddAttribute(27, "class", cls);
+                __builder.AddAttribute(28, "onclick", EventCallback.Factory.Create(this, () => onSelect(capturedDate)));
+                __builder.AddContent(29, day);
+                __builder.CloseElement();
+            }
+            __builder.CloseElement();
+            __builder.CloseElement();
+        };
+
+    private async Task SelectStart(DateTime d)
+    {
+        StartDate = d;
+        if (EndDate.HasValue && d > EndDate.Value) EndDate = null;
+        _activePanel = null;
+        await StartDateChanged.InvokeAsync(StartDate);
+        await RangeChanged.InvokeAsync((StartDate, EndDate));
+    }
+
+    private async Task SelectEnd(DateTime d)
+    {
+        EndDate = d;
+        if (StartDate.HasValue && d < StartDate.Value) StartDate = null;
+        _activePanel = null;
+        await EndDateChanged.InvokeAsync(EndDate);
+        await RangeChanged.InvokeAsync((StartDate, EndDate));
+    }
+}

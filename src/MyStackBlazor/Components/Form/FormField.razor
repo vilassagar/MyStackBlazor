@@ -1,0 +1,89 @@
+@namespace MyStackBlazor.Components.Form
+@implements IDisposable
+
+<div class="@($"space-y-2 {Class}".Trim())">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label for="@For" class="@LabelClass">
+            @Label
+            @if (Required)
+            {
+                <span class="ml-0.5 text-destructive" aria-hidden="true">*</span>
+            }
+        </label>
+    }
+
+    @ChildContent
+
+    @if (!string.IsNullOrEmpty(Description) && !_hasEditContextError && string.IsNullOrEmpty(ErrorMessage))
+    {
+        <p id="@DescriptionId" class="text-sm text-muted-foreground">@Description</p>
+    }
+
+    @if (_hasEditContextError)
+    {
+        @foreach (var msg in _validationMessages)
+        {
+            <p id="@ErrorId" role="alert" class="text-sm font-medium text-destructive">@msg</p>
+        }
+    }
+    else if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <p role="alert" class="text-sm font-medium text-destructive">@ErrorMessage</p>
+    }
+</div>
+
+@code {
+    [CascadingParameter] private EditContext? EditContext { get; set; }
+
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? For { get; set; }
+
+    /// <summary>Pass FieldIdentifier.Create(() => model.Property) to wire validation messages.</summary>
+    [Parameter] public FieldIdentifier? FieldId { get; set; }
+
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private IEnumerable<string> _validationMessages = [];
+    private bool _hasEditContextError;
+
+    private string LabelClass =>
+        $"text-sm font-medium leading-none {(Disabled ? "cursor-not-allowed opacity-70" : "")}".Trim();
+
+    private string? DescriptionId => For is not null ? $"{For}-desc" : null;
+    private string? ErrorId       => For is not null ? $"{For}-err"  : null;
+
+    protected override void OnInitialized()
+    {
+        if (EditContext is not null)
+            EditContext.OnValidationStateChanged += OnValidationChanged;
+    }
+
+    protected override void OnParametersSet() => RefreshValidation();
+
+    private void OnValidationChanged(object? sender, ValidationStateChangedEventArgs _)
+    {
+        RefreshValidation();
+        StateHasChanged();
+    }
+
+    private void RefreshValidation()
+    {
+        if (EditContext is not null && FieldId.HasValue)
+        {
+            _validationMessages    = EditContext.GetValidationMessages(FieldId.Value);
+            _hasEditContextError   = _validationMessages.Any();
+        }
+    }
+
+    public void Dispose()
+    {
+        if (EditContext is not null)
+            EditContext.OnValidationStateChanged -= OnValidationChanged;
+    }
+}

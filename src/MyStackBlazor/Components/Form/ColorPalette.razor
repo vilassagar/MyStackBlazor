@@ -1,0 +1,50 @@
+@namespace MyStackBlazor.Components.Form
+
+<div class="@Class" @attributes="AdditionalAttributes">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <p class="mb-2 text-sm font-medium">@Label</p>
+    }
+    <div class="flex flex-wrap gap-1.5">
+        @foreach (var color in ResolvedColors)
+        {
+            var c = color;
+            <button type="button"
+                    class="h-7 w-7 rounded-md border-2 transition-transform hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring @(Value == c ? "border-foreground scale-110" : "border-transparent")"
+                    style="background-color:@c"
+                    title="@c"
+                    @onclick="() => Select(c)">
+            </button>
+        }
+    </div>
+    @if (ShowHex)
+    {
+        <p class="mt-2 text-xs text-muted-foreground">Selected: @(Value ?? "—")</p>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public IEnumerable<string>? Colors { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public bool ShowHex { get; set; } = true;
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private static readonly string[] DefaultColors =
+    [
+        "#000000","#ffffff","#ef4444","#f97316","#eab308","#22c55e","#3b82f6","#8b5cf6","#ec4899",
+        "#374151","#6b7280","#9ca3af","#d1d5db","#f3f4f6",
+        "#fca5a5","#fdba74","#fde047","#86efac","#93c5fd","#c4b5fd","#f9a8d4",
+        "#dc2626","#ea580c","#ca8a04","#16a34a","#2563eb","#7c3aed","#db2777",
+    ];
+
+    private IEnumerable<string> ResolvedColors => Colors ?? DefaultColors;
+
+    private async Task Select(string color)
+    {
+        Value = Value == color ? null : color;
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

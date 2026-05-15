@@ -1,0 +1,13 @@
+@namespace MyStackBlazor.Components.Navigation
+
+<div class="flex items-center gap-1 rounded-md border bg-background p-1 @Class"
+     role="toolbar"
+     @attributes="AdditionalAttributes">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

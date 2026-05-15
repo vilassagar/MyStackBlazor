@@ -9,5 +9,7 @@ public class DataTableColumn<TItem>
     public Func<TItem, object?>? Value { get; set; }
     public RenderFragment<TItem>? Template { get; set; }
     public bool Sortable { get; set; } = true;
+    public bool Filterable { get; set; }
+    public string? FilterPlaceholder { get; set; }
     public string? Class { get; set; }
 }

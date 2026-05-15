@@ -1,0 +1,46 @@
+@namespace MyStackBlazor.Components.Common
+@typeparam TItem
+
+<div class="flex flex-wrap gap-2 @Class" @attributes="AdditionalAttributes">
+    @if (Items is not null)
+    {
+        @foreach (var item in Items)
+        {
+            var current = item;
+            <span class="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm @ItemClass">
+                @if (ItemTemplate is not null)
+                {
+                    @ItemTemplate(current)
+                }
+                else
+                {
+                    @(ItemLabel?.Invoke(current) ?? current?.ToString())
+                }
+                @if (OnRemove.HasDelegate)
+                {
+                    <button type="button"
+                            class="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full opacity-60 hover:opacity-100 focus:outline-none"
+                            @onclick="() => OnRemove.InvokeAsync(current)"
+                            @onclick:stopPropagation="true">
+                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                }
+            </span>
+        }
+    }
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public IEnumerable<TItem>? Items { get; set; }
+    [Parameter] public Func<TItem, string?>? ItemLabel { get; set; }
+    [Parameter] public RenderFragment<TItem>? ItemTemplate { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback<TItem> OnRemove { get; set; }
+    [Parameter] public string? ItemClass { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

@@ -1,0 +1,37 @@
+@namespace MyStackBlazor.Components.Navigation
+
+<button type="button"
+        class="fixed z-50 flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring @SizeClass @PositionClass @Class"
+        @onclick="OnClick"
+        @attributes="AdditionalAttributes">
+    @ChildContent
+</button>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    /// <summary>sm | md | lg</summary>
+    [Parameter] public string Size { get; set; } = "md";
+
+    /// <summary>bottom-right | bottom-left | top-right | top-left</summary>
+    [Parameter] public string Position { get; set; } = "bottom-right";
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string SizeClass => Size switch
+    {
+        "sm" => "h-10 w-10",
+        "lg" => "h-16 w-16 text-xl",
+        _    => "h-14 w-14",
+    };
+
+    private string PositionClass => Position switch
+    {
+        "bottom-left" => "bottom-6 left-6",
+        "top-right"   => "top-6 right-6",
+        "top-left"    => "top-6 left-6",
+        _             => "bottom-6 right-6",
+    };
+}

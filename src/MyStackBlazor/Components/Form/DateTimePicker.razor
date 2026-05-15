@@ -1,0 +1,132 @@
+@namespace MyStackBlazor.Components.Form
+
+<div class="relative @Class" @attributes="AdditionalAttributes">
+    <!-- Trigger -->
+    <div class="flex h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm cursor-pointer"
+         @onclick="TogglePanel">
+        <svg class="mr-2 h-4 w-4 shrink-0 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        <span class="@(Value is null ? "text-muted-foreground" : "")">
+            @(Value?.ToString(Format) ?? Placeholder ?? "Pick date & time")
+        </span>
+    </div>
+
+    @if (_open)
+    {
+        <div class="fixed inset-0 z-40" @onclick="ClosePanel"></div>
+        <div class="absolute z-50 mt-1 rounded-md border bg-popover shadow-md animate-fade-in">
+            <!-- Calendar -->
+            <div class="p-3">
+                <div class="flex items-center justify-between mb-3">
+                    <button type="button" class="p-1 hover:bg-accent rounded" @onclick="PrevMonth">‹</button>
+                    <span class="text-sm font-medium">@_view.ToString("MMMM yyyy")</span>
+                    <button type="button" class="p-1 hover:bg-accent rounded" @onclick="NextMonth">›</button>
+                </div>
+                <div class="grid grid-cols-7 mb-1">
+                    @foreach (var d in new[] { "Su","Mo","Tu","We","Th","Fr","Sa" })
+                    {
+                        <div class="flex h-8 w-8 items-center justify-center text-xs text-muted-foreground">@d</div>
+                    }
+                </div>
+                <div class="grid grid-cols-7">
+                    @foreach (var cell in CalendarCells)
+                    {
+                        @if (cell is null)
+                        {
+                            <div class="h-8 w-8"></div>
+                        }
+                        else
+                        {
+                            <button type="button" class="@DayClass(cell.Value)" @onclick="() => SelectDay(cell.Value)">
+                                @cell.Value.Day
+                            </button>
+                        }
+                    }
+                </div>
+            </div>
+
+            <!-- Time picker -->
+            <div class="border-t p-3">
+                <p class="mb-2 text-xs font-medium text-muted-foreground">Time</p>
+                <div class="flex items-center gap-2">
+                    <input type="number" min="0" max="23"
+                           class="w-16 rounded-md border border-input bg-background px-2 py-1 text-center text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                           value="@_hours"
+                           @oninput="e => { if (int.TryParse(e.Value?.ToString(), out var h)) _hours = Math.Clamp(h, 0, 23); }" />
+                    <span class="font-bold">:</span>
+                    <input type="number" min="0" max="59"
+                           class="w-16 rounded-md border border-input bg-background px-2 py-1 text-center text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                           value="@_minutes"
+                           @oninput="e => { if (int.TryParse(e.Value?.ToString(), out var m)) _minutes = Math.Clamp(m, 0, 59); }" />
+                </div>
+            </div>
+
+            <!-- Confirm -->
+            <div class="flex justify-end gap-2 border-t p-2">
+                <button type="button" class="rounded-md border px-3 py-1.5 text-sm hover:bg-accent" @onclick="ClosePanel">Cancel</button>
+                <button type="button" class="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90" @onclick="Confirm">Apply</button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public DateTime? Value { get; set; }
+    [Parameter] public EventCallback<DateTime?> ValueChanged { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string Format { get; set; } = "MMM dd, yyyy HH:mm";
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool _open;
+    private DateTime _view    = DateTime.Today;
+    private DateTime? _selectedDay;
+    private int _hours   = DateTime.Now.Hour;
+    private int _minutes = DateTime.Now.Minute;
+
+    private IEnumerable<DateTime?> CalendarCells
+    {
+        get
+        {
+            var first  = new DateTime(_view.Year, _view.Month, 1);
+            var blanks = (int)first.DayOfWeek;
+            for (var i = 0; i < blanks; i++) yield return null;
+            var days = DateTime.DaysInMonth(_view.Year, _view.Month);
+            for (var d = 1; d <= days; d++) yield return new DateTime(_view.Year, _view.Month, d);
+        }
+    }
+
+    private string DayClass(DateTime d) =>
+        "h-8 w-8 text-sm flex items-center justify-center rounded-md " +
+        (_selectedDay?.Date == d.Date ? "bg-primary text-primary-foreground " : "hover:bg-accent ") +
+        (d.Date == DateTime.Today && _selectedDay?.Date != d.Date ? "font-bold text-primary" : "");
+
+    private void TogglePanel()
+    {
+        _open = !_open;
+        if (_open && Value.HasValue)
+        {
+            _view        = Value.Value;
+            _selectedDay = Value.Value.Date;
+            _hours       = Value.Value.Hour;
+            _minutes     = Value.Value.Minute;
+        }
+    }
+
+    private void ClosePanel()   => _open = false;
+    private void PrevMonth()    => _view = _view.AddMonths(-1);
+    private void NextMonth()    => _view = _view.AddMonths(1);
+    private void SelectDay(DateTime d) => _selectedDay = d.Date;
+
+    private async Task Confirm()
+    {
+        var day = _selectedDay ?? DateTime.Today;
+        Value   = new DateTime(day.Year, day.Month, day.Day, _hours, _minutes, 0);
+        _open   = false;
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

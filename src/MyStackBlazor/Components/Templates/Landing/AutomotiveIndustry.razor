@@ -1,0 +1,89 @@
+@namespace MyStackBlazor.Components.Templates.Landing
+@using MyStackBlazor.Components.Blocks
+@using MyStackBlazor.Components.Blocks.Landing
+
+<div>
+    <HeroBlock
+        Eyebrow="Premium Auto Group"
+        Headline="Drive Your &lt;span class='text-primary'&gt;Dream Car&lt;/span&gt; Today"
+        Description="Explore our premium selection of new and certified pre-owned vehicles. Expert staff, competitive financing, and exceptional after-sales service await you."
+        PrimaryCtaText="Browse Inventory"
+        PrimaryCtaHref="#"
+        SecondaryCtaText="Book a Test Drive"
+        SecondaryCtaHref="#" />
+
+    <FeaturesBlock
+        Title="Why buy with us"
+        Subtitle="Our difference"
+        Items="@_features" />
+
+    <StatsBlock Items="@_stats" />
+
+    <TestimonialsBlock
+        Title="Our customers love us"
+        Subtitle="Reviews"
+        Items="@_testimonials" />
+
+    <PartnersBlock
+        Title="Brands we carry"
+        Subtitle="Our lineup"
+        Items="@_brands" />
+
+    <LocationsBlock
+        Title="Visit a showroom"
+        Subtitle="Find us"
+        Items="@_showrooms" />
+
+    <FooterBlock
+        Brand="AutoPrime"
+        Description="Premium automotive dealership serving drivers since 1995. Find your perfect vehicle today."
+        Sections="@_footerSections"
+        Copyright="@($"© {DateTime.Today.Year} AutoPrime Group. All rights reserved.")" />
+</div>
+
+@code {
+    private static readonly IList<FeatureItem> _features =
+    [
+        new("Huge Selection",      "Over 2,000 new and certified pre-owned vehicles across all makes and models."),
+        new("Easy Financing",      "Competitive rates, flexible terms, and approvals in minutes — even with challenged credit."),
+        new("Certified Service",   "Factory-trained technicians and genuine parts keep your vehicle running at its best."),
+        new("Trade-In Guarantee",  "Get a real offer for your current vehicle in 30 minutes — applied instantly to your purchase."),
+        new("7-Day Return Policy", "Change your mind? Return your vehicle within 7 days for a full refund, no questions asked."),
+        new("Home Delivery",       "We bring the car to your door. Test drive it in your own neighborhood before you commit."),
+    ];
+
+    private static readonly IList<StatItem> _stats =
+    [
+        new("50,000+",  "Vehicles sold",       "Since 1995"),
+        new("98%",      "Customer satisfaction","Based on 12,000+ reviews"),
+        new("18",       "Dealership locations", "Across 6 states"),
+        new("28 years", "In business",          "Family-owned and operated"),
+    ];
+
+    private static readonly IList<TestimonialItem> _testimonials =
+    [
+        new("The whole process was seamless. I found my car online, got pre-approved in 10 minutes, and drove off the lot the same day.", "Marcus Williams", "Software Engineer", AvatarInit: "MW", Rating: 5),
+        new("AutoPrime gave me a fair trade-in value and beat every other dealer's financing rate. Outstanding experience from start to finish.", "Sarah Chen", "Marketing Manager", AvatarInit: "SC", Rating: 5),
+        new("Their service department is top-notch. Regular maintenance has always been quick, transparent, and reasonably priced.", "David Torres", "Business Owner", AvatarInit: "DT", Rating: 5),
+    ];
+
+    private static readonly IList<PartnerItem> _brands =
+    [
+        new("BMW"), new("Mercedes-Benz"), new("Toyota"), new("Honda"),
+        new("Ford"), new("Chevrolet"), new("Audi"), new("Volkswagen"),
+    ];
+
+    private static readonly IList<LocationItem> _showrooms =
+    [
+        new("Downtown Flagship",  "450 Auto Plaza Drive, Chicago, IL 60601",      "+1 312 555 0100", "chicago@autoprime.com",  "Mon–Sat 9am–8pm, Sun 11am–6pm"),
+        new("Northside Showroom", "1200 Lake Shore Blvd, Chicago, IL 60610",      "+1 312 555 0200", "north@autoprime.com",    "Mon–Fri 9am–7pm, Sat 10am–6pm"),
+        new("Suburbs Center",     "890 Commerce Pkwy, Schaumburg, IL 60173",      "+1 847 555 0300", "suburbs@autoprime.com",  "Mon–Sat 9am–7pm"),
+    ];
+
+    private static readonly IList<FooterSection> _footerSections =
+    [
+        new("Inventory",  [new("New Vehicles","#"), new("Pre-Owned","#"), new("Certified","#"), new("Specials","#")]),
+        new("Services",   [new("Financing","#"), new("Trade-In","#"), new("Service Center","#"), new("Parts","#")]),
+        new("Company",    [new("About Us","#"), new("Careers","#"), new("Press","#"), new("Contact","#")]),
+    ];
+}

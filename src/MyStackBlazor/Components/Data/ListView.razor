@@ -1,0 +1,56 @@
+@namespace MyStackBlazor.Components.Data
+@typeparam TItem
+
+<div class="overflow-auto rounded-md border @Class"
+     style="@(Height is not null ? $"height:{Height}" : "")"
+     @attributes="AdditionalAttributes">
+    @if (Items is not null)
+    {
+        @foreach (var item in Items)
+        {
+            var current = item;
+            <div class="@ItemClass @(OnItemClick.HasDelegate ? "cursor-pointer" : "") @(IsSelected(current) ? "bg-primary/10 border-l-2 border-primary" : "")"
+                 @onclick="() => ClickItem(current)">
+                @if (ItemTemplate is not null)
+                {
+                    @ItemTemplate(current)
+                }
+                else
+                {
+                    <div class="px-4 py-3 text-sm">@current?.ToString()</div>
+                }
+            </div>
+        }
+    }
+    else
+    {
+        <div class="flex h-24 items-center justify-center text-sm text-muted-foreground">
+            @EmptyText
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public IEnumerable<TItem>? Items { get; set; }
+    [Parameter] public RenderFragment<TItem>? ItemTemplate { get; set; }
+    [Parameter] public TItem? SelectedItem { get; set; }
+    [Parameter] public EventCallback<TItem> OnItemClick { get; set; }
+    [Parameter] public Func<TItem, bool>? IsSelectedFunc { get; set; }
+    [Parameter] public string? Height { get; set; }
+    [Parameter] public string EmptyText { get; set; } = "No items.";
+    [Parameter] public string ItemClass { get; set; } = "border-b last:border-0 transition-colors hover:bg-muted/50";
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool IsSelected(TItem item)
+    {
+        if (IsSelectedFunc is not null) return IsSelectedFunc(item);
+        return EqualityComparer<TItem>.Default.Equals(SelectedItem, item);
+    }
+
+    private async Task ClickItem(TItem item)
+    {
+        SelectedItem = item;
+        await OnItemClick.InvokeAsync(item);
+    }
+}

@@ -1,0 +1,53 @@
+@namespace MyStackBlazor.Components.Overlays
+
+<div class="relative inline-block @Class" @attributes="AdditionalAttributes">
+    <div @onclick="Toggle">@Anchor</div>
+
+    @if (_open)
+    {
+        <div class="fixed inset-0 z-40" @onclick="Close"></div>
+        <div class="absolute z-50 min-w-max rounded-md border bg-popover p-2 shadow-lg animate-fade-in @PositionClass">
+            @Content
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public RenderFragment? Anchor { get; set; }
+    [Parameter] public RenderFragment? Content { get; set; }
+
+    /// <summary>top | bottom | left | right</summary>
+    [Parameter] public string Placement { get; set; } = "bottom";
+
+    /// <summary>start | center | end</summary>
+    [Parameter] public string Align { get; set; } = "start";
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool _open;
+
+    private void Toggle() => _open = !_open;
+    private void Close()  => _open = false;
+
+    private string PositionClass
+    {
+        get
+        {
+            var align = Align switch
+            {
+                "center" => "left-1/2 -translate-x-1/2",
+                "end"    => "right-0",
+                _        => "left-0",
+            };
+
+            return Placement switch
+            {
+                "top"   => $"bottom-full mb-1 {align}",
+                "left"  => "right-full mr-1 top-0",
+                "right" => "left-full ml-1 top-0",
+                _       => $"top-full mt-1 {align}",
+            };
+        }
+    }
+}

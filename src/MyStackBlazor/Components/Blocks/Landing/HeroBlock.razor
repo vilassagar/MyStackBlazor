@@ -1,0 +1,75 @@
+@namespace MyStackBlazor.Components.Blocks.Landing
+@using MyStackBlazor.Components.Common
+
+<section class="relative overflow-hidden bg-background py-20 md:py-32 @Class">
+    <!-- Subtle gradient background -->
+    <div class="pointer-events-none absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent"></div>
+
+    <div class="relative mx-auto max-w-6xl px-6 lg:px-8">
+        <div class="flex flex-col items-center gap-8 text-center">
+            @if (!string.IsNullOrEmpty(Eyebrow))
+            {
+                <span class="inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-semibold tracking-widest text-primary uppercase">
+                    @Eyebrow
+                </span>
+            }
+
+            <h1 class="max-w-4xl text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl md:text-6xl lg:text-7xl">
+                @((MarkupString)Headline)
+            </h1>
+
+            @if (!string.IsNullOrEmpty(Description))
+            {
+                <p class="max-w-2xl text-lg leading-relaxed text-muted-foreground md:text-xl">
+                    @Description
+                </p>
+            }
+
+            <div class="flex flex-wrap items-center justify-center gap-4">
+                @if (!string.IsNullOrEmpty(PrimaryLabel))
+                {
+                    <button type="button"
+                            class="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-md transition-all hover:bg-primary/90 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            @onclick="OnPrimaryClick">
+                        @PrimaryLabel
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+                }
+                @if (!string.IsNullOrEmpty(SecondaryLabel))
+                {
+                    <button type="button"
+                            class="inline-flex items-center gap-2 rounded-lg border border-input bg-background px-6 py-3 text-sm font-semibold text-foreground shadow-sm transition-all hover:bg-accent hover:shadow"
+                            @onclick="OnSecondaryClick">
+                        @SecondaryLabel
+                    </button>
+                }
+            </div>
+
+            @if (!string.IsNullOrEmpty(ImageUrl))
+            {
+                <div class="mt-4 w-full max-w-5xl overflow-hidden rounded-xl border shadow-2xl">
+                    <img src="@ImageUrl" alt="Hero" class="w-full object-cover" />
+                </div>
+            }
+            else if (HeroContent is not null)
+            {
+                <div class="mt-4 w-full max-w-5xl">@HeroContent</div>
+            }
+        </div>
+    </div>
+</section>
+
+@code {
+    [Parameter] public string  Headline        { get; set; } = "Build something <span class='text-primary'>amazing</span>";
+    [Parameter] public string? Eyebrow         { get; set; }
+    [Parameter] public string? Description     { get; set; } = "A modern Blazor component library built with Tailwind CSS.";
+    [Parameter] public string? PrimaryLabel    { get; set; } = "Get started";
+    [Parameter] public string? SecondaryLabel  { get; set; } = "Learn more";
+    [Parameter] public string? ImageUrl        { get; set; }
+    [Parameter] public RenderFragment? HeroContent { get; set; }
+    [Parameter] public EventCallback OnPrimaryClick   { get; set; }
+    [Parameter] public EventCallback OnSecondaryClick { get; set; }
+    [Parameter] public string? Class { get; set; }
+}

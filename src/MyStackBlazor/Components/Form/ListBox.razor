@@ -1,0 +1,63 @@
+@namespace MyStackBlazor.Components.Form
+@typeparam TItem
+
+<div class="overflow-auto rounded-md border @Class"
+     style="height:@Height"
+     @attributes="AdditionalAttributes">
+    @if (Items is not null)
+    {
+        @foreach (var item in Items)
+        {
+            var current = item;
+            var selected = IsSelected(current);
+
+            <div class="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm transition-colors @(selected ? "bg-primary text-primary-foreground" : "hover:bg-accent")"
+                 @onclick="() => SelectItem(current)">
+                @if (ItemTemplate is not null)
+                {
+                    @ItemTemplate(current)
+                }
+                else
+                {
+                    @(ItemLabel?.Invoke(current) ?? current?.ToString())
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public IEnumerable<TItem>? Items { get; set; }
+    [Parameter] public TItem? Value { get; set; }
+    [Parameter] public EventCallback<TItem?> ValueChanged { get; set; }
+    [Parameter] public IList<TItem>? SelectedItems { get; set; }
+    [Parameter] public EventCallback<IList<TItem>> SelectedItemsChanged { get; set; }
+    [Parameter] public bool MultiSelect { get; set; }
+    [Parameter] public Func<TItem, string?>? ItemLabel { get; set; }
+    [Parameter] public RenderFragment<TItem>? ItemTemplate { get; set; }
+    [Parameter] public string Height { get; set; } = "200px";
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool IsSelected(TItem item)
+    {
+        if (MultiSelect) return SelectedItems?.Contains(item) ?? false;
+        return EqualityComparer<TItem>.Default.Equals(Value, item);
+    }
+
+    private async Task SelectItem(TItem item)
+    {
+        if (MultiSelect)
+        {
+            var list = SelectedItems ?? new List<TItem>();
+            if (list.Contains(item)) list.Remove(item);
+            else list.Add(item);
+            await SelectedItemsChanged.InvokeAsync(list);
+        }
+        else
+        {
+            Value = item;
+            await ValueChanged.InvokeAsync(Value);
+        }
+    }
+}

@@ -8,18 +8,33 @@
     <!-- NuGet Package Metadata -->
     <PackageId>MyStackBlazor</PackageId>
     <Version>1.0.0</Version>
-    <Authors>MyStackBlazor Contributors</Authors>
+    <Authors>Vilas Sagar</Authors>
     <Company>MyStackBlazor</Company>
     <Product>MyStackBlazor Component Library</Product>
-    <Description>A modern Blazor component library styled with Tailwind CSS, inspired by shadcn/ui. Includes buttons, forms, navigation, overlays, data display, and more.</Description>
-    <PackageTags>blazor;components;tailwindcss;ui;razor;dotnet</PackageTags>
+    <Description>A modern Blazor component library styled with Tailwind CSS v4. Includes 70+ components: buttons, forms, navigation, overlays, data display, theme support (light/dark/system), and more. Works with Blazor WASM, Blazor Server, and .NET MAUI Blazor Hybrid.</Description>
+    <PackageTags>blazor;components;tailwindcss;ui;razor;dotnet;shadcn;dark-mode;maui</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <!-- Drop a 128x128 icon.png in the repo root to enable package icon -->
+    <PackageIcon Condition="Exists('..\..\icon.png')">icon.png</PackageIcon>
     <RepositoryType>git</RepositoryType>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <IncludeContentInPack>true</IncludeContentInPack>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageOutputPath>..\..\nupkg</PackageOutputPath>
+    <Copyright>Copyright © 2025 Vilas Sagar</Copyright>
+    <NeutralLanguage>en</NeutralLanguage>
   </PropertyGroup>
+
+  <!-- Exclude Node.js tooling files from the package -->
+  <ItemGroup>
+    <Content Remove="package.json" />
+    <Content Remove="package-lock.json" />
+    <None   Remove="package.json" />
+    <None   Remove="package-lock.json" />
+    <Content Remove="node_modules\**" />
+    <None   Remove="node_modules\**" />
+  </ItemGroup>
 
   <ItemGroup>
     <SupportedPlatform Include="browser" />
@@ -29,15 +44,17 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.7" />
   </ItemGroup>
 
-  <!-- Tailwind CSS Build -->
+  <!-- Tailwind CSS: source lives in tailwind/input.css, output goes to wwwroot/css/mystackblazor.css -->
+  <!-- Skipped in CI — commit the pre-built CSS -->
   <Target Name="BuildTailwind" BeforeTargets="Build" Condition="'$(CI)' != 'true'">
-    <Exec Command="npx @tailwindcss/cli -i ./wwwroot/css/input.css -o ./wwwroot/css/mystackblazor.css --minify"
+    <Exec Command="npx @tailwindcss/cli -i ./tailwind/input.css -o ./wwwroot/css/mystackblazor.css --minify"
           WorkingDirectory="$(MSBuildProjectDirectory)"
           ContinueOnError="true" />
   </Target>
 
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" Condition="Exists('..\..\README.md')" />
+    <None Include="..\..\icon.png"  Pack="true" PackagePath="\" Condition="Exists('..\..\icon.png')" />
   </ItemGroup>
 
 </Project>

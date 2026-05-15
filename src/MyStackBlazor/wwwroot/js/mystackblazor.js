@@ -153,5 +153,56 @@ window.MyStackBlazor = {
     // ----------------------------------------------------------------
     initScrollArea(el) {
         if (el) el.style.overflowY = 'auto';
+    },
+
+    // ----------------------------------------------------------------
+    //  Infinite scroll — IntersectionObserver helpers
+    // ----------------------------------------------------------------
+    _observers: {},
+
+    observeInfiniteScroll(sentinelId, containerId, dotnetRef) {
+        const sentinel  = document.getElementById(sentinelId);
+        const container = document.getElementById(containerId);
+        if (!sentinel) return;
+
+        // Tear down any existing observer for this sentinel
+        if (this._observers[sentinelId]) {
+            this._observers[sentinelId].disconnect();
+        }
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting) {
+                    dotnetRef.invokeMethodAsync('TriggerLoadMore');
+                }
+            },
+            { root: container || null, threshold: 0.1 }
+        );
+        observer.observe(sentinel);
+        this._observers[sentinelId] = observer;
+    },
+
+    disconnectInfiniteScroll(sentinelId) {
+        if (this._observers[sentinelId]) {
+            this._observers[sentinelId].disconnect();
+            delete this._observers[sentinelId];
+        }
+    },
+
+    // ----------------------------------------------------------------
+    //  File dropzone — bridges drag-drop onto <InputFile>
+    // ----------------------------------------------------------------
+    setupDropzone(dropzoneId, inputId) {
+        const dz    = document.getElementById(dropzoneId);
+        const input = document.getElementById(inputId);
+        if (!dz || !input) return;
+        dz.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (!e.dataTransfer?.files?.length) return;
+            const dt = new DataTransfer();
+            for (const f of e.dataTransfer.files) dt.items.add(f);
+            input.files = dt.files;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        });
     }
 };

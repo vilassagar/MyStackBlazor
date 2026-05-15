@@ -1,0 +1,147 @@
+@namespace MyStackBlazor.Components.Templates.Dashboard
+@using MyStackBlazor.Components.Blocks
+@using MyStackBlazor.Components.Blocks.Dashboard
+
+<div class="flex h-screen overflow-hidden bg-background">
+    <DashboardSidebar Brand="SocialHub" Items="@_nav" />
+
+    <div class="flex flex-1 flex-col overflow-hidden">
+        <TopNavbar Brand="SocialHub"
+                   UserName="Jordan Lee"
+                   UserInitials="JL"
+                   NotificationCount="12"
+                   Breadcrumbs="@[new("Dashboard"), new("Analytics")]" />
+
+        <main class="flex-1 overflow-y-auto p-6">
+            <div class="mb-6 flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-bold text-foreground">Social Media Overview</h2>
+                    <p class="text-sm text-muted-foreground">Last 30 days across all channels</p>
+                </div>
+                <button class="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors">
+                    + Schedule post
+                </button>
+            </div>
+
+            <!-- KPIs -->
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <CompactCard Label="Total Followers"    Value="248.4K" Trend="+4,820 this month"  TrendUp="true"  IconSvg='<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' />
+                <CompactCard Label="Posts Published"    Value="142"    Trend="+18 vs last month"  TrendUp="true"  IconSvg='<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' />
+                <CompactCard Label="Avg. Engagement"    Value="6.8%"   Trend="+1.2% vs last month" TrendUp="true" IconSvg='<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>' />
+                <CompactCard Label="Total Reach"        Value="1.4M"   Trend="+210K this month"   TrendUp="true"  IconSvg='<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>' />
+            </div>
+
+            <!-- Charts -->
+            <div class="mt-6 grid gap-6 lg:grid-cols-3">
+                <div class="lg:col-span-2">
+                    <DashboardCard Title="Follower Growth" Description="Past 30 days" Trend="+1.98%" TrendUp="true" Value="248.4K">
+                        <BodyContent>
+                            <div class="flex h-32 items-end gap-1">
+                                @foreach (var h in new[] {40,42,43,45,44,46,48,47,50,52,51,53,55,54,56,58,57,59,61,60,62,64,63,65,67,66,68,70,72,75})
+                                {
+                                    <div class="flex-1 rounded-t bg-primary/30 hover:bg-primary/60 transition-colors" style="height:@(h)%"></div>
+                                }
+                            </div>
+                            <div class="mt-2 flex justify-between text-xs text-muted-foreground">
+                                <span>1 May</span><span>31 May</span>
+                            </div>
+                        </BodyContent>
+                    </DashboardCard>
+                </div>
+
+                <DashboardCard Title="By Platform" Description="Follower breakdown">
+                    <BodyContent>
+                        <div class="space-y-3">
+                            @foreach (var (platform, count, pct, color) in new[] {
+                                ("Instagram",  "102K", "41%", "bg-pink-400"),
+                                ("TikTok",     "78K",  "31%", "bg-slate-700"),
+                                ("X (Twitter)","42K",  "17%", "bg-sky-400"),
+                                ("LinkedIn",   "26K",  "11%", "bg-blue-600")
+                            })
+                            {
+                                <div>
+                                    <div class="mb-1 flex justify-between text-xs">
+                                        <span class="text-muted-foreground">@platform</span>
+                                        <span class="font-medium text-foreground">@count</span>
+                                    </div>
+                                    <div class="h-2 overflow-hidden rounded-full bg-muted">
+                                        <div class="h-full rounded-full @color" style="width:@pct"></div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </BodyContent>
+                </DashboardCard>
+            </div>
+
+            <!-- Scheduled posts -->
+            <div class="mt-6 rounded-xl border bg-card shadow-sm">
+                <div class="flex items-center justify-between border-b px-6 py-4">
+                    <h3 class="text-sm font-semibold text-foreground">Scheduled Posts</h3>
+                    <a href="#" class="text-xs font-medium text-primary hover:underline">Content calendar</a>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="border-b bg-muted/30">
+                            <tr>
+                                @foreach (var h in new[] { "Post", "Platform", "Scheduled", "Author", "Engagement Est.", "Status" })
+                                {
+                                    <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">@h</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">
+                            @foreach (var post in _posts)
+                            {
+                                <tr class="hover:bg-muted/30 transition-colors">
+                                    <td class="px-5 py-3 max-w-[200px]">
+                                        <p class="truncate font-medium text-foreground">@post.Content</p>
+                                    </td>
+                                    <td class="px-5 py-3">
+                                        <span class="rounded-full px-2 py-0.5 text-xs font-semibold bg-muted text-muted-foreground">@post.Platform</span>
+                                    </td>
+                                    <td class="px-5 py-3 text-muted-foreground">@post.Scheduled</td>
+                                    <td class="px-5 py-3 text-muted-foreground">@post.Author</td>
+                                    <td class="px-5 py-3 text-muted-foreground">@post.EstEngagement</td>
+                                    <td class="px-5 py-3">
+                                        <span class="rounded-full px-2 py-0.5 text-xs font-semibold
+                                            @(post.Status == "Scheduled" ? "bg-blue-500/10 text-blue-600" :
+                                              post.Status == "Draft" ? "bg-muted-foreground/10 text-muted-foreground" :
+                                              post.Status == "Published" ? "bg-green-500/10 text-green-600" :
+                                              "bg-yellow-500/10 text-yellow-600")">
+                                            @post.Status
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+@code {
+    private static readonly IList<DashboardNavItem> _nav =
+    [
+        new("Overview",    "#", "<svg class='h-4 w-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'><rect x='3' y='3' width='7' height='7'/><rect x='14' y='3' width='7' height='7'/><rect x='14' y='14' width='7' height='7'/><rect x='3' y='14' width='7' height='7'/></svg>", true),
+        new("Posts",       "#", "<svg class='h-4 w-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'><path d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/></svg>"),
+        new("Calendar",    "#", "<svg class='h-4 w-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'><rect x='3' y='4' width='18' height='18' rx='2' ry='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>"),
+        new("Analytics",   "#", "<svg class='h-4 w-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'><line x1='18' y1='20' x2='18' y2='10'/><line x1='12' y1='20' x2='12' y2='4'/><line x1='6' y1='20' x2='6' y2='14'/></svg>"),
+        new("Audience",    "#", "<svg class='h-4 w-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'><path d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M23 21v-2a4 4 0 0 0-3-3.87'/><path d='M16 3.13a4 4 0 0 1 0 7.75'/></svg>"),
+        new("Inbox",       "#", "<svg class='h-4 w-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'><polyline points='22 12 16 12 14 15 10 15 8 12 2 12'/><path d='M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z'/></svg>"),
+        new("Settings",    "#", "<svg class='h-4 w-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'><circle cx='12' cy='12' r='3'/></svg>"),
+    ];
+
+    private record PostRow(string Content, string Platform, string Scheduled, string Author, string EstEngagement, string Status);
+    private static readonly IList<PostRow> _posts =
+    [
+        new("Summer collection reveal — behind the scenes 🌟",  "Instagram", "16 May 15:00", "Jordan Lee",  "~2,400 likes",  "Scheduled"),
+        new("How we grew 50K followers in 90 days (thread)",    "X (Twitter)","16 May 16:30", "Asha Mehta",  "~850 RT",       "Scheduled"),
+        new("5 social media mistakes to avoid in 2026",         "LinkedIn",  "17 May 09:00", "Ben Carroll", "~1,200 views",  "Draft"),
+        new("Day in the life of our creative team 🎬",          "TikTok",    "17 May 12:00", "Jordan Lee",  "~8,000 views",  "Scheduled"),
+        new("Product Q&A — drop your questions below 👇",       "Instagram", "18 May 14:00", "Asha Mehta",  "~3,100 likes",  "Draft"),
+        new("June product drop announcement",                   "Instagram", "20 May 10:00", "Jordan Lee",  "~5,500 likes",  "Pending review"),
+    ];
+}

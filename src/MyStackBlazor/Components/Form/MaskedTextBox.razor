@@ -1,0 +1,81 @@
+@namespace MyStackBlazor.Components.Form
+
+<div class="relative @Class" @attributes="AdditionalAttributes">
+    <input type="text"
+           value="@_display"
+           placeholder="@(Placeholder ?? MaskToPlaceholder())"
+           maxlength="@Mask?.Length"
+           class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+           @oninput="OnInput"
+           @onkeydown="OnKeyDown" />
+    @if (!string.IsNullOrEmpty(Mask))
+    {
+        <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground/50">
+            @Mask
+        </span>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    /// <summary>
+    /// Mask pattern. Use:
+    ///   0 = digit, a = letter, * = any character
+    /// Example: "000-000-0000" for phone, "00/00/0000" for date
+    /// </summary>
+    [Parameter] public string? Mask { get; set; }
+
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string _display = "";
+
+    protected override void OnParametersSet()
+    {
+        if (Value is not null && Mask is not null)
+            _display = ApplyMask(Value.Replace("-", "").Replace("/", "").Replace("(", "").Replace(")", "").Replace(" ", ""));
+        else
+            _display = Value ?? "";
+    }
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString() ?? "";
+        if (Mask is not null)
+        {
+            var digits = new string(raw.Where(c => char.IsLetterOrDigit(c)).ToArray());
+            _display   = ApplyMask(digits);
+            Value      = digits;
+        }
+        else
+        {
+            _display = raw;
+            Value    = raw;
+        }
+        await ValueChanged.InvokeAsync(Value);
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e) { }
+
+    private string ApplyMask(string raw)
+    {
+        if (Mask is null) return raw;
+        var result = new System.Text.StringBuilder();
+        var ri = 0;
+        foreach (var m in Mask)
+        {
+            if (ri >= raw.Length) break;
+            if (m == '0' && char.IsDigit(raw[ri]))     { result.Append(raw[ri++]); }
+            else if (m == 'a' && char.IsLetter(raw[ri])) { result.Append(raw[ri++]); }
+            else if (m == '*')                          { result.Append(raw[ri++]); }
+            else                                        { result.Append(m); }
+        }
+        return result.ToString();
+    }
+
+    private string MaskToPlaceholder() =>
+        Mask?.Replace('0', '_').Replace('a', '_').Replace('*', '_') ?? "";
+}

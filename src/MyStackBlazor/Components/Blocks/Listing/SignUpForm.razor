@@ -1,0 +1,122 @@
+@namespace MyStackBlazor.Components.Blocks.Listing
+
+<div class="flex min-h-full items-center justify-center px-4 py-12 @Class">
+    <div class="w-full max-w-sm">
+        <!-- Header -->
+        <div class="mb-8 text-center">
+            @if (!string.IsNullOrEmpty(Brand))
+            {
+                <span class="text-2xl font-bold tracking-tight text-foreground">@Brand</span>
+            }
+            <h1 class="mt-4 text-2xl font-bold tracking-tight text-foreground">@Title</h1>
+            @if (!string.IsNullOrEmpty(Subtitle))
+            {
+                <p class="mt-2 text-sm text-muted-foreground">@Subtitle</p>
+            }
+        </div>
+
+        <!-- Card -->
+        <div class="rounded-2xl border bg-card p-8 shadow-sm">
+            @if (_error is not null)
+            {
+                <div class="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+                    @_error
+                </div>
+            }
+            @if (_done)
+            {
+                <div class="flex flex-col items-center gap-3 py-6 text-center">
+                    <div class="flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10 text-green-500">
+                        <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </div>
+                    <h3 class="font-semibold text-foreground">Account created!</h3>
+                    <p class="text-sm text-muted-foreground">@SuccessMessage</p>
+                </div>
+            }
+            else
+            {
+                <form @onsubmit:preventDefault @onsubmit="Submit" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-foreground">First name</label>
+                            <input type="text" @bind="_firstName" required
+                                   class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-foreground">Last name</label>
+                            <input type="text" @bind="_lastName"
+                                   class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+                        </div>
+                    </div>
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium text-foreground">Email</label>
+                        <input type="email" @bind="_email" required autocomplete="email"
+                               class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+                    </div>
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium text-foreground">Password</label>
+                        <input type="password" @bind="_password" required minlength="8" autocomplete="new-password"
+                               class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+                    </div>
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium text-foreground">Confirm password</label>
+                        <input type="password" @bind="_confirm" required autocomplete="new-password"
+                               class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+                    </div>
+
+                    <button type="submit" disabled="@_loading"
+                            class="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60">
+                        @(_loading ? "Creating account…" : ButtonText)
+                    </button>
+                </form>
+
+                @if (!string.IsNullOrEmpty(LoginHref))
+                {
+                    <p class="mt-5 text-center text-sm text-muted-foreground">
+                        Already have an account?
+                        <a href="@LoginHref" class="font-medium text-primary hover:underline">Sign in</a>
+                    </p>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string   Title          { get; set; } = "Create an account";
+    [Parameter] public string?  Subtitle       { get; set; } = "Start your free trial today.";
+    [Parameter] public string?  Brand          { get; set; }
+    [Parameter] public string   ButtonText     { get; set; } = "Create account";
+    [Parameter] public string   SuccessMessage { get; set; } = "Check your email to verify your address.";
+    [Parameter] public string?  LoginHref      { get; set; } = "#";
+    [Parameter] public EventCallback<SignUpFormData> OnSubmit { get; set; }
+    [Parameter] public string?  Class          { get; set; }
+
+    private string _firstName = "", _lastName = "", _email = "", _password = "", _confirm = "";
+    private bool   _loading, _done;
+    private string? _error;
+
+    private async Task Submit()
+    {
+        if (_password != _confirm) { _error = "Passwords do not match."; return; }
+        _loading = true;
+        _error   = null;
+        try
+        {
+            await OnSubmit.InvokeAsync(new(_firstName, _lastName, _email, _password));
+            _done = true;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    public record SignUpFormData(string FirstName, string LastName, string Email, string Password);
+}

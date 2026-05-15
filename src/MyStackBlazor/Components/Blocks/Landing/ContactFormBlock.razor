@@ -1,0 +1,129 @@
+@namespace MyStackBlazor.Components.Blocks.Landing
+
+<section class="bg-background py-20 @Class">
+    <div class="mx-auto max-w-6xl px-6 lg:px-8">
+        <div class="grid gap-16 lg:grid-cols-2">
+            <!-- Left: info -->
+            <div class="flex flex-col justify-center">
+                @if (!string.IsNullOrEmpty(Eyebrow))
+                {
+                    <p class="mb-2 text-sm font-semibold uppercase tracking-widest text-primary">@Eyebrow</p>
+                }
+                <h2 class="text-3xl font-bold tracking-tight text-foreground md:text-4xl">@Title</h2>
+                @if (!string.IsNullOrEmpty(Description))
+                {
+                    <p class="mt-4 leading-relaxed text-muted-foreground">@Description</p>
+                }
+
+                <dl class="mt-10 space-y-4 text-sm text-muted-foreground">
+                    @if (!string.IsNullOrEmpty(Email))
+                    {
+                        <div class="flex gap-3">
+                            <svg class="h-5 w-5 flex-shrink-0 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                            </svg>
+                            <span>@Email</span>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(Phone))
+                    {
+                        <div class="flex gap-3">
+                            <svg class="h-5 w-5 flex-shrink-0 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+                            </svg>
+                            <span>@Phone</span>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(Address))
+                    {
+                        <div class="flex gap-3">
+                            <svg class="h-5 w-5 flex-shrink-0 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            <span>@Address</span>
+                        </div>
+                    }
+                </dl>
+            </div>
+
+            <!-- Right: form -->
+            <form class="rounded-2xl border bg-card p-8 shadow-sm" @onsubmit:preventDefault @onsubmit="Submit">
+                @if (_sent)
+                {
+                    <div class="flex flex-col items-center gap-3 py-12 text-center">
+                        <div class="flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10 text-green-500">
+                            <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-foreground">Message sent!</h3>
+                        <p class="text-sm text-muted-foreground">@SuccessMessage</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="space-y-5">
+                        <div class="grid gap-5 sm:grid-cols-2">
+                            <div>
+                                <label class="mb-1.5 block text-sm font-medium text-foreground">First name</label>
+                                <input type="text" @bind="_firstName" required
+                                       class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+                            </div>
+                            <div>
+                                <label class="mb-1.5 block text-sm font-medium text-foreground">Last name</label>
+                                <input type="text" @bind="_lastName"
+                                       class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+                            </div>
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-foreground">Email</label>
+                            <input type="email" @bind="_email" required
+                                   class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-foreground">Subject</label>
+                            <input type="text" @bind="_subject"
+                                   class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-foreground">Message</label>
+                            <textarea @bind="_message" required rows="4"
+                                      class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"></textarea>
+                        </div>
+                        <button type="submit" disabled="@_sending"
+                                class="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60">
+                            @(_sending ? "Sending…" : ButtonText)
+                        </button>
+                    </div>
+                }
+            </form>
+        </div>
+    </div>
+</section>
+
+@code {
+    [Parameter] public string  Title          { get; set; } = "Get in touch";
+    [Parameter] public string? Eyebrow        { get; set; } = "Contact";
+    [Parameter] public string? Description    { get; set; } = "Have a question or want to work together? We'd love to hear from you.";
+    [Parameter] public string? Email          { get; set; } = "hello@example.com";
+    [Parameter] public string? Phone          { get; set; }
+    [Parameter] public string? Address        { get; set; }
+    [Parameter] public string  ButtonText     { get; set; } = "Send message";
+    [Parameter] public string  SuccessMessage { get; set; } = "We'll get back to you within 1–2 business days.";
+    [Parameter] public EventCallback<ContactFormData> OnSubmit { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private string _firstName = "", _lastName = "", _email = "", _subject = "", _message = "";
+    private bool _sending = false, _sent = false;
+
+    private async Task Submit()
+    {
+        _sending = true;
+        await OnSubmit.InvokeAsync(new(_firstName, _lastName, _email, _subject, _message));
+        _sending = false;
+        _sent = true;
+    }
+
+    public record ContactFormData(string FirstName, string LastName, string Email, string Subject, string Message);
+}

@@ -1,0 +1,93 @@
+@namespace MyStackBlazor.Components.Blocks.Listing
+@using MyStackBlazor.Components.Blocks
+
+<aside class="w-full @Class">
+    @if (!string.IsNullOrEmpty(Title))
+    {
+        <div class="mb-4 flex items-center justify-between">
+            <h2 class="text-base font-semibold text-foreground">@Title</h2>
+            @if (_anySelected)
+            {
+                <button @onclick="ClearAll" class="text-xs text-primary hover:underline">Clear all</button>
+            }
+        </div>
+    }
+
+    <div class="space-y-5">
+        @foreach (var category in Categories)
+        {
+            <div>
+                <button class="flex w-full items-center justify-between py-2 text-sm font-semibold text-foreground"
+                        @onclick="() => ToggleCategory(category.Name)">
+                    @category.Name
+                    <svg class="h-4 w-4 text-muted-foreground transition-transform @(_collapsed.Contains(category.Name) ? "" : "rotate-180")"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </button>
+
+                @if (!_collapsed.Contains(category.Name))
+                {
+                    <div class="mt-2 space-y-1.5">
+                        @foreach (var option in category.Options)
+                        {
+                            var isChecked = IsSelected(category.Name, option.Value);
+                            <label class="flex cursor-pointer items-center gap-2.5 text-sm text-muted-foreground hover:text-foreground">
+                                <input type="checkbox" checked="@isChecked"
+                                       @onchange="() => Toggle(category.Name, option.Value)"
+                                       class="h-4 w-4 rounded border-input accent-primary" />
+                                <span class="flex-1">@option.Label</span>
+                                @if (option.Count > 0)
+                                {
+                                    <span class="text-xs text-muted-foreground">(@option.Count)</span>
+                                }
+                            </label>
+                        }
+                    </div>
+                }
+
+                <div class="mt-3 border-t border-border/60"></div>
+            </div>
+        }
+    </div>
+</aside>
+
+@code {
+    [Parameter] public string?                      Title      { get; set; } = "Filters";
+    [Parameter] public IList<FilterCategory>        Categories { get; set; } = DefaultCategories;
+    [Parameter] public EventCallback<Dictionary<string, HashSet<string>>> OnFilterChange { get; set; }
+    [Parameter] public string?                      Class      { get; set; }
+
+    private Dictionary<string, HashSet<string>> _selected = new();
+    private HashSet<string> _collapsed = new();
+
+    private bool _anySelected => _selected.Values.Any(s => s.Count > 0);
+
+    private bool IsSelected(string category, string value) =>
+        _selected.TryGetValue(category, out var set) && set.Contains(value);
+
+    private void ToggleCategory(string name)
+    {
+        if (!_collapsed.Add(name)) _collapsed.Remove(name);
+    }
+
+    private async Task Toggle(string category, string value)
+    {
+        if (!_selected.ContainsKey(category)) _selected[category] = new();
+        if (!_selected[category].Remove(value)) _selected[category].Add(value);
+        await OnFilterChange.InvokeAsync(_selected);
+    }
+
+    private async Task ClearAll()
+    {
+        _selected.Clear();
+        await OnFilterChange.InvokeAsync(_selected);
+    }
+
+    private static readonly IList<FilterCategory> DefaultCategories =
+    [
+        new("Category", [new("Electronics", "electronics", 142), new("Clothing", "clothing", 89), new("Home & Garden", "home", 54)]),
+        new("Price",     [new("Under $25", "under-25", 78), new("$25 – $100", "25-100", 112), new("Over $100", "over-100", 95)]),
+        new("Rating",    [new("4 stars & up", "4plus", 201), new("3 stars & up", "3plus", 278)]),
+    ];
+}

@@ -1,0 +1,44 @@
+@namespace MyStackBlazor.Components.Blocks.Landing
+@using MyStackBlazor.Components.Blocks
+
+<section class="border-y bg-muted/20 py-14 @Class">
+    <div class="mx-auto max-w-6xl px-6 lg:px-8">
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            <p class="mb-10 text-center text-sm font-medium uppercase tracking-widest text-muted-foreground">
+                @Title
+            </p>
+        }
+        <div class="flex flex-wrap items-center justify-center gap-x-12 gap-y-8">
+            @foreach (var p in Items)
+            {
+                <div class="flex items-center opacity-60 transition-opacity hover:opacity-100">
+                    @if (!string.IsNullOrEmpty(p.LogoUrl))
+                    {
+                        <img src="@p.LogoUrl" alt="@p.Name" class="h-8 w-auto object-contain" />
+                    }
+                    else
+                    {
+                        <span class="text-xl font-bold tracking-tight text-foreground">@p.Name</span>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+@code {
+    [Parameter] public string?              Title { get; set; } = "Trusted by teams at";
+    [Parameter] public IList<PartnerItem>   Items { get; set; } = DefaultItems;
+    [Parameter] public string?              Class { get; set; }
+
+    private static readonly IList<PartnerItem> DefaultItems =
+    [
+        new("Acme Corp"),
+        new("Globex"),
+        new("Initech"),
+        new("Umbrella"),
+        new("Hooli"),
+        new("Pied Piper"),
+    ];
+}

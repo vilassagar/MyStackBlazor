@@ -1,0 +1,108 @@
+@namespace MyStackBlazor.Components.Templates.Landing
+@using MyStackBlazor.Components.Blocks
+@using MyStackBlazor.Components.Blocks.Landing
+
+<div>
+    <HeroBlock
+        Eyebrow="Your journey starts here"
+        Headline="Explore the World with &lt;span class='text-primary'&gt;Total Confidence&lt;/span&gt;"
+        Description="Handcrafted itineraries, expert local guides, and 24/7 on-trip support. We take care of every detail so you can focus on the memories."
+        PrimaryCtaText="Browse destinations"
+        PrimaryCtaHref="#"
+        SecondaryCtaText="How it works"
+        SecondaryCtaHref="#" />
+
+    <CardsBlock
+        Title="Trending destinations"
+        Subtitle="Popular now"
+        ViewAllHref="#"
+        Items="@_destinations" />
+
+    <FeaturesBlock
+        Title="Travel the way you deserve"
+        Subtitle="Why Wanderly"
+        Items="@_features" />
+
+    <StatsBlock Items="@_stats" />
+
+    <TestimonialsBlock
+        Title="Stories from fellow travelers"
+        Subtitle="Reviews"
+        Items="@_testimonials" />
+
+    <IncentivesBlock
+        Title="Every trip, every detail covered"
+        Items="@_incentives"
+        Columns="2" />
+
+    <PartnersBlock
+        Title="Our trusted partners"
+        Subtitle="Network"
+        Items="@_partners" />
+
+    <NewsletterBlock
+        Title="Inspiration delivered weekly"
+        Description="Get curated destination guides, exclusive deals, and travel tips from our editors."
+        ButtonText="Get inspired" />
+
+    <FooterBlock
+        Brand="Wanderly"
+        Description="Crafting extraordinary travel experiences since 2012. Discover more, worry less."
+        Sections="@_footerSections"
+        Copyright="@($"© {DateTime.Today.Year} Wanderly Travel Co. All rights reserved.")" />
+</div>
+
+@code {
+    private static readonly IList<CardBlockItem> _destinations =
+    [
+        new("Amalfi Coast, Italy",   "Cliffside villages, crystal-clear water, and the world's best pasta.", null, "Hot"),
+        new("Kyoto, Japan",          "Ancient temples, bamboo forests, and the timeless art of Japanese hospitality.", null, "Trending"),
+        new("Patagonia, Argentina",  "Endless glaciers, dramatic peaks, and hikes that stay with you forever.", null, "Adventure"),
+    ];
+
+    private static readonly IList<FeatureItem> _features =
+    [
+        new("Expert Curation",      "Every itinerary is crafted by destination specialists who've been there — not algorithms."),
+        new("Flexible Booking",     "Free cancellation up to 30 days before departure. Change dates without fees."),
+        new("24/7 On-Trip Support", "Our local coordinators are reachable by phone or WhatsApp wherever you are."),
+        new("Small Group Travel",   "Maximum 12 travelers per group ensures authentic experiences and personal attention."),
+        new("Sustainable Choices",  "We partner with local eco-certified operators and offset every flight automatically."),
+        new("Price Guarantee",      "Find the same tour cheaper elsewhere? We'll match it plus give you 10% off."),
+    ];
+
+    private static readonly IList<StatItem> _stats =
+    [
+        new("120+",    "Destinations",           "Across 6 continents"),
+        new("240,000+","Happy travelers",         "Since 2012"),
+        new("4.9/5",   "Average trip rating",    "Based on 58,000 reviews"),
+        new("98%",     "Would travel with us again","Post-trip survey"),
+    ];
+
+    private static readonly IList<TestimonialItem> _testimonials =
+    [
+        new("Our Amalfi Coast trip was flawless. The guide knew every hidden restaurant and secret viewpoint. Absolutely magical.", "Olivia Hartmann", "Teacher, Munich", AvatarInit: "OH", Rating: 5),
+        new("As a solo traveler, I felt safe and connected the entire time. Wanderly genuinely cares about every person on the trip.", "Kenji Tanaka", "Photographer, Tokyo", AvatarInit: "KT", Rating: 5),
+        new("The sustainability commitment sealed it for us. We explored Patagonia knowing our trip was giving back, not just taking.", "Elena Vasquez", "Climate Scientist, Madrid", AvatarInit: "EV", Rating: 5),
+    ];
+
+    private static readonly IList<IncentiveItem> _incentives =
+    [
+        new("Free cancellation",      "Cancel up to 30 days before your trip for a full refund — no questions asked."),
+        new("Travel insurance",       "Every booking includes basic travel protection. Upgrade to premium for full coverage."),
+        new("Local expertise",        "Our guides are local residents, not tourists. Get insider knowledge on every trip."),
+        new("Verified reviews",       "Every review comes from a real traveler who completed the trip with us."),
+    ];
+
+    private static readonly IList<PartnerItem> _partners =
+    [
+        new("Emirates"), new("Marriott"), new("Airbnb Luxe"), new("Booking.com"),
+        new("National Geographic"), new("Lonely Planet"), new("TripAdvisor"), new("REI"),
+    ];
+
+    private static readonly IList<FooterSection> _footerSections =
+    [
+        new("Explore",    [new("All Destinations","#"), new("Adventure","#"), new("Cultural","#"), new("Beach & Islands","#")]),
+        new("Travel",     [new("How It Works","#"), new("Group Tours","#"), new("Private Tours","#"), new("Travel Insurance","#")]),
+        new("Company",    [new("About Us","#"), new("Blog","#"), new("Sustainability","#"), new("Contact","#")]),
+    ];
+}

@@ -1,0 +1,57 @@
+@namespace MyStackBlazor.Components.Blocks.Landing
+@using MyStackBlazor.Components.Blocks
+
+<section class="bg-background py-20 @Class">
+    <div class="mx-auto max-w-6xl px-6 lg:px-8">
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            <div class="mb-14 text-center">
+                <h2 class="text-3xl font-bold tracking-tight text-foreground">@Title</h2>
+                @if (!string.IsNullOrEmpty(Subtitle))
+                {
+                    <p class="mt-4 text-muted-foreground">@Subtitle</p>
+                }
+            </div>
+        }
+
+        <div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-@Columns">
+            @foreach (var item in Items)
+            {
+                <div class="flex gap-4">
+                    <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        @if (!string.IsNullOrEmpty(item.IconSvg))
+                        {
+                            @((MarkupString)item.IconSvg)
+                        }
+                        else
+                        {
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        }
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-foreground">@item.Title</h3>
+                        <p class="mt-1 text-sm text-muted-foreground">@item.Description</p>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+@code {
+    [Parameter] public string?                Title    { get; set; } = "Why choose us";
+    [Parameter] public string?                Subtitle { get; set; }
+    [Parameter] public IList<IncentiveItem>   Items    { get; set; } = DefaultItems;
+    [Parameter] public int                    Columns  { get; set; } = 2;
+    [Parameter] public string?                Class    { get; set; }
+
+    private static readonly IList<IncentiveItem> DefaultItems =
+    [
+        new("Free shipping",        "On all orders over $50. No hidden fees."),
+        new("10-day returns",       "Not happy? Return it within 10 days for a full refund."),
+        new("24/7 support",         "Our team is here to help, around the clock."),
+        new("Secure checkout",      "Your payment info is always safe with us."),
+    ];
+}

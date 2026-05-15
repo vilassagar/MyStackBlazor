@@ -1,0 +1,33 @@
+@namespace MyStackBlazor.Components.Form
+
+<div class="relative @Class" @attributes="AdditionalAttributes">
+    <input id="@_id"
+           type="@Type"
+           placeholder=" "
+           value="@Value"
+           disabled="@Disabled"
+           @oninput="OnInput"
+           class="peer w-full rounded-md border border-input bg-background px-3 pb-2 pt-5 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring placeholder-transparent disabled:cursor-not-allowed disabled:opacity-50" />
+    <label for="@_id"
+           class="pointer-events-none absolute left-3 top-1/2 z-10 origin-top-left -translate-y-1/2 text-sm text-muted-foreground transition-all duration-200 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:scale-100 peer-not-placeholder-shown:top-3 peer-not-placeholder-shown:scale-75 peer-not-placeholder-shown:-translate-y-0 peer-focus:top-3 peer-focus:scale-75 peer-focus:-translate-y-0 peer-focus:text-primary">
+        @Label
+    </label>
+</div>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public string Type { get; set; } = "text";
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private readonly string _id = $"fl-{Guid.NewGuid():N}";
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        Value = e.Value?.ToString();
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

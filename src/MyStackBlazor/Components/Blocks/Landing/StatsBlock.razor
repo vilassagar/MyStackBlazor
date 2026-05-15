@@ -1,0 +1,61 @@
+@namespace MyStackBlazor.Components.Blocks.Landing
+@using MyStackBlazor.Components.Blocks
+
+<section class="border-y bg-muted/30 py-16 @Class">
+    <div class="mx-auto max-w-6xl px-6 lg:px-8">
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            <div class="mb-12 text-center">
+                <h2 class="text-3xl font-bold tracking-tight text-foreground">@Title</h2>
+                @if (!string.IsNullOrEmpty(Subtitle))
+                {
+                    <p class="mt-3 text-muted-foreground">@Subtitle</p>
+                }
+            </div>
+        }
+
+        <dl class="grid grid-cols-2 gap-px rounded-2xl border bg-border @GridClass">
+            @foreach (var stat in Items)
+            {
+                <div class="flex flex-col gap-1 bg-background px-8 py-10">
+                    <dt class="text-sm font-medium leading-6 text-muted-foreground">@stat.Label</dt>
+                    <dd class="flex items-baseline gap-2">
+                        <span class="text-4xl font-bold tracking-tight text-foreground">@stat.Value</span>
+                        @if (!string.IsNullOrEmpty(stat.Trend))
+                        {
+                            <span class="text-sm font-medium @(stat.TrendUp ? "text-green-500" : "text-destructive")">
+                                @(stat.TrendUp ? "↑" : "↓") @stat.Trend
+                            </span>
+                        }
+                    </dd>
+                    @if (!string.IsNullOrEmpty(stat.Description))
+                    {
+                        <dd class="text-xs text-muted-foreground">@stat.Description</dd>
+                    }
+                </div>
+            }
+        </dl>
+    </div>
+</section>
+
+@code {
+    [Parameter] public string?           Title    { get; set; }
+    [Parameter] public string?           Subtitle { get; set; }
+    [Parameter] public IList<StatItem>   Items    { get; set; } = DefaultItems;
+    [Parameter] public string?           Class    { get; set; }
+
+    private string GridClass => Items.Count switch
+    {
+        2 => "sm:grid-cols-2",
+        3 => "sm:grid-cols-3",
+        _ => "sm:grid-cols-2 lg:grid-cols-4",
+    };
+
+    private static readonly IList<StatItem> DefaultItems =
+    [
+        new("87+",   "Components",   "Ready-to-use Blazor components", "+12 this month", true),
+        new("100%",  "Open source",  "MIT licensed, free forever"),
+        new(".NET 10","Target",      "Built for the latest framework"),
+        new("0",     "Dependencies", "No external JS needed"),
+    ];
+}

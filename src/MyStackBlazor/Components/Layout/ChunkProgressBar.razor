@@ -1,0 +1,32 @@
+@namespace MyStackBlazor.Components.Layout
+
+<div class="flex gap-1 @Class"
+     role="progressbar"
+     aria-valuenow="@Value"
+     aria-valuemin="0"
+     aria-valuemax="@Max"
+     @attributes="AdditionalAttributes">
+    @for (var i = 0; i < Chunks; i++)
+    {
+        var chunkMin = (double)i / Chunks * Max;
+        var chunkMax = (double)(i + 1) / Chunks * Max;
+        var filled   = Value >= chunkMax;
+        var partial  = !filled && Value > chunkMin;
+        var pct      = partial ? (Value - chunkMin) / (chunkMax - chunkMin) * 100 : 0;
+
+        <div class="h-2 flex-1 overflow-hidden rounded-sm @(filled ? "bg-primary" : "bg-muted")">
+            @if (partial)
+            {
+                <div class="h-full bg-primary transition-all" style="width:@pct%"></div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public double Value { get; set; }
+    [Parameter] public double Max { get; set; } = 100;
+    [Parameter] public int Chunks { get; set; } = 5;
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

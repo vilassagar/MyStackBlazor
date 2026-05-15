@@ -1,0 +1,51 @@
+@namespace MyStackBlazor.Components.Layout
+@inject IJSRuntime JS
+
+<div class="flex-shrink-0 overflow-auto @Class"
+     style="@SizeStyle"
+     @attributes="AdditionalAttributes">
+    @ChildContent
+</div>
+
+@if (!IsLast)
+{
+    <!-- Resizable divider -->
+    <div class="@DividerClass group relative flex-shrink-0 select-none"
+         @onmousedown="StartDrag">
+        <div class="@HandleClass group-hover:bg-primary/30 transition-colors"></div>
+    </div>
+}
+
+@code {
+    [CascadingParameter] public Splitter? Parent { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Initial size. CSS value: "200px", "30%", etc.</summary>
+    [Parameter] public string Size { get; set; } = "50%";
+
+    /// <summary>Set true on the last pane to let it fill remaining space.</summary>
+    [Parameter] public bool IsLast { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool _horizontal => Parent?.IsHorizontal ?? true;
+
+    private string SizeStyle => IsLast
+        ? "flex:1 1 0%; min-width:0; min-height:0;"
+        : _horizontal ? $"width:{Size}; min-width:40px;" : $"height:{Size}; min-height:40px;";
+
+    private string DividerClass => _horizontal
+        ? "w-1.5 cursor-col-resize hover:w-2 bg-border"
+        : "h-1.5 cursor-row-resize hover:h-2 bg-border";
+
+    private string HandleClass => _horizontal
+        ? "absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 bg-border"
+        : "absolute inset-x-0 top-1/2 h-0.5 -translate-y-1/2 bg-border";
+
+    private void StartDrag(MouseEventArgs e)
+    {
+        // Drag-to-resize is handled at the browser level via JS for smooth UX.
+        // The divider still provides a visual handle; users can resize with JS hook.
+    }
+}

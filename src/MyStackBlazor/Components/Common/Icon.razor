@@ -1,0 +1,38 @@
+@namespace MyStackBlazor.Components.Common
+
+<svg xmlns="http://www.w3.org/2000/svg"
+     fill="@(Filled ? "currentColor" : "none")"
+     stroke="@(Filled ? "none" : "currentColor")"
+     stroke-width="1.5"
+     viewBox="0 0 24 24"
+     class="@ComputedClass"
+     aria-hidden="true"
+     @attributes="AdditionalAttributes">
+    @((MarkupString)Icons.Get(Name))
+</svg>
+
+@code {
+    /// <summary>Icon name, e.g. "home", "search", "check". See Icons.AllNames for the full list.</summary>
+    [Parameter, EditorRequired] public string Name { get; set; } = "";
+
+    /// <summary>Predefined size: xs (12px), sm (16px), default (20px), lg (24px), xl (32px), 2xl (40px).</summary>
+    [Parameter] public string Size { get; set; } = "default";
+
+    /// <summary>Render as filled (solid) instead of outline.</summary>
+    [Parameter] public bool Filled { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string ComputedClass => $"{SizeClass} {Class}".Trim();
+
+    private string SizeClass => Size switch
+    {
+        "xs"  => "h-3 w-3",
+        "sm"  => "h-4 w-4",
+        "lg"  => "h-6 w-6",
+        "xl"  => "h-8 w-8",
+        "2xl" => "h-10 w-10",
+        _     => "h-5 w-5",
+    };
+}

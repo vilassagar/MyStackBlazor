@@ -1,0 +1,82 @@
+@namespace MyStackBlazor.Components.Form
+
+<div class="space-y-2 @Class" @attributes="AdditionalAttributes">
+    @if (ShowLabels)
+    {
+        <div class="flex justify-between text-xs text-muted-foreground">
+            <span>@Min</span>
+            <span>@Max</span>
+        </div>
+    }
+
+    <!-- Two overlapping range inputs -->
+    <div class="relative h-5 w-full">
+        <!-- Track fill between thumbs -->
+        <div class="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-muted w-full"></div>
+        <div class="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-primary"
+             style="left:@(LowPct)%; width:@(HighPct - LowPct)%">
+        </div>
+
+        <!-- Low thumb -->
+        <input type="range"
+               min="@Min" max="@Max" step="@Step"
+               value="@LowValue"
+               class="range-slider-thumb absolute h-full w-full cursor-pointer appearance-none bg-transparent"
+               style="z-index:@(LowValue >= HighValue - Step ? 5 : 3)"
+               @oninput="OnLowInput" />
+
+        <!-- High thumb -->
+        <input type="range"
+               min="@Min" max="@Max" step="@Step"
+               value="@HighValue"
+               class="range-slider-thumb absolute h-full w-full cursor-pointer appearance-none bg-transparent"
+               style="z-index:4"
+               @oninput="OnHighInput" />
+    </div>
+
+    @if (ShowValues)
+    {
+        <div class="flex justify-between text-sm font-medium">
+            <span>@LowValue</span>
+            <span>@HighValue</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public double LowValue { get; set; }
+    [Parameter] public EventCallback<double> LowValueChanged { get; set; }
+    [Parameter] public double HighValue { get; set; } = 100;
+    [Parameter] public EventCallback<double> HighValueChanged { get; set; }
+    [Parameter] public EventCallback<(double Low, double High)> RangeChanged { get; set; }
+    [Parameter] public double Min { get; set; }
+    [Parameter] public double Max { get; set; } = 100;
+    [Parameter] public double Step { get; set; } = 1;
+    [Parameter] public bool ShowLabels { get; set; } = true;
+    [Parameter] public bool ShowValues { get; set; } = true;
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private double LowPct  => (LowValue  - Min) / (Max - Min) * 100;
+    private double HighPct => (HighValue - Min) / (Max - Min) * 100;
+
+    private async Task OnLowInput(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out var v))
+        {
+            LowValue = Math.Min(v, HighValue - Step);
+            await LowValueChanged.InvokeAsync(LowValue);
+            await RangeChanged.InvokeAsync((LowValue, HighValue));
+        }
+    }
+
+    private async Task OnHighInput(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out var v))
+        {
+            HighValue = Math.Max(v, LowValue + Step);
+            await HighValueChanged.InvokeAsync(HighValue);
+            await RangeChanged.InvokeAsync((LowValue, HighValue));
+        }
+    }
+}

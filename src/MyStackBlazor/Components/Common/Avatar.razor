@@ -1,0 +1,60 @@
+@namespace MyStackBlazor.Components.Common
+
+<span class="@ComputedClass" @attributes="AdditionalAttributes">
+    @if (!string.IsNullOrEmpty(Src))
+    {
+        <img src="@Src"
+             alt="@Alt"
+             class="aspect-square h-full w-full object-cover"
+             @onerror="HandleImageError" />
+    }
+
+    @if (_showFallback || string.IsNullOrEmpty(Src))
+    {
+        @if (!string.IsNullOrEmpty(Initials))
+        {
+            <span class="flex h-full w-full items-center justify-center text-sm font-medium uppercase">
+                @Initials
+            </span>
+        }
+        else if (ChildContent is not null)
+        {
+            @ChildContent
+        }
+        else
+        {
+            <svg class="h-full w-full text-muted-foreground p-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+            </svg>
+        }
+    }
+</span>
+
+@code {
+    [Parameter] public string? Src { get; set; }
+    [Parameter] public string? Alt { get; set; }
+    [Parameter] public string? Initials { get; set; }
+    [Parameter] public string Size { get; set; } = "default";
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool _showFallback;
+
+    private string ComputedClass =>
+        $"relative flex shrink-0 overflow-hidden rounded-full bg-muted {SizeClass} {Class}".Trim();
+
+    private string SizeClass => Size switch
+    {
+        "xs"  => "h-6 w-6 text-xs",
+        "sm"  => "h-8 w-8 text-xs",
+        "lg"  => "h-12 w-12 text-base",
+        "xl"  => "h-16 w-16 text-lg",
+        "2xl" => "h-20 w-20 text-xl",
+        _     => "h-10 w-10 text-sm",
+    };
+
+    protected override void OnParametersSet() => _showFallback = false;
+
+    private void HandleImageError() => _showFallback = true;
+}

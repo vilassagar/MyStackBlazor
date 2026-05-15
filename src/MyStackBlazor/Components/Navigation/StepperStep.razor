@@ -1,0 +1,22 @@
+@namespace MyStackBlazor.Components.Navigation
+@implements IDisposable
+
+@if (Parent.IsActiveStep(this))
+{
+    <div>
+        @ChildContent
+    </div>
+}
+
+@code {
+    [CascadingParameter] public Stepper Parent { get; set; } = default!;
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    internal bool Completed { get; set; }
+
+    protected override void OnInitialized() => Parent.AddStep(this);
+
+    public void Dispose() => Parent.RemoveStep(this);
+}

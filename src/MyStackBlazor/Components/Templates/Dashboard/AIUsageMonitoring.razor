@@ -1,0 +1,128 @@
+@namespace MyStackBlazor.Components.Templates.Dashboard
+@using MyStackBlazor.Components.Blocks
+@using MyStackBlazor.Components.Blocks.Dashboard
+
+<div class="flex h-screen overflow-hidden bg-background">
+    <DashboardSidebar Brand="AIMonitor" Items="@_nav" />
+
+    <div class="flex flex-1 flex-col overflow-hidden">
+        <TopNavbar Brand="AIMonitor"
+                   UserName="Admin"
+                   UserInitials="AD"
+                   NotificationCount="3"
+                   Breadcrumbs="@[new("Dashboard"), new("AI Usage")]" />
+
+        <main class="flex-1 overflow-y-auto p-6">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold text-foreground">AI Usage Overview</h2>
+                <p class="text-sm text-muted-foreground">Last 30 days · Refreshed 2 minutes ago</p>
+            </div>
+
+            <!-- KPIs -->
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <CompactCard Label="Total API Calls"     Value="4.2M"    Trend="+18% vs last month" TrendUp="true"
+                             IconSvg='<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>' />
+                <CompactCard Label="Tokens Consumed"    Value="1.8B"    Trend="+22% vs last month" TrendUp="true"
+                             IconSvg='<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>' />
+                <CompactCard Label="Est. Cost (USD)"    Value="$12,480" Trend="+15% vs last month" TrendUp="false"
+                             IconSvg='<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>' />
+                <CompactCard Label="Active Models"      Value="6"       Trend="2 added this month"  TrendUp="true"
+                             IconSvg='<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>' />
+            </div>
+
+            <!-- Charts -->
+            <div class="mt-6 grid gap-6 lg:grid-cols-2">
+                <DashboardCard Title="Daily API Calls" Description="Past 14 days" Trend="+18%" TrendUp="true">
+                    <BodyContent>
+                        <div class="flex h-32 items-end gap-1.5">
+                            @foreach (var h in new[] {35,50,42,68,75,60,80,55,90,72,85,95,78,100})
+                            {
+                                <div class="flex-1 rounded-t bg-primary/25 hover:bg-primary/50 transition-colors" style="height:@(h)%"></div>
+                            }
+                        </div>
+                        <div class="mt-2 flex justify-between text-xs text-muted-foreground">
+                            <span>May 2</span><span>May 15</span>
+                        </div>
+                    </BodyContent>
+                </DashboardCard>
+
+                <DashboardCard Title="Token Usage by Model" Description="Current month" Value="1.8B total">
+                    <BodyContent>
+                        <div class="space-y-3">
+                            @foreach (var (model, pct, color) in new[] { ("claude-opus-4","42%","bg-primary"), ("claude-sonnet-4","31%","bg-primary/60"), ("claude-haiku-4","18%","bg-primary/30"), ("Other","9%","bg-muted-foreground/20") })
+                            {
+                                <div>
+                                    <div class="mb-1 flex justify-between text-xs">
+                                        <span class="text-muted-foreground">@model</span>
+                                        <span class="font-medium text-foreground">@pct</span>
+                                    </div>
+                                    <div class="h-2 w-full overflow-hidden rounded-full bg-muted">
+                                        <div class="h-full rounded-full @color" style="width:@pct"></div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </BodyContent>
+                </DashboardCard>
+            </div>
+
+            <!-- Recent calls table -->
+            <div class="mt-6 rounded-xl border bg-card shadow-sm">
+                <div class="border-b px-6 py-4">
+                    <h3 class="text-sm font-semibold text-foreground">Recent API Calls</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="border-b bg-muted/30">
+                            <tr>
+                                @foreach (var h in new[] { "Timestamp", "Model", "Tokens In", "Tokens Out", "Latency", "Status" })
+                                {
+                                    <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">@h</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">
+                            @foreach (var row in _recentCalls)
+                            {
+                                <tr class="hover:bg-muted/30 transition-colors">
+                                    <td class="px-5 py-3 text-muted-foreground">@row.Time</td>
+                                    <td class="px-5 py-3 font-medium text-foreground">@row.Model</td>
+                                    <td class="px-5 py-3 text-muted-foreground">@row.In</td>
+                                    <td class="px-5 py-3 text-muted-foreground">@row.Out</td>
+                                    <td class="px-5 py-3 text-muted-foreground">@row.Latency</td>
+                                    <td class="px-5 py-3">
+                                        <span class="rounded-full px-2 py-0.5 text-xs font-semibold @(row.Ok ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-500")">
+                                            @(row.Ok ? "200 OK" : "Error")
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+@code {
+    private static readonly IList<DashboardNavItem> _nav =
+    [
+        new("Overview",    "#", "<svg class='h-4 w-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'><rect x='3' y='3' width='7' height='7'/><rect x='14' y='3' width='7' height='7'/><rect x='14' y='14' width='7' height='7'/><rect x='3' y='14' width='7' height='7'/></svg>", true),
+        new("Usage Logs",  "#", "<svg class='h-4 w-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'><line x1='8' y1='6' x2='21' y2='6'/><line x1='8' y1='12' x2='21' y2='12'/><line x1='8' y1='18' x2='21' y2='18'/><line x1='3' y1='6' x2='3.01' y2='6'/><line x1='3' y1='12' x2='3.01' y2='12'/><line x1='3' y1='18' x2='3.01' y2='18'/></svg>"),
+        new("Models",      "#", "<svg class='h-4 w-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'><circle cx='12' cy='12' r='3'/><path d='M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4'/></svg>"),
+        new("Cost",        "#", "<svg class='h-4 w-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'><line x1='12' y1='1' x2='12' y2='23'/><path d='M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'/></svg>"),
+        new("Settings",    "#", "<svg class='h-4 w-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'><circle cx='12' cy='12' r='3'/><path d='M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z'/></svg>"),
+    ];
+
+    private record CallRow(string Time, string Model, string In, string Out, string Latency, bool Ok);
+    private static readonly IList<CallRow> _recentCalls =
+    [
+        new("16 May 14:32", "claude-sonnet-4",   "1,240", "892",   "1.2s",  true),
+        new("16 May 14:31", "claude-opus-4",     "4,820", "3,104", "3.8s",  true),
+        new("16 May 14:28", "claude-haiku-4",    "620",   "488",   "0.4s",  true),
+        new("16 May 14:25", "claude-sonnet-4",   "2,100", "1,560", "2.1s",  true),
+        new("16 May 14:20", "claude-opus-4",     "8,400", "0",     "—",     false),
+        new("16 May 14:18", "claude-haiku-4",    "310",   "274",   "0.3s",  true),
+    ];
+}

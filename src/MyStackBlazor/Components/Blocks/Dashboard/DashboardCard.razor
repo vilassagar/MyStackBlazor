@@ -1,0 +1,59 @@
+@namespace MyStackBlazor.Components.Blocks.Dashboard
+@using MyStackBlazor.Components.Blocks
+
+<div class="rounded-xl border bg-card shadow-sm @Class">
+    <!-- Header -->
+    <div class="flex items-start justify-between gap-4 border-b px-6 py-5">
+        <div>
+            <h3 class="text-sm font-semibold text-foreground">@Title</h3>
+            @if (!string.IsNullOrEmpty(Description))
+            {
+                <p class="mt-0.5 text-xs text-muted-foreground">@Description</p>
+            }
+        </div>
+        @if (HeaderContent is not null)
+        {
+            <div class="flex-shrink-0">@HeaderContent</div>
+        }
+    </div>
+
+    <!-- Metric row -->
+    <div class="flex items-center gap-4 px-6 py-4">
+        <span class="text-3xl font-bold tracking-tight text-foreground">@Value</span>
+        @if (!string.IsNullOrEmpty(Trend))
+        {
+            <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold @(TrendUp ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-500")">
+                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    @if (TrendUp)
+                    {
+                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                        <polyline points="17 6 23 6 23 12"></polyline>
+                    }
+                    else
+                    {
+                        <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline>
+                        <polyline points="17 18 23 18 23 12"></polyline>
+                    }
+                </svg>
+                @Trend
+            </span>
+        }
+    </div>
+
+    <!-- Body / chart slot -->
+    @if (BodyContent is not null)
+    {
+        <div class="px-6 pb-6">@BodyContent</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string           Title        { get; set; } = "Revenue";
+    [Parameter] public string           Value        { get; set; } = "$12,450";
+    [Parameter] public string?          Description  { get; set; } = "This month";
+    [Parameter] public string?          Trend        { get; set; } = "+8.2%";
+    [Parameter] public bool             TrendUp      { get; set; } = true;
+    [Parameter] public RenderFragment?  HeaderContent { get; set; }
+    [Parameter] public RenderFragment?  BodyContent   { get; set; }
+    [Parameter] public string?          Class         { get; set; }
+}

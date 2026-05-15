@@ -1,0 +1,19 @@
+@namespace MyStackBlazor.Components.Layout
+
+<div class="@Class"
+     style="display:grid; grid-template-columns:repeat(@Columns, minmax(0,1fr)); gap:@(Gap * 0.25)rem; @Style"
+     @attributes="AdditionalAttributes">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public int Columns { get; set; } = 2;
+
+    /// <summary>Gap in Tailwind spacing units (4 = 1rem).</summary>
+    [Parameter] public int Gap { get; set; } = 4;
+
+    [Parameter] public string? Style { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

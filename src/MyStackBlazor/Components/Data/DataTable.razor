@@ -1,5 +1,7 @@
 @namespace MyStackBlazor.Components.Data
 @typeparam TItem
+@implements IAsyncDisposable
+@inject IJSRuntime JS
 
 <div class="space-y-4">
     <!-- Toolbar -->
@@ -18,20 +20,24 @@
         </div>
     }
 
-    <!-- Table -->
-    <div class="rounded-md border">
+    <!-- Table wrapper -->
+    <div id="@_containerId"
+         class="rounded-md border @((Virtualize || InfiniteScroll) ? "overflow-auto" : "")"
+         style="@((Virtualize || InfiniteScroll) ? $"height:{(InfiniteScroll ? InfiniteScrollHeight : VirtualizeHeight)}" : "")">
         <table class="w-full caption-bottom text-sm">
-            <thead class="[&_tr]:border-b">
+            <thead class="[&_tr]:border-b sticky top-0 bg-background z-10">
+                <!-- Column headers -->
                 <tr class="border-b transition-colors hover:bg-muted/50">
                     @foreach (var col in Columns)
                     {
-                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground cursor-pointer select-none"
-                            @onclick="() => SortBy(col)">
+                        var c = col;
+                        <th class="h-12 cursor-pointer select-none px-4 text-left align-middle font-medium text-muted-foreground @c.Class"
+                            @onclick="() => SortBy(c)">
                             <div class="flex items-center gap-1">
-                                @col.Header
-                                @if (col.Sortable)
+                                @c.Header
+                                @if (c.Sortable)
                                 {
-                                    @if (_sortColumn == col.Key)
+                                    @if (_sortColumn == c.Key)
                                     {
                                         <svg class="h-4 w-4 @(_sortAscending ? "" : "rotate-180")" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <polyline points="18 15 12 9 6 15"></polyline>
@@ -49,9 +55,29 @@
                         </th>
                     }
                 </tr>
+                <!-- Column filter row — shown only when at least one column is Filterable -->
+                @if (_hasFilterableColumns)
+                {
+                    <tr class="border-b bg-muted/30">
+                        @foreach (var col in Columns)
+                        {
+                            var c = col;
+                            <th class="px-3 py-2 font-normal @c.Class">
+                                @if (c.Filterable)
+                                {
+                                    <input type="text"
+                                           value="@(_columnFilters.GetValueOrDefault(c.Key, ""))"
+                                           placeholder="@(c.FilterPlaceholder ?? "Filter...")"
+                                           class="h-7 w-full rounded border border-input bg-background px-2 text-xs placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                           @oninput="e => SetColumnFilter(c.Key, e.Value?.ToString())" />
+                                }
+                            </th>
+                        }
+                    </tr>
+                }
             </thead>
             <tbody class="[&_tr:last-child]:border-0">
-                @if (!PagedItems.Any())
+                @if (!FilteredItems.Any())
                 {
                     <tr>
                         <td colspan="@Columns.Count" class="h-24 text-center text-muted-foreground">
@@ -59,40 +85,71 @@
                         </td>
                     </tr>
                 }
-                @foreach (var item in PagedItems)
+                else
                 {
-                    <tr class="border-b transition-colors hover:bg-muted/50">
-                        @foreach (var col in Columns)
-                        {
-                            <td class="p-4 align-middle">
-                                @if (col.Template is not null)
-                                {
-                                    @col.Template(item)
-                                }
-                                else
-                                {
-                                    @col.Value?.Invoke(item)
-                                }
-                            </td>
-                        }
+                    @foreach (var item in DisplayItems)
+                    {
+                        <tr class="border-b transition-colors hover:bg-muted/50">
+                            @foreach (var col in Columns)
+                            {
+                                <td class="p-4 align-middle @col.Class">
+                                    @if (col.Template is not null) { @col.Template(item) }
+                                    else { @col.Value?.Invoke(item)?.ToString() }
+                                </td>
+                            }
+                        </tr>
+                    }
+                }
+                <!-- Infinite scroll sentinel + loading indicator -->
+                @if (InfiniteScroll)
+                {
+                    <tr>
+                        <td colspan="@Columns.Count" class="py-2 text-center">
+                            <div id="@_sentinelId" class="h-px w-full"></div>
+                            @if (IsLoading)
+                            {
+                                <div class="flex items-center justify-center gap-2 py-3 text-sm text-muted-foreground">
+                                    <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                    </svg>
+                                    Loading…
+                                </div>
+                            }
+                        </td>
                     </tr>
                 }
             </tbody>
         </table>
     </div>
 
-    <!-- Pagination footer -->
-    <div class="flex items-center justify-between px-2">
-        <div class="text-sm text-muted-foreground">
-            @(FilteredItems.Count()) of @(Items.Count()) row(s)
+    <!-- Footer -->
+    @if (!Virtualize && !InfiniteScroll)
+    {
+        <div class="flex items-center justify-between px-2">
+            <div class="text-sm text-muted-foreground">
+                @(FilteredItems.Count()) of @(Items.Count()) row(s)
+            </div>
+            @if (ShowPagination && TotalPages > 1)
+            {
+                <Pagination CurrentPage="_currentPage"
+                            TotalPages="TotalPages"
+                            CurrentPageChanged="p => _currentPage = p" />
+            }
         </div>
-        @if (ShowPagination && TotalPages > 1)
-        {
-            <Pagination CurrentPage="_currentPage"
-                        TotalPages="TotalPages"
-                        CurrentPageChanged="p => _currentPage = p" />
-        }
-    </div>
+    }
+    else if (Virtualize)
+    {
+        <div class="px-2 text-sm text-muted-foreground">
+            @(FilteredItems.Count()) row(s)
+        </div>
+    }
+    else
+    {
+        <div class="px-2 text-sm text-muted-foreground">
+            @(Items.Count()) row(s) loaded
+        </div>
+    }
 </div>
 
 @code {
@@ -106,16 +163,42 @@
     [Parameter] public RenderFragment? ToolbarContent { get; set; }
     [Parameter] public Func<TItem, string, bool>? SearchFilter { get; set; }
 
+    [Parameter] public bool Virtualize { get; set; }
+    [Parameter] public string VirtualizeHeight { get; set; } = "480px";
+
+    /// <summary>Infinite scroll mode: no pagination; fires OnLoadMore when scrolled to bottom.</summary>
+    [Parameter] public bool InfiniteScroll { get; set; }
+
+    /// <summary>Container height when InfiniteScroll=true.</summary>
+    [Parameter] public string InfiniteScrollHeight { get; set; } = "480px";
+
+    /// <summary>Fired when the user scrolls near the bottom. Parent should append more items to Items.</summary>
+    [Parameter] public EventCallback OnLoadMore { get; set; }
+
+    /// <summary>Set to true while loading more data to show a spinner and suppress duplicate calls.</summary>
+    [Parameter] public bool IsLoading { get; set; }
+
     private string? _searchText;
-    private string? _sortColumn;
-    private bool _sortAscending = true;
-    private int _currentPage = 1;
+    private string?  _sortColumn;
+    private bool     _sortAscending  = true;
+    private int      _currentPage    = 1;
+    private bool     _isTriggering;
+
+    private readonly Dictionary<string, string> _columnFilters = [];
+    private readonly string _sentinelId  = $"msb-sentinel-{Guid.NewGuid():N}";
+    private readonly string _containerId = $"msb-table-{Guid.NewGuid():N}";
+    private DotNetObjectReference<DataTable<TItem>>? _selfRef;
+    private bool _observerAttached;
+
+    private bool _hasFilterableColumns => Columns.Any(c => c.Filterable);
 
     private IEnumerable<TItem> FilteredItems
     {
         get
         {
             var items = Items;
+
+            // Global search
             if (!string.IsNullOrWhiteSpace(_searchText))
             {
                 items = SearchFilter is not null
@@ -124,6 +207,21 @@
                         .Select(c => c.Value?.Invoke(i)?.ToString() ?? "")
                         .Any(v => v.Contains(_searchText, StringComparison.OrdinalIgnoreCase)));
             }
+
+            // Per-column filters
+            if (_columnFilters.Count > 0)
+            {
+                items = items.Where(item =>
+                    _columnFilters.All(kvp =>
+                    {
+                        var col = Columns.FirstOrDefault(c => c.Key == kvp.Key);
+                        if (col is null) return true;
+                        var val = col.Value?.Invoke(item)?.ToString() ?? "";
+                        return val.Contains(kvp.Value, StringComparison.OrdinalIgnoreCase);
+                    }));
+            }
+
+            // Sort
             if (_sortColumn is not null)
             {
                 var col = Columns.FirstOrDefault(c => c.Key == _sortColumn);
@@ -134,6 +232,7 @@
                         : items.OrderByDescending(i => col.Value(i)?.ToString());
                 }
             }
+
             return items;
         }
     }
@@ -143,7 +242,11 @@
             ? FilteredItems.Skip((_currentPage - 1) * PageSize).Take(PageSize)
             : FilteredItems;
 
-    private int TotalPages => (int)Math.Ceiling(FilteredItems.Count() / (double)PageSize);
+    private IEnumerable<TItem> DisplayItems =>
+        (Virtualize || InfiniteScroll) ? FilteredItems : PagedItems;
+
+    private int TotalPages =>
+        (int)Math.Ceiling(FilteredItems.Count() / (double)PageSize);
 
     private void SortBy(DataTableColumn<TItem> col)
     {
@@ -152,9 +255,48 @@
             _sortAscending = !_sortAscending;
         else
         {
-            _sortColumn = col.Key;
+            _sortColumn    = col.Key;
             _sortAscending = true;
         }
         _currentPage = 1;
+    }
+
+    private void SetColumnFilter(string key, string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            _columnFilters.Remove(key);
+        else
+            _columnFilters[key] = value;
+        _currentPage = 1;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (InfiniteScroll && !_observerAttached)
+        {
+            _selfRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("MyStackBlazor.observeInfiniteScroll",
+                _sentinelId, _containerId, _selfRef);
+            _observerAttached = true;
+        }
+    }
+
+    [JSInvokable]
+    public async Task TriggerLoadMore()
+    {
+        if (IsLoading || _isTriggering) return;
+        _isTriggering = true;
+        await OnLoadMore.InvokeAsync();
+        _isTriggering = false;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_observerAttached)
+        {
+            try { await JS.InvokeVoidAsync("MyStackBlazor.disconnectInfiniteScroll", _sentinelId); }
+            catch { /* JS may be unavailable during teardown */ }
+        }
+        _selfRef?.Dispose();
     }
 }

@@ -1,0 +1,90 @@
+@namespace MyStackBlazor.Components.Blocks.Listing
+@using MyStackBlazor.Components.Blocks
+
+<div class="flex flex-wrap items-center justify-between gap-3 @Class">
+    <!-- Result count -->
+    <p class="text-sm text-muted-foreground">
+        @if (ResultCount >= 0)
+        {
+            <span><span class="font-semibold text-foreground">@ResultCount</span> results</span>
+        }
+    </p>
+
+    <div class="flex items-center gap-3">
+        <!-- Sort dropdown -->
+        @if (SortOptions?.Count > 0)
+        {
+            <div class="flex items-center gap-2">
+                <label class="text-sm text-muted-foreground whitespace-nowrap">Sort by</label>
+                <select value="@SelectedSort" @onchange="OnSortSelectChange"
+                        class="rounded-md border border-input bg-background px-2 py-1.5 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                    @foreach (var opt in SortOptions)
+                    {
+                        <option value="@opt.Value" selected="@(opt.Value == SelectedSort)">@opt.Label</option>
+                    }
+                </select>
+            </div>
+        }
+
+        <!-- View mode toggle -->
+        @if (ShowViewToggle)
+        {
+            <div class="flex rounded-md border border-input overflow-hidden">
+                <button title="Grid view"
+                        @onclick='() => SetView("grid")'
+                        class="px-2.5 py-1.5 transition-colors @(ViewMode == "grid" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted")">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                </button>
+                <button title="List view"
+                        @onclick='() => SetView("list")'
+                        class="px-2.5 py-1.5 transition-colors border-l border-input @(ViewMode == "list" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted")">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <line x1="8" y1="6" x2="21" y2="6"></line>
+                        <line x1="8" y1="12" x2="21" y2="12"></line>
+                        <line x1="8" y1="18" x2="21" y2="18"></line>
+                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public int                  ResultCount      { get; set; } = -1;
+    [Parameter] public IList<SortOption>?   SortOptions      { get; set; } = DefaultSortOptions;
+    [Parameter] public string               SelectedSort     { get; set; } = "featured";
+    [Parameter] public EventCallback<string> OnSortChanged   { get; set; }
+    [Parameter] public string               ViewMode         { get; set; } = "grid";
+    [Parameter] public EventCallback<string> OnViewModeChanged { get; set; }
+    [Parameter] public bool                 ShowViewToggle   { get; set; } = true;
+    [Parameter] public string?              Class            { get; set; }
+
+    private async Task OnSortSelectChange(ChangeEventArgs e)
+    {
+        SelectedSort = e.Value?.ToString() ?? "";
+        await OnSortChanged.InvokeAsync(SelectedSort);
+    }
+
+    private async Task SetView(string mode)
+    {
+        ViewMode = mode;
+        await OnViewModeChanged.InvokeAsync(mode);
+    }
+
+    private static readonly IList<SortOption> DefaultSortOptions =
+    [
+        new("Featured",       "featured"),
+        new("Price: Low to High", "price-asc"),
+        new("Price: High to Low", "price-desc"),
+        new("Newest",         "newest"),
+        new("Best Rating",    "rating"),
+    ];
+}

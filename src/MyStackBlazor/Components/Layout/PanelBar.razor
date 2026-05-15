@@ -1,0 +1,30 @@
+@namespace MyStackBlazor.Components.Layout
+
+<CascadingValue Value="this">
+    <div class="rounded-md border divide-y @Class" @attributes="AdditionalAttributes">
+        @ChildContent
+    </div>
+</CascadingValue>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public bool AllowMultiple { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private HashSet<string> _open = [];
+
+    internal bool IsOpen(string? key) => key is not null && _open.Contains(key);
+
+    internal void Toggle(string? key)
+    {
+        if (key is null) return;
+        if (_open.Contains(key)) _open.Remove(key);
+        else
+        {
+            if (!AllowMultiple) _open.Clear();
+            _open.Add(key);
+        }
+        StateHasChanged();
+    }
+}

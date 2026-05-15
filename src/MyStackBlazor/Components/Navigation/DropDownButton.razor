@@ -1,0 +1,39 @@
+@namespace MyStackBlazor.Components.Navigation
+
+<div class="relative inline-block @Class" @attributes="AdditionalAttributes">
+    <button type="button"
+            class="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+            @onclick="Toggle">
+        @if (Icon is not null) { @Icon }
+        @Text
+        <svg class="h-4 w-4 transition-transform duration-200 @(_open ? "rotate-180" : "")" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+    </button>
+
+    @if (_open)
+    {
+        <!-- Backdrop to close on outside click -->
+        <div class="fixed inset-0 z-40" @onclick="Close"></div>
+        <div class="absolute left-0 top-full z-50 mt-1 min-w-[10rem] rounded-md border bg-popover p-1 shadow-md animate-fade-in @(Align == "end" ? "right-0 left-auto" : "")">
+            @MenuContent
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Text { get; set; }
+    [Parameter] public RenderFragment? Icon { get; set; }
+    [Parameter] public RenderFragment? MenuContent { get; set; }
+
+    /// <summary>start | end</summary>
+    [Parameter] public string Align { get; set; } = "start";
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool _open;
+
+    private void Toggle() => _open = !_open;
+    private void Close()  => _open = false;
+}

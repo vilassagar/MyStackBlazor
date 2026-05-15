@@ -15,13 +15,14 @@
             </svg>
         </button>
     </h3>
-    <!-- Content -->
-    @if (IsOpen)
-    {
-        <div class="overflow-hidden text-sm transition-all pb-4 pt-0">
-            @ChildContent
+    <!-- Animated content — CSS grid trick: 0fr → 1fr, no JS needed -->
+    <div style="display:grid; grid-template-rows:@(IsOpen ? "1fr" : "0fr"); transition:grid-template-rows 200ms ease-out;">
+        <div style="overflow:hidden;">
+            <div class="overflow-hidden pb-4 pt-0 text-sm">
+                @ChildContent
+            </div>
         </div>
-    }
+    </div>
 </div>
 
 @code {

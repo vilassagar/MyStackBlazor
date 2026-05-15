@@ -1,0 +1,49 @@
+@namespace MyStackBlazor.Components.Blocks.Landing
+
+<section class="bg-primary py-16 @Class">
+    <div class="mx-auto max-w-3xl px-6 text-center lg:px-8">
+        <h2 class="text-3xl font-bold tracking-tight text-primary-foreground sm:text-4xl">@Title</h2>
+        @if (!string.IsNullOrEmpty(Description))
+        {
+            <p class="mx-auto mt-4 max-w-xl text-primary-foreground/80">@Description</p>
+        }
+
+        <form class="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center" @onsubmit:preventDefault @onsubmit="Submit">
+            <input type="email"
+                   required
+                   placeholder="@Placeholder"
+                   @bind="_email"
+                   class="w-full rounded-lg border-0 bg-white/10 px-4 py-3 text-primary-foreground placeholder:text-primary-foreground/50 outline-none ring-1 ring-white/20 focus:ring-2 focus:ring-white sm:max-w-xs" />
+            <button type="submit"
+                    disabled="@_submitted"
+                    class="rounded-lg bg-white px-6 py-3 text-sm font-semibold text-primary shadow-sm transition hover:bg-white/90 disabled:opacity-60">
+                @(_submitted ? "Subscribed ✓" : ButtonText)
+            </button>
+        </form>
+
+        @if (!string.IsNullOrEmpty(Note))
+        {
+            <p class="mt-4 text-xs text-primary-foreground/60">@Note</p>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter] public string Title       { get; set; } = "Stay in the loop";
+    [Parameter] public string? Description { get; set; } = "Get notified about new components, updates, and releases.";
+    [Parameter] public string Placeholder  { get; set; } = "Enter your email";
+    [Parameter] public string ButtonText   { get; set; } = "Subscribe";
+    [Parameter] public string? Note        { get; set; } = "No spam. Unsubscribe at any time.";
+    [Parameter] public EventCallback<string> OnSubscribe { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private string _email     = "";
+    private bool   _submitted = false;
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(_email)) return;
+        await OnSubscribe.InvokeAsync(_email);
+        _submitted = true;
+    }
+}
