@@ -190,6 +190,34 @@ window.MyStackBlazor = {
     },
 
     // ----------------------------------------------------------------
+    //  File download — triggers browser save-as from bytes or URL
+    // ----------------------------------------------------------------
+    downloadFile(fileName, contentType, base64) {
+        const bytes = atob(base64);
+        const buf = new Uint8Array(bytes.length);
+        for (let i = 0; i < bytes.length; i++) buf[i] = bytes.charCodeAt(i);
+        const blob = new Blob([buf], { type: contentType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    },
+
+    downloadFromUrl(url, fileName) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName || '';
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    },
+
+    // ----------------------------------------------------------------
     //  File dropzone — bridges drag-drop onto <InputFile>
     // ----------------------------------------------------------------
     setupDropzone(dropzoneId, inputId) {

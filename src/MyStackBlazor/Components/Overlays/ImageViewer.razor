@@ -1,0 +1,196 @@
+@namespace MyStackBlazor.Components.Overlays
+
+@if (IsOpen && Images.Count > 0)
+{
+    <div class="fixed inset-0 z-50 flex flex-col outline-none"
+         tabindex="-1"
+         @ref="_containerRef"
+         @onkeydown="OnKeyDown">
+
+        <!-- Backdrop -->
+        <div class="fixed inset-0 bg-black/95"></div>
+
+        <!-- Top bar -->
+        <div class="relative z-10 flex flex-shrink-0 items-center justify-between px-4 py-3">
+            <span class="text-sm text-white/60">@(CurrentIndex + 1) / @Images.Count</span>
+
+            @if (!string.IsNullOrEmpty(CurrentImage?.Caption))
+            {
+                <span class="flex-1 truncate px-4 text-center text-sm text-white/90">@CurrentImage.Caption</span>
+            }
+            else
+            {
+                <span class="flex-1"></span>
+            }
+
+            <div class="flex items-center gap-1">
+                <button type="button" @onclick="ZoomOut" disabled="@(_zoom <= MinZoom)"
+                        title="Zoom out"
+                        class="rounded-md p-2 text-white/70 transition-colors hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-30">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+                    </svg>
+                </button>
+                <span class="min-w-[3rem] text-center text-xs text-white/50">@($"{(int)(_zoom * 100)}%")</span>
+                <button type="button" @onclick="ZoomIn" disabled="@(_zoom >= MaxZoom)"
+                        title="Zoom in"
+                        class="rounded-md p-2 text-white/70 transition-colors hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-30">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                    </svg>
+                </button>
+                <button type="button" @onclick="ResetZoom" title="Reset zoom"
+                        class="rounded-md p-2 text-white/70 transition-colors hover:bg-white/10 hover:text-white">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                </button>
+                <div class="mx-2 h-5 w-px bg-white/20"></div>
+                <button type="button" @onclick="CloseViewer" title="Close (Esc)"
+                        class="rounded-md p-2 text-white/70 transition-colors hover:bg-white/10 hover:text-white">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Image stage — click backdrop to close -->
+        <div class="relative z-10 flex flex-1 items-center justify-center overflow-hidden"
+             @onclick="CloseViewer">
+
+            @if (Images.Count > 1)
+            {
+                <button type="button"
+                        @onclick:stopPropagation="true"
+                        @onclick="PrevImage"
+                        disabled="@(CurrentIndex == 0)"
+                        title="Previous (←)"
+                        class="absolute left-3 z-20 rounded-full bg-black/40 p-3 text-white transition-all hover:bg-black/70 disabled:pointer-events-none disabled:opacity-20">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+            }
+
+            <img src="@CurrentImage?.Src"
+                 alt="@(CurrentImage?.Alt ?? CurrentImage?.Caption ?? "")"
+                 @onclick:stopPropagation="true"
+                 style="transform: scale(@_zoom.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)); transition: transform 0.2s ease; max-height: 75vh; max-width: 90vw; object-fit: contain;"
+                 class="select-none rounded" />
+
+            @if (Images.Count > 1)
+            {
+                <button type="button"
+                        @onclick:stopPropagation="true"
+                        @onclick="NextImage"
+                        disabled="@(CurrentIndex == Images.Count - 1)"
+                        title="Next (→)"
+                        class="absolute right-3 z-20 rounded-full bg-black/40 p-3 text-white transition-all hover:bg-black/70 disabled:pointer-events-none disabled:opacity-20">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
+            }
+        </div>
+
+        <!-- Thumbnail strip -->
+        @if (Images.Count > 1)
+        {
+            <div class="relative z-10 flex flex-shrink-0 items-center justify-center gap-2 overflow-x-auto px-4 py-3">
+                @for (int i = 0; i < Images.Count; i++)
+                {
+                    var idx = i;
+                    <button type="button"
+                            @onclick="() => GoToImage(idx)"
+                            class="@($"h-14 w-14 flex-shrink-0 overflow-hidden rounded border-2 transition-all {(idx == CurrentIndex ? "border-white scale-105" : "border-transparent opacity-50 hover:opacity-80")}")">
+                        <img src="@Images[idx].Src" alt="@Images[idx].Alt"
+                             class="h-full w-full object-cover" />
+                    </button>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    public sealed class ImageItem
+    {
+        public string Src { get; set; } = "";
+        public string? Alt { get; set; }
+        public string? Caption { get; set; }
+    }
+
+    private const double MinZoom  = 0.25;
+    private const double MaxZoom  = 4.0;
+    private const double ZoomStep = 0.25;
+
+    [Parameter] public List<ImageItem> Images { get; set; } = [];
+    [Parameter] public int CurrentIndex { get; set; }
+    [Parameter] public EventCallback<int> CurrentIndexChanged { get; set; }
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+
+    private double _zoom = 1.0;
+    private ElementReference _containerRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsOpen)
+            await _containerRef.FocusAsync();
+    }
+
+    private ImageItem? CurrentImage =>
+        CurrentIndex >= 0 && CurrentIndex < Images.Count ? Images[CurrentIndex] : null;
+
+    private async Task CloseViewer()
+    {
+        _zoom  = 1.0;
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+
+    private async Task PrevImage()
+    {
+        if (CurrentIndex <= 0) return;
+        _zoom = 1.0;
+        CurrentIndex--;
+        await CurrentIndexChanged.InvokeAsync(CurrentIndex);
+    }
+
+    private async Task NextImage()
+    {
+        if (CurrentIndex >= Images.Count - 1) return;
+        _zoom = 1.0;
+        CurrentIndex++;
+        await CurrentIndexChanged.InvokeAsync(CurrentIndex);
+    }
+
+    private async Task GoToImage(int index)
+    {
+        _zoom        = 1.0;
+        CurrentIndex = index;
+        await CurrentIndexChanged.InvokeAsync(CurrentIndex);
+    }
+
+    private void ZoomIn()   => _zoom = Math.Min(MaxZoom, _zoom + ZoomStep);
+    private void ZoomOut()  => _zoom = Math.Max(MinZoom, _zoom - ZoomStep);
+    private void ResetZoom() => _zoom = 1.0;
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "Escape":      await CloseViewer(); break;
+            case "ArrowLeft":   await PrevImage();   break;
+            case "ArrowRight":  await NextImage();   break;
+            case "+": case "=": ZoomIn();            break;
+            case "-":           ZoomOut();           break;
+            case "0":           ResetZoom();         break;
+        }
+    }
+}

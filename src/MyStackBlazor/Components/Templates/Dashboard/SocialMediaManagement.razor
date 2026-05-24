@@ -10,7 +10,7 @@
                    UserName="Jordan Lee"
                    UserInitials="JL"
                    NotificationCount="12"
-                   Breadcrumbs="@[new("Dashboard"), new("Analytics")]" />
+                   Breadcrumbs="@_breadcrumbs" />
 
         <main class="flex-1 overflow-y-auto p-6">
             <div class="mb-6 flex items-center justify-between">
@@ -133,6 +133,8 @@
         new("Inbox",       "#", "<svg class='h-4 w-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'><polyline points='22 12 16 12 14 15 10 15 8 12 2 12'/><path d='M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z'/></svg>"),
         new("Settings",    "#", "<svg class='h-4 w-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'><circle cx='12' cy='12' r='3'/></svg>"),
     ];
+
+    private IList<NavBreadcrumb> _breadcrumbs = [new("Dashboard"), new("Analytics")];
 
     private record PostRow(string Content, string Platform, string Scheduled, string Author, string EstEngagement, string Status);
     private static readonly IList<PostRow> _posts =

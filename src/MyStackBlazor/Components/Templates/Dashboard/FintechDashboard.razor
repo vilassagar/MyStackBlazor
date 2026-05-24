@@ -10,7 +10,7 @@
                    UserName="Sarah Chen"
                    UserInitials="SC"
                    NotificationCount="5"
-                   Breadcrumbs="@[new("Dashboard")]" />
+                   Breadcrumbs="@_breadcrumbs" />
 
         <main class="flex-1 overflow-y-auto p-6">
             <div class="mb-6 flex items-center justify-between">
@@ -130,4 +130,6 @@
         new("TXN-98227", "Maria Garcia",    "$120",    "Wallet",  "16 May 12:10", "Completed", false),
         new("TXN-98226", "Unknown Device",  "$3,400",  "Card",    "16 May 11:58", "Flagged",   false),
     ];
+
+    private IList<NavBreadcrumb> _breadcrumbs = [new("Dashboard")];
 }

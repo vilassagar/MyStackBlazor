@@ -1,0 +1,405 @@
+@namespace MyStackBlazor.Components.Navigation
+@using S = MyStackBlazor.Components.Navigation.WorkflowStep.StepStatus
+
+@if (Orientation == "vertical")
+{
+    <!-- ═══════════════════════════════════════════ VERTICAL ══ -->
+    <div class="@ContainerClass" @attributes="AdditionalAttributes">
+
+        <div class="flex gap-0">
+
+            <!-- Left spine: circles + connectors -->
+            <div class="flex flex-col items-center">
+                @for (int i = 0; i < _steps.Count; i++)
+                {
+                    var idx  = i;
+                    var step = _steps[i];
+                    var st   = ResolveStatus(step, idx);
+                    var last = idx == _steps.Count - 1;
+
+                    <button type="button"
+                            class="@IndicatorClass(step, st) @SizeClass(step) relative z-10 flex flex-shrink-0 items-center justify-center rounded-full font-semibold transition-all"
+                            style="@IndicatorStyle(step, st)"
+                            disabled="@(Linear && idx > _activeIndex)"
+                            aria-label="@StepAriaLabel(idx, step)"
+                            @onclick="() => GoToStep(idx)">
+                        @IndicatorContent(step, idx, st)
+                    </button>
+
+                    @if (!last && ShowConnector)
+                    {
+                        var filled = IsReached(idx);
+                        <div class="my-0.5 w-0.5 flex-1 min-h-6 rounded-full transition-colors @(filled && string.IsNullOrEmpty(step.Color) ? "bg-primary" : "bg-border")"
+                             style="@(filled && !string.IsNullOrEmpty(step.Color) ? $"background-color:{step.Color};" : "")">
+                        </div>
+                    }
+                    else if (!last)
+                    {
+                        <div class="min-h-6"></div>
+                    }
+                }
+            </div>
+
+            <!-- Right info column -->
+            <div class="ml-4 flex flex-1 flex-col">
+                @for (int i = 0; i < _steps.Count; i++)
+                {
+                    var step = _steps[i];
+                    var st   = ResolveStatus(step, i);
+                    var last = i == _steps.Count - 1;
+
+                    <div class="@(!last ? "pb-7" : "") pt-0.5">
+                        @StepLabel(step, st, false)
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (ChildContent is not null)
+        {
+            <div class="mt-4">
+                <CascadingValue Value="this">
+                    @ChildContent
+                </CascadingValue>
+            </div>
+        }
+
+        @NavButtons
+    </div>
+}
+else
+{
+    <!-- ══════════════════════════════════════════ HORIZONTAL ══ -->
+    <div class="@ContainerClass" @attributes="AdditionalAttributes">
+
+        <div class="flex">
+            @for (int i = 0; i < _steps.Count; i++)
+            {
+                var idx   = i;
+                var step  = _steps[i];
+                var st    = ResolveStatus(step, idx);
+                var first = idx == 0;
+                var last  = idx == _steps.Count - 1;
+
+                <div class="relative flex flex-1 flex-col items-center">
+
+                    @* ── Left half-connector ─────────────────── *@
+                    @if (!first && ShowConnector)
+                    {
+                        var prevFilled = IsReached(idx - 1);
+                        var prevColor  = _steps[idx - 1].Color;
+                        <div class="absolute right-1/2 left-0 h-0.5 rounded-full transition-colors @(prevFilled && string.IsNullOrEmpty(prevColor) ? "bg-primary" : prevFilled ? "" : "bg-border")"
+                             style="top:@ConnectorTop;@(!string.IsNullOrEmpty(prevColor) && prevFilled ? $"background-color:{prevColor};" : "")"></div>
+                    }
+
+                    @* ── Right half-connector ────────────────── *@
+                    @if (!last && ShowConnector)
+                    {
+                        var selfFilled = IsReached(idx);
+                        var selfColor  = step.Color;
+                        <div class="absolute left-1/2 right-0 h-0.5 rounded-full transition-colors @(selfFilled && string.IsNullOrEmpty(selfColor) ? "bg-primary" : selfFilled ? "" : "bg-border")"
+                             style="top:@ConnectorTop;@(!string.IsNullOrEmpty(selfColor) && selfFilled ? $"background-color:{selfColor};" : "")"></div>
+                    }
+
+                    @* ── Circle ──────────────────────────────── *@
+                    <button type="button"
+                            class="@IndicatorClass(step, st) @SizeClass(step) relative z-10 flex flex-shrink-0 items-center justify-center rounded-full font-semibold transition-all"
+                            style="@IndicatorStyle(step, st)"
+                            disabled="@(Linear && idx > _activeIndex)"
+                            aria-label="@StepAriaLabel(idx, step)"
+                            @onclick="() => GoToStep(idx)">
+                        @IndicatorContent(step, idx, st)
+                    </button>
+
+                    @* ── Label below ─────────────────────────── *@
+                    <div class="mt-2 w-full px-1">
+                        @StepLabel(step, st, true)
+                    </div>
+                </div>
+            }
+        </div>
+
+        @if (ChildContent is not null)
+        {
+            <div class="mt-6">
+                <CascadingValue Value="this">
+                    @ChildContent
+                </CascadingValue>
+            </div>
+        }
+
+        @NavButtons
+    </div>
+}
+
+@code {
+    // ── Parameters ─────────────────────────────────────────────────
+    [Parameter] public RenderFragment?    ChildContent        { get; set; }
+    [Parameter] public string             Orientation         { get; set; } = "horizontal";
+    [Parameter] public string             Size                { get; set; } = "default";
+    [Parameter] public bool               Linear              { get; set; } = true;
+    [Parameter] public bool               ShowNavigation      { get; set; } = true;
+    [Parameter] public bool               ShowConnector       { get; set; } = true;
+    [Parameter] public int                ActiveStep          { get; set; }
+    [Parameter] public EventCallback<int> ActiveStepChanged   { get; set; }
+    [Parameter] public EventCallback<int> OnStepChanged       { get; set; }
+    [Parameter] public EventCallback      OnComplete          { get; set; }
+    [Parameter] public string?            Class               { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>?    AdditionalAttributes { get; set; }
+
+    // ── Internal state ──────────────────────────────────────────────
+    internal readonly List<WorkflowStep> _steps = [];
+    private int _activeIndex;
+
+    private string ContainerClass => $"space-y-4 {Class}".Trim();
+
+    protected override void OnParametersSet() => _activeIndex = ActiveStep;
+
+    // ── Step registration ───────────────────────────────────────────
+    internal void AddStep(WorkflowStep step)    { _steps.Add(step); StateHasChanged(); }
+    internal void RemoveStep(WorkflowStep step) => _steps.Remove(step);
+    internal bool IsActiveStep(WorkflowStep step) => _steps.IndexOf(step) == _activeIndex;
+
+    // ── Navigation ──────────────────────────────────────────────────
+    public async Task GoToStep(int idx)
+    {
+        if (idx < 0 || idx >= _steps.Count) return;
+        if (Linear && idx > _activeIndex) return;
+        _activeIndex = idx;
+        await ActiveStepChanged.InvokeAsync(idx);
+        await OnStepChanged.InvokeAsync(idx);
+    }
+
+    public async Task Next()
+    {
+        if (_activeIndex >= _steps.Count - 1) return;
+        _steps[_activeIndex].RuntimeStatus = S.Completed;
+        _activeIndex++;
+        await ActiveStepChanged.InvokeAsync(_activeIndex);
+        await OnStepChanged.InvokeAsync(_activeIndex);
+    }
+
+    public async Task Previous()
+    {
+        if (_activeIndex <= 0) return;
+        _activeIndex--;
+        await ActiveStepChanged.InvokeAsync(_activeIndex);
+        await OnStepChanged.InvokeAsync(_activeIndex);
+    }
+
+    public async Task Complete()
+    {
+        _steps[_activeIndex].RuntimeStatus = S.Completed;
+        await OnComplete.InvokeAsync();
+    }
+
+    // ── Status resolution ───────────────────────────────────────────
+    private S ResolveStatus(WorkflowStep step, int idx)
+    {
+        if (step.RuntimeStatus.HasValue)    return step.RuntimeStatus.Value;
+        if (step.Status != S.Pending)       return step.Status;
+        if (idx == _activeIndex)            return S.Active;
+        if (idx < _activeIndex)             return S.Completed;
+        return S.Pending;
+    }
+
+    private bool IsReached(int idx) =>
+        ResolveStatus(_steps[idx], idx) is S.Completed or S.Active or S.InProgress;
+
+    // ── Aria label (extracted to avoid Razor parser issues with quotes) ─
+    private static string StepAriaLabel(int idx, WorkflowStep step) =>
+        string.IsNullOrEmpty(step.Title)
+            ? $"Step {idx + 1}"
+            : $"Step {idx + 1}: {step.Title}";
+
+    // ── Size helpers ────────────────────────────────────────────────
+    private string SizeClass(WorkflowStep step)
+    {
+        var s = string.IsNullOrEmpty(step.Size) ? Size : step.Size;
+        return s switch
+        {
+            "xs"  => "h-6  w-6  text-[10px]",
+            "sm"  => "h-8  w-8  text-xs",
+            "lg"  => "h-12 w-12 text-base",
+            "xl"  => "h-16 w-16 text-xl",
+            _     => "h-10 w-10 text-sm",
+        };
+    }
+
+    private string IconSizeClass(WorkflowStep step)
+    {
+        var s = string.IsNullOrEmpty(step.Size) ? Size : step.Size;
+        return s switch
+        {
+            "xs"  => "h-2.5 w-2.5",
+            "sm"  => "h-3.5 w-3.5",
+            "lg"  => "h-5   w-5",
+            "xl"  => "h-7   w-7",
+            _     => "h-4   w-4",
+        };
+    }
+
+    private string ConnectorTop => Size switch
+    {
+        "xs"  => "12px",
+        "sm"  => "16px",
+        "lg"  => "24px",
+        "xl"  => "32px",
+        _     => "20px",
+    };
+
+    // ── Indicator class & style ─────────────────────────────────────
+    private string IndicatorClass(WorkflowStep step, S status)
+    {
+        var ring = status == S.Active ? " ring-4 ring-offset-2 ring-offset-background" : "";
+        if (!string.IsNullOrEmpty(step.Color)) return $"border-2{ring}";
+        return status switch
+        {
+            S.Active     => $"border-2 border-primary bg-primary text-primary-foreground shadow-md{ring} ring-primary/20",
+            S.Completed  => "border-2 border-emerald-500 bg-emerald-500 text-white shadow-sm",
+            S.Error      => "border-2 border-destructive bg-destructive text-destructive-foreground shadow-sm",
+            S.InProgress => "border-2 border-amber-400 bg-amber-400/15 text-amber-700 dark:text-amber-400",
+            S.Skipped    => "border-2 border-muted bg-muted text-muted-foreground opacity-60",
+            _            => "border-2 border-border bg-background text-muted-foreground",
+        };
+    }
+
+    private string IndicatorStyle(WorkflowStep step, S status)
+    {
+        if (string.IsNullOrEmpty(step.Color)) return "";
+        var glow = status == S.Active
+            ? $" box-shadow:0 0 0 4px color-mix(in srgb,{step.Color} 25%,transparent);"
+            : "";
+        return status == S.Pending
+            ? $"border-color:{step.Color};color:{step.Color};"
+            : $"background-color:{step.Color};border-color:{step.Color};color:#fff;{glow}";
+    }
+
+    // ── Indicator inner content ─────────────────────────────────────
+    private RenderFragment IndicatorContent(WorkflowStep step, int idx, S status) => __builder =>
+    {
+        if (step.Icon is not null)               { __builder.AddContent(0, step.Icon); return; }
+        if (!string.IsNullOrEmpty(step.Label))   { __builder.AddContent(1, step.Label); return; }
+
+        var ic = IconSizeClass(step);
+        switch (status)
+        {
+            case S.Completed:
+                __builder.AddMarkupContent(2, $"""<svg class="{ic}" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>""");
+                break;
+            case S.Error:
+                __builder.AddMarkupContent(3, $"""<svg class="{ic}" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>""");
+                break;
+            case S.Skipped:
+                __builder.AddMarkupContent(4, $"""<svg class="{ic}" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg>""");
+                break;
+            case S.InProgress:
+                __builder.AddMarkupContent(5, $"""<svg class="{ic} animate-spin" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path opacity=".3" d="M12 2a10 10 0 100 20A10 10 0 0012 2z"/><path d="M12 2a10 10 0 0110 10" stroke-linecap="round"/></svg>""");
+                break;
+            default:
+                __builder.AddContent(6, (idx + 1).ToString());
+                break;
+        }
+    };
+
+    // ── Step label block ────────────────────────────────────────────
+    private RenderFragment StepLabel(WorkflowStep step, S status, bool centered) => __builder =>
+    {
+        var align  = centered ? "items-center text-center" : "items-start";
+        var active = status is S.Active or S.Completed or S.InProgress or S.Error;
+
+        __builder.OpenElement(0, "div");
+        __builder.AddAttribute(1, "class", $"flex flex-col gap-0.5 {align}");
+
+        if (!string.IsNullOrEmpty(step.Title))
+        {
+            __builder.OpenElement(2, "span");
+            __builder.AddAttribute(3, "class",
+                $"text-sm font-semibold leading-tight {(active ? "text-foreground" : "text-muted-foreground")}");
+            __builder.AddContent(4, step.Title);
+            __builder.CloseElement();
+        }
+
+        if (!string.IsNullOrEmpty(step.Description))
+        {
+            __builder.OpenElement(5, "span");
+            __builder.AddAttribute(6, "class", "text-xs text-muted-foreground leading-tight");
+            __builder.AddContent(7, step.Description);
+            __builder.CloseElement();
+        }
+
+        if (!string.IsNullOrEmpty(step.StatusText))
+        {
+            __builder.OpenElement(8, "span");
+            __builder.AddAttribute(9, "class",
+                "mt-0.5 inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide");
+            __builder.AddAttribute(10, "style", StatusBadgeStyle(step, status));
+            __builder.AddContent(11, step.StatusText);
+            __builder.CloseElement();
+        }
+
+        __builder.CloseElement();
+    };
+
+    private static string StatusBadgeStyle(WorkflowStep step, S status)
+    {
+        if (!string.IsNullOrEmpty(step.Color))
+            return $"background-color:color-mix(in srgb,{step.Color} 15%,transparent);color:{step.Color};";
+        return status switch
+        {
+            S.Active     => "background-color:rgb(59 130 246/0.12);color:rgb(37 99 235);",
+            S.Completed  => "background-color:rgb(16 185 129/0.12);color:rgb(5 150 105);",
+            S.Error      => "background-color:rgb(239 68 68/0.12);color:rgb(220 38 38);",
+            S.InProgress => "background-color:rgb(245 158 11/0.12);color:rgb(180 83 9);",
+            S.Skipped    => "background-color:rgb(107 114 128/0.1);color:rgb(75 85 99);",
+            _            => "background-color:rgb(107 114 128/0.08);color:rgb(107 114 128);",
+        };
+    }
+
+    // ── Navigation buttons ──────────────────────────────────────────
+    private RenderFragment NavButtons => __builder =>
+    {
+        if (!ShowNavigation || _steps.Count == 0) return;
+
+        var isLast = _activeIndex == _steps.Count - 1;
+
+        __builder.OpenElement(0, "div");
+        __builder.AddAttribute(1, "class", "flex items-center justify-between border-t pt-4");
+
+        __builder.OpenElement(2, "button");
+        __builder.AddAttribute(3, "type", "button");
+        __builder.AddAttribute(4, "class",
+            "inline-flex items-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-40");
+        __builder.AddAttribute(5, "disabled", _activeIndex == 0);
+        __builder.AddAttribute(6, "onclick", EventCallback.Factory.Create(this, Previous));
+        __builder.AddMarkupContent(7,
+            """<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>Back""");
+        __builder.CloseElement();
+
+        __builder.OpenElement(8, "span");
+        __builder.AddAttribute(9, "class", "text-xs tabular-nums text-muted-foreground");
+        __builder.AddContent(10, $"{_activeIndex + 1} / {_steps.Count}");
+        __builder.CloseElement();
+
+        __builder.OpenElement(11, "button");
+        __builder.AddAttribute(12, "type", "button");
+        __builder.AddAttribute(13, "class",
+            "inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90");
+        if (isLast)
+        {
+            __builder.AddAttribute(14, "onclick", EventCallback.Factory.Create(this, Complete));
+            __builder.AddMarkupContent(15,
+                """Finish<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>""");
+        }
+        else
+        {
+            __builder.AddAttribute(14, "onclick", EventCallback.Factory.Create(this, Next));
+            __builder.AddMarkupContent(15,
+                """Next<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>""");
+        }
+        __builder.CloseElement();
+
+        __builder.CloseElement();
+    };
+}

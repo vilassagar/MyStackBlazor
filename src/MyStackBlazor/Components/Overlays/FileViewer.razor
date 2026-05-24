@@ -1,0 +1,170 @@
+@namespace MyStackBlazor.Components.Overlays
+
+@if (IsOpen)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <!-- Backdrop -->
+        <div class="fixed inset-0 bg-black/80 animate-fade-in" @onclick="CloseViewer"></div>
+
+        <!-- Panel -->
+        <div class="relative z-50 flex w-full max-w-4xl flex-col overflow-hidden rounded-lg border bg-background shadow-2xl animate-fade-in"
+             style="max-height: 90vh;">
+
+            <!-- Header -->
+            <div class="flex flex-shrink-0 items-center justify-between border-b bg-muted/30 px-4 py-3">
+                <div class="flex min-w-0 items-center gap-2 text-muted-foreground">
+                    @FileIcon
+                    <span class="truncate text-sm font-medium text-foreground">@FileName</span>
+                </div>
+                <div class="ml-4 flex flex-shrink-0 items-center gap-2">
+                    @if (!string.IsNullOrEmpty(_sourceUrl))
+                    {
+                        <a href="@_sourceUrl" download="@FileName" target="_blank"
+                           class="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-muted">
+                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Download
+                        </a>
+                    }
+                    <button type="button"
+                            class="rounded-sm p-1.5 opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring"
+                            @onclick="CloseViewer"
+                            aria-label="Close">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Body -->
+            <div class="flex-1 overflow-auto bg-muted/10">
+                @if (_viewMode == ViewMode.Image)
+                {
+                    <div class="flex min-h-64 items-center justify-center p-4">
+                        <img src="@_sourceUrl" alt="@FileName"
+                             class="max-h-full max-w-full rounded object-contain"
+                             style="max-height: 70vh;" />
+                    </div>
+                }
+                else if (_viewMode == ViewMode.Pdf)
+                {
+                    <iframe src="@_sourceUrl"
+                            class="w-full border-0"
+                            style="min-height: 70vh; height: 70vh;"
+                            title="@FileName">
+                    </iframe>
+                }
+                else if (_viewMode == ViewMode.Text)
+                {
+                    <pre class="min-h-64 whitespace-pre-wrap break-words p-4 text-sm font-mono">@_textContent</pre>
+                }
+                else
+                {
+                    <div class="flex min-h-64 flex-col items-center justify-center gap-4 p-8 text-center">
+                        <svg class="h-16 w-16 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <div>
+                            <p class="font-medium">Preview not available</p>
+                            <p class="mt-1 text-sm text-muted-foreground">This file type cannot be previewed.</p>
+                        </div>
+                        @if (!string.IsNullOrEmpty(_sourceUrl))
+                        {
+                            <a href="@_sourceUrl" download="@FileName"
+                               class="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                Download File
+                            </a>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private enum ViewMode { Image, Pdf, Text, Unsupported }
+
+    [Parameter] public string? Url { get; set; }
+    [Parameter] public byte[]? Data { get; set; }
+    [Parameter] public string FileName { get; set; } = "file";
+    [Parameter] public string ContentType { get; set; } = "";
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private ViewMode _viewMode;
+    private string? _sourceUrl;
+    private string? _textContent;
+
+    protected override void OnParametersSet()
+    {
+        if (!IsOpen) return;
+        var ct = ResolveContentType();
+        _viewMode = ct switch
+        {
+            var s when s.StartsWith("image/", StringComparison.OrdinalIgnoreCase) => ViewMode.Image,
+            "application/pdf"                                                      => ViewMode.Pdf,
+            var s when s.StartsWith("text/", StringComparison.OrdinalIgnoreCase)  => ViewMode.Text,
+            "application/json" or "application/xml"                               => ViewMode.Text,
+            _                                                                      => ViewMode.Unsupported,
+        };
+
+        if (Data is not null)
+        {
+            _sourceUrl = $"data:{ct};base64,{Convert.ToBase64String(Data)}";
+            if (_viewMode == ViewMode.Text)
+                _textContent = System.Text.Encoding.UTF8.GetString(Data);
+        }
+        else
+        {
+            _sourceUrl = Url;
+        }
+    }
+
+    private string ResolveContentType()
+    {
+        if (!string.IsNullOrEmpty(ContentType)) return ContentType;
+        return Path.GetExtension(FileName).ToLowerInvariant() switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png"            => "image/png",
+            ".gif"            => "image/gif",
+            ".webp"           => "image/webp",
+            ".svg"            => "image/svg+xml",
+            ".pdf"            => "application/pdf",
+            ".txt"            => "text/plain",
+            ".csv"            => "text/csv",
+            ".html" or ".htm" => "text/html",
+            ".json"           => "application/json",
+            ".xml"            => "text/xml",
+            ".md"             => "text/plain",
+            _                 => "application/octet-stream",
+        };
+    }
+
+    private MarkupString FileIcon => _viewMode switch
+    {
+        ViewMode.Image => new MarkupString(
+            """<svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>"""),
+        ViewMode.Pdf => new MarkupString(
+            """<svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>"""),
+        _ => new MarkupString(
+            """<svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>"""),
+    };
+
+    private async Task CloseViewer()
+    {
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+}

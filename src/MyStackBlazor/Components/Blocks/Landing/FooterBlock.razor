@@ -18,18 +18,16 @@
             </div>
 
             <!-- Link sections -->
-            @foreach (var section in Sections)
+            @foreach (var footerSection in Sections)
             {
                 <div>
-                    <h3 class="mb-4 text-sm font-semibold uppercase tracking-widest text-foreground">@section.Title</h3>
+                    <h3 class="mb-4 text-sm font-semibold uppercase tracking-widest text-foreground">@footerSection.Title</h3>
                     <ul class="space-y-2.5">
-                        @foreach (var link in section.Links)
+                        @foreach (var link in footerSection.Links)
                         {
                             <li>
                                 <a href="@link.Href"
-                                   class="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                                   target="@(link.IsExternal ? "_blank" : null)"
-                                   rel="@(link.IsExternal ? "noopener noreferrer" : null)">
+                                   class="text-sm text-muted-foreground transition-colors hover:text-foreground">
                                     @link.Text
                                 </a>
                             </li>
@@ -59,7 +57,7 @@
     private static readonly IList<FooterSection> DefaultSections =
     [
         new("Product",  [new("Components","#"), new("Building Blocks","#"), new("Templates","#"), new("Changelog","#")]),
-        new("Resources",[new("Documentation","#"), new("GitHub","#",true), new("Releases","#")]),
+        new("Resources",[new("Documentation","#"), new("GitHub","#"), new("Releases","#")]),
         new("Company",  [new("About","#"), new("Blog","#"), new("Contact","#")]),
     ];
 }
