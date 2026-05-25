@@ -86,6 +86,7 @@ Targets **.NET 10** — works on **Blazor WASM**, **Blazor Server**, and **.NET 
   - [Table](#table)
   - [DataTable](#datatable)
   - [TreeView](#treeview)
+- [Publishing the NuGet Package](#publishing-the-nuget-package)
 - [License](#license)
 
 ---
@@ -2191,6 +2192,166 @@ Hierarchical tree with expand/collapse and item selection.
         },
     ];
 }
+```
+
+---
+
+## Publishing the NuGet Package
+
+### Prerequisites
+
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- Node.js ≥ 18 (for Tailwind CSS compilation)
+- A [NuGet.org](https://www.nuget.org) account with an API key  
+  *(Settings → API Keys → Create → select **Push new packages and package versions**)*
+
+---
+
+### 1. Set the version
+
+Edit the `<Version>` tag in [src/MyStackBlazor/MyStackBlazor.csproj](src/MyStackBlazor/MyStackBlazor.csproj):
+
+```xml
+<Version>1.2.0</Version>
+```
+
+Or pass it at pack time with `-Version 1.2.0` (see below).
+
+---
+
+### 2. Build and pack
+
+Use the included PowerShell script — it compiles Tailwind CSS, builds in Release, and produces the `.nupkg`:
+
+```powershell
+# Default — reads version from .csproj
+.\pack.ps1
+
+# Override version at pack time
+.\pack.ps1 -Version 1.2.0
+
+# Skip Tailwind recompilation (e.g. CSS unchanged)
+.\pack.ps1 -SkipTailwind
+```
+
+The package is written to `nupkg\MyStackBlazor.<version>.nupkg`.
+
+**Manual equivalent** (without the script):
+
+```bash
+# 1. Compile Tailwind CSS
+cd src/MyStackBlazor
+npx @tailwindcss/cli -i ./tailwind/input.css -o ./wwwroot/css/mystackblazor.css --minify
+cd ../..
+
+# 2. Build + pack
+dotnet build  src/MyStackBlazor -c Release
+dotnet pack   src/MyStackBlazor -c Release --no-build -o nupkg
+```
+
+---
+
+### 3. Publish to NuGet.org
+
+```powershell
+dotnet nuget push nupkg\MyStackBlazor.1.2.0.nupkg `
+    --api-key  YOUR_NUGET_API_KEY `
+    --source   https://api.nuget.org/v3/index.json
+```
+
+> Tip: store the key in an environment variable to avoid exposing it in your shell history:
+>
+> ```powershell
+> $env:NUGET_API_KEY = "your-key-here"
+> dotnet nuget push nupkg\MyStackBlazor.1.2.0.nupkg `
+>     --api-key $env:NUGET_API_KEY `
+>     --source  https://api.nuget.org/v3/index.json
+> ```
+
+The package appears on NuGet.org within a few minutes and is fully searchable within ~30 minutes.
+
+---
+
+### 4. Publish to GitHub Packages (alternative)
+
+```powershell
+dotnet nuget push nupkg\MyStackBlazor.1.2.0.nupkg `
+    --api-key  YOUR_GITHUB_PAT `
+    --source   https://nuget.pkg.github.com/GITHUB_USERNAME/index.json
+```
+
+Consumers add the feed in their `nuget.config`:
+
+```xml
+<packageSources>
+  <add key="github" value="https://nuget.pkg.github.com/GITHUB_USERNAME/index.json" />
+</packageSources>
+```
+
+---
+
+### 5. Publish to a local / private feed
+
+```powershell
+# Add a local folder as a NuGet source (one-time setup)
+dotnet nuget add source C:\LocalFeed --name local
+
+# Copy the package to the local feed
+dotnet nuget push nupkg\MyStackBlazor.1.2.0.nupkg --source local
+```
+
+---
+
+### 6. Automate with GitHub Actions
+
+Create `.github/workflows/publish.yml`:
+
+```yaml
+name: Publish NuGet
+
+on:
+  push:
+    tags:
+      - 'v*'          # trigger on version tags: v1.2.0
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install npm deps
+        working-directory: src/MyStackBlazor
+        run: npm ci
+
+      - name: Build Tailwind CSS
+        working-directory: src/MyStackBlazor
+        run: npx @tailwindcss/cli -i ./tailwind/input.css -o ./wwwroot/css/mystackblazor.css --minify
+
+      - name: Pack
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          dotnet build src/MyStackBlazor -c Release /p:Version=$VERSION
+          dotnet pack  src/MyStackBlazor -c Release --no-build -o nupkg /p:Version=$VERSION
+
+      - name: Push to NuGet.org
+        run: dotnet nuget push nupkg/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+```
+
+Add `NUGET_API_KEY` as a repository secret (**Settings → Secrets and variables → Actions**), then tag a release to trigger the workflow:
+
+```bash
+git tag v1.2.0
+git push origin v1.2.0
 ```
 
 ---

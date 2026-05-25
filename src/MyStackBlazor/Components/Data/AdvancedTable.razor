@@ -1,0 +1,512 @@
+@namespace MyStackBlazor.Components.Data
+@typeparam TItem
+@using MyStackBlazor.Components.Navigation
+
+<div class="space-y-4">
+
+    <!-- ── Toolbar ── -->
+    <div class="flex flex-wrap items-center gap-2">
+
+        @if (ShowSearch)
+        {
+            <div class="relative flex-1 min-w-[180px] max-w-sm">
+                <svg class="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text"
+                       placeholder="@SearchPlaceholder"
+                       class="flex h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                       @bind="_searchText"
+                       @bind:event="oninput" />
+            </div>
+        }
+
+        @if (ShowAdvancedFilter && _filterableColumns.Any())
+        {
+            <button type="button"
+                    class="inline-flex h-9 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-sm font-medium shadow-sm hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    @onclick="() => _showFilterPanel = !_showFilterPanel">
+                <svg class="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                <span>Filters</span>
+                @if (_activeRuleCount > 0)
+                {
+                    <span class="ml-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold text-primary-foreground">
+                        @_activeRuleCount
+                    </span>
+                }
+            </button>
+        }
+
+        @ToolbarContent
+    </div>
+
+    <!-- ── Active filter chips (panel closed) ── -->
+    @if (!_showFilterPanel && _activeRuleCount > 0)
+    {
+        <div class="flex flex-wrap gap-1.5">
+            @foreach (var rule in _filterRules.Where(IsRuleActive))
+            {
+                var r = rule;
+                var colLabel = _filterableColumns.FirstOrDefault(c => c.Key == r.ColumnKey)?.Header ?? r.ColumnKey;
+                <span class="inline-flex items-center gap-1 rounded-full border bg-muted/50 px-2.5 py-0.5 text-xs text-muted-foreground">
+                    <span class="font-medium text-foreground">@colLabel</span>
+                    @GetOperatorLabel(r.Operator)
+                    <span class="font-medium text-foreground">@r.Value</span>
+                    @if (r.Operator == FilterOperator.Between)
+                    {
+                        <span>– @r.Value2</span>
+                    }
+                    <button type="button"
+                            class="ml-0.5 rounded-full hover:text-foreground"
+                            @onclick="() => { RemoveFilter(r); StateHasChanged(); }">
+                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </span>
+            }
+            <button type="button"
+                    class="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                    @onclick="ClearAllFilters">
+                Clear all
+            </button>
+        </div>
+    }
+
+    <!-- ── Filter panel ── -->
+    @if (_showFilterPanel && ShowAdvancedFilter)
+    {
+        <div class="rounded-lg border bg-card shadow-sm">
+            <div class="flex items-center justify-between border-b px-4 py-3">
+                <p class="text-sm font-semibold">Advanced Filters</p>
+                <div class="flex items-center gap-3">
+                    @if (_filterRules.Count > 0)
+                    {
+                        <button type="button"
+                                class="text-xs text-muted-foreground hover:text-foreground"
+                                @onclick="ClearAllFilters">
+                            Clear all
+                        </button>
+                    }
+                    <button type="button"
+                            class="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                            @onclick="() => _showFilterPanel = false">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="space-y-2 p-4">
+                @if (_filterRules.Count == 0)
+                {
+                    <p class="text-sm text-muted-foreground">No filters added. Click "+ Add filter" to start.</p>
+                }
+                else
+                {
+                    @foreach (var rule in _filterRules)
+                    {
+                        var r = rule;
+                        var colType = GetColumnDataType(r.ColumnKey);
+                        <div class="flex flex-wrap items-center gap-2">
+
+                            <!-- Column selector -->
+                            <select class="h-8 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring min-w-[140px]"
+                                    value="@r.ColumnKey"
+                                    @onchange="e => OnRuleColumnChanged(r, e.Value?.ToString())">
+                                <option value="">— Column —</option>
+                                @foreach (var col in _filterableColumns)
+                                {
+                                    <option value="@col.Key">@col.Header</option>
+                                }
+                            </select>
+
+                            <!-- Operator selector -->
+                            @if (!string.IsNullOrEmpty(r.ColumnKey))
+                            {
+                                <select class="h-8 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring min-w-[160px]"
+                                        value="@((int)r.Operator)"
+                                        @onchange="e => OnRuleOperatorChanged(r, e.Value?.ToString())">
+                                    @foreach (var op in GetOperatorsForType(colType))
+                                    {
+                                        <option value="@((int)op)">@GetOperatorLabel(op)</option>
+                                    }
+                                </select>
+
+                                <!-- Value input(s) -->
+                                @if (r.Operator == FilterOperator.Between)
+                                {
+                                    <input type="@GetInputType(colType)"
+                                           placeholder="From"
+                                           class="h-8 w-32 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                           value="@r.Value"
+                                           @onchange="e => { r.Value = e.Value?.ToString() ?? string.Empty; _currentPage = 1; StateHasChanged(); }" />
+                                    <span class="text-xs text-muted-foreground">and</span>
+                                    <input type="@GetInputType(colType)"
+                                           placeholder="To"
+                                           class="h-8 w-32 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                           value="@r.Value2"
+                                           @onchange="e => { r.Value2 = e.Value?.ToString() ?? string.Empty; _currentPage = 1; StateHasChanged(); }" />
+                                }
+                                else
+                                {
+                                    <input type="@GetInputType(colType)"
+                                           placeholder="Value…"
+                                           class="h-8 w-40 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                           value="@r.Value"
+                                           @oninput="e => { r.Value = e.Value?.ToString() ?? string.Empty; _currentPage = 1; StateHasChanged(); }" />
+                                }
+                            }
+
+                            <!-- Remove rule -->
+                            <button type="button"
+                                    class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                                    @onclick="() => RemoveFilter(r)">
+                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+                                    <path d="M10 11v6"></path>
+                                    <path d="M14 11v6"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    }
+                }
+
+                <button type="button"
+                        class="mt-1 inline-flex items-center gap-1 text-sm text-primary hover:underline underline-offset-2"
+                        @onclick="AddFilter">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Add filter
+                </button>
+            </div>
+        </div>
+    }
+
+    <!-- ── Table ── -->
+    <div class="rounded-md border overflow-auto">
+        <table class="w-full caption-bottom text-sm">
+            <thead class="[&_tr]:border-b sticky top-0 bg-background z-10">
+                <tr class="border-b transition-colors hover:bg-muted/50">
+                    @foreach (var col in Columns)
+                    {
+                        var c = col;
+                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground @(c.Sortable ? "cursor-pointer select-none" : "") @c.Class"
+                            @onclick="() => SortBy(c)">
+                            <div class="flex items-center gap-1">
+                                @c.Header
+                                @if (c.Sortable)
+                                {
+                                    @if (_sortColumn == c.Key)
+                                    {
+                                        <svg class="h-4 w-4 @(_sortAscending ? "" : "rotate-180") transition-transform"
+                                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <polyline points="18 15 12 9 6 15"></polyline>
+                                        </svg>
+                                    }
+                                    else
+                                    {
+                                        <svg class="h-4 w-4 opacity-25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                                            <polyline points="19 12 12 5 5 12"></polyline>
+                                        </svg>
+                                    }
+                                }
+                            </div>
+                        </th>
+                    }
+                </tr>
+            </thead>
+
+            <tbody class="[&_tr:last-child]:border-0">
+                @if (!_filteredItems.Any())
+                {
+                    <tr>
+                        <td colspan="@Columns.Count" class="h-24 text-center text-muted-foreground">
+                            @EmptyText
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var item in _pagedItems)
+                    {
+                        <tr class="border-b transition-colors hover:bg-muted/50">
+                            @foreach (var col in Columns)
+                            {
+                                <td class="p-4 align-middle @col.Class">
+                                    @if (col.Template is not null) { @col.Template(item) }
+                                    else { @col.Value?.Invoke(item)?.ToString() }
+                                </td>
+                            }
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ── Footer ── -->
+    <div class="flex items-center justify-between px-2">
+        <div class="text-sm text-muted-foreground">
+            @(_filteredItems.Count()) of @(Items.Count()) row(s)
+        </div>
+        @if (ShowPagination && _totalPages > 1)
+        {
+            <Pagination CurrentPage="_currentPage"
+                        TotalPages="_totalPages"
+                        CurrentPageChanged="p => _currentPage = p" />
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public IEnumerable<TItem> Items { get; set; } = [];
+    [Parameter] public List<AdvancedTableColumn<TItem>> Columns { get; set; } = [];
+    [Parameter] public bool ShowSearch { get; set; } = true;
+    [Parameter] public string SearchPlaceholder { get; set; } = "Search…";
+    [Parameter] public bool ShowAdvancedFilter { get; set; } = true;
+    [Parameter] public bool ShowPagination { get; set; } = true;
+    [Parameter] public int PageSize { get; set; } = 10;
+    [Parameter] public string EmptyText { get; set; } = "No results.";
+    [Parameter] public RenderFragment? ToolbarContent { get; set; }
+    [Parameter] public Func<TItem, string, bool>? SearchFilter { get; set; }
+
+    private string? _searchText;
+    private string? _sortColumn;
+    private bool _sortAscending = true;
+    private int _currentPage = 1;
+    private bool _showFilterPanel;
+    private readonly List<AdvancedFilterRule> _filterRules = [];
+
+    private List<AdvancedTableColumn<TItem>> _filterableColumns =>
+        Columns.Where(c => c.Filterable).ToList();
+
+    private int _activeRuleCount =>
+        _filterRules.Count(IsRuleActive);
+
+    private static bool IsRuleActive(AdvancedFilterRule r) =>
+        !string.IsNullOrEmpty(r.ColumnKey) &&
+        !string.IsNullOrEmpty(r.Value) &&
+        (r.Operator != FilterOperator.Between || !string.IsNullOrEmpty(r.Value2));
+
+    private IEnumerable<TItem> _filteredItems
+    {
+        get
+        {
+            var items = Items;
+
+            // Global search
+            if (!string.IsNullOrWhiteSpace(_searchText))
+            {
+                items = SearchFilter is not null
+                    ? items.Where(i => SearchFilter(i, _searchText))
+                    : items.Where(i => Columns
+                        .Select(c => c.Value?.Invoke(i)?.ToString() ?? "")
+                        .Any(v => v.Contains(_searchText, StringComparison.OrdinalIgnoreCase)));
+            }
+
+            // Advanced filter rules
+            var active = _filterRules.Where(IsRuleActive).ToList();
+            if (active.Count > 0)
+                items = items.Where(item => active.All(rule => ApplyRule(item, rule)));
+
+            // Column sort — respects DataType for correct ordering
+            if (_sortColumn is not null)
+            {
+                var col = Columns.FirstOrDefault(c => c.Key == _sortColumn);
+                if (col?.Value is not null)
+                {
+                    items = col.DataType switch
+                    {
+                        ColumnDataType.Number => _sortAscending
+                            ? items.OrderBy(i => ParseDouble(col.Value(i)))
+                            : items.OrderByDescending(i => ParseDouble(col.Value(i))),
+                        ColumnDataType.Date => _sortAscending
+                            ? items.OrderBy(i => ParseDate(col.Value(i)))
+                            : items.OrderByDescending(i => ParseDate(col.Value(i))),
+                        _ => _sortAscending
+                            ? items.OrderBy(i => col.Value(i)?.ToString())
+                            : items.OrderByDescending(i => col.Value(i)?.ToString())
+                    };
+                }
+            }
+
+            return items;
+        }
+    }
+
+    private IEnumerable<TItem> _pagedItems =>
+        ShowPagination
+            ? _filteredItems.Skip((_currentPage - 1) * PageSize).Take(PageSize)
+            : _filteredItems;
+
+    private int _totalPages =>
+        (int)Math.Ceiling(_filteredItems.Count() / (double)PageSize);
+
+    // ── Filter evaluation ──────────────────────────────────────────────────
+
+    private bool ApplyRule(TItem item, AdvancedFilterRule rule)
+    {
+        var col = Columns.FirstOrDefault(c => c.Key == rule.ColumnKey);
+        if (col?.Value is null) return true;
+
+        var raw = col.Value(item);
+        var cell = raw?.ToString() ?? "";
+
+        return rule.Operator switch
+        {
+            FilterOperator.Contains => cell.Contains(rule.Value, StringComparison.OrdinalIgnoreCase),
+            FilterOperator.StartsWith => cell.StartsWith(rule.Value, StringComparison.OrdinalIgnoreCase),
+            FilterOperator.EndsWith => cell.EndsWith(rule.Value, StringComparison.OrdinalIgnoreCase),
+            FilterOperator.Equals => cell.Equals(rule.Value, StringComparison.OrdinalIgnoreCase),
+            FilterOperator.NotEquals => !cell.Equals(rule.Value, StringComparison.OrdinalIgnoreCase),
+            FilterOperator.LessThan => Compare(raw, rule.Value, col.DataType) < 0,
+            FilterOperator.LessThanOrEqualTo => Compare(raw, rule.Value, col.DataType) <= 0,
+            FilterOperator.GreaterThan => Compare(raw, rule.Value, col.DataType) > 0,
+            FilterOperator.GreaterThanOrEqualTo => Compare(raw, rule.Value, col.DataType) >= 0,
+            FilterOperator.Between =>
+                Compare(raw, rule.Value, col.DataType) >= 0 &&
+                Compare(raw, rule.Value2, col.DataType) <= 0,
+            _ => true
+        };
+    }
+
+    private static int Compare(object? cellValue, string filterValue, ColumnDataType type)
+    {
+        if (type == ColumnDataType.Number &&
+            double.TryParse(cellValue?.ToString(), System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var cn) &&
+            double.TryParse(filterValue, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var fn))
+            return cn.CompareTo(fn);
+
+        if (type == ColumnDataType.Date &&
+            DateTime.TryParse(cellValue?.ToString(), out var cd) &&
+            DateTime.TryParse(filterValue, out var fd))
+            return cd.Date.CompareTo(fd.Date);
+
+        return string.Compare(cellValue?.ToString(), filterValue, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // ── Sort helpers ───────────────────────────────────────────────────────
+
+    private void SortBy(AdvancedTableColumn<TItem> col)
+    {
+        if (!col.Sortable) return;
+        if (_sortColumn == col.Key)
+            _sortAscending = !_sortAscending;
+        else { _sortColumn = col.Key; _sortAscending = true; }
+        _currentPage = 1;
+    }
+
+    // ── Filter rule management ─────────────────────────────────────────────
+
+    private void AddFilter()
+    {
+        var first = _filterableColumns.FirstOrDefault();
+        _filterRules.Add(new AdvancedFilterRule
+        {
+            ColumnKey = first?.Key ?? "",
+            Operator = first is not null ? GetOperatorsForType(first.DataType).First() : FilterOperator.Contains
+        });
+    }
+
+    private void RemoveFilter(AdvancedFilterRule rule)
+    {
+        _filterRules.Remove(rule);
+        _currentPage = 1;
+    }
+
+    private void ClearAllFilters()
+    {
+        _filterRules.Clear();
+        _currentPage = 1;
+    }
+
+    private void OnRuleColumnChanged(AdvancedFilterRule rule, string? key)
+    {
+        rule.ColumnKey = key ?? "";
+        rule.Value = "";
+        rule.Value2 = "";
+        var type = GetColumnDataType(rule.ColumnKey);
+        rule.Operator = GetOperatorsForType(type).First();
+        _currentPage = 1;
+        StateHasChanged();
+    }
+
+    private void OnRuleOperatorChanged(AdvancedFilterRule rule, string? opStr)
+    {
+        if (int.TryParse(opStr, out var opInt) && Enum.IsDefined(typeof(FilterOperator), opInt))
+        {
+            rule.Operator = (FilterOperator)opInt;
+            rule.Value2 = "";
+            StateHasChanged();
+        }
+    }
+
+    // ── Operator/type helpers ──────────────────────────────────────────────
+
+    private ColumnDataType GetColumnDataType(string key) =>
+        Columns.FirstOrDefault(c => c.Key == key)?.DataType ?? ColumnDataType.String;
+
+    private static IEnumerable<FilterOperator> GetOperatorsForType(ColumnDataType type) => type switch
+    {
+        ColumnDataType.String => [
+            FilterOperator.Contains, FilterOperator.StartsWith, FilterOperator.EndsWith,
+            FilterOperator.Equals, FilterOperator.NotEquals
+        ],
+        ColumnDataType.Number => [
+            FilterOperator.Equals, FilterOperator.NotEquals,
+            FilterOperator.LessThan, FilterOperator.LessThanOrEqualTo,
+            FilterOperator.GreaterThan, FilterOperator.GreaterThanOrEqualTo,
+            FilterOperator.Between
+        ],
+        ColumnDataType.Date => [
+            FilterOperator.Equals, FilterOperator.NotEquals,
+            FilterOperator.LessThan, FilterOperator.LessThanOrEqualTo,
+            FilterOperator.GreaterThan, FilterOperator.GreaterThanOrEqualTo,
+            FilterOperator.Between
+        ],
+        _ => [FilterOperator.Contains]
+    };
+
+    private static string GetOperatorLabel(FilterOperator op) => op switch
+    {
+        FilterOperator.Contains => "contains",
+        FilterOperator.StartsWith => "starts with",
+        FilterOperator.EndsWith => "ends with",
+        FilterOperator.Equals => "equals",
+        FilterOperator.NotEquals => "not equals",
+        FilterOperator.LessThan => "less than",
+        FilterOperator.LessThanOrEqualTo => "less than or equal to",
+        FilterOperator.GreaterThan => "greater than",
+        FilterOperator.GreaterThanOrEqualTo => "greater than or equal to",
+        FilterOperator.Between => "between",
+        _ => op.ToString()
+    };
+
+    private static string GetInputType(ColumnDataType type) => type switch
+    {
+        ColumnDataType.Number => "number",
+        ColumnDataType.Date => "date",
+        _ => "text"
+    };
+
+    private static double ParseDouble(object? v) =>
+        double.TryParse(v?.ToString(), System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : double.MinValue;
+
+    private static DateTime ParseDate(object? v) =>
+        DateTime.TryParse(v?.ToString(), out var d) ? d : DateTime.MinValue;
+}
