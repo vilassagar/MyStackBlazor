@@ -7,12 +7,12 @@
 
     <!-- NuGet Package Metadata -->
     <PackageId>MyStackBlazor</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Authors>Vilas Sagar</Authors>
     <Company>MyStackBlazor</Company>
     <Product>MyStackBlazor Component Library</Product>
     <Description>A modern Blazor component library styled with Tailwind CSS v4. Includes 70+ components: buttons, forms, navigation, overlays, data display, theme support (light/dark/system), and more. Works with Blazor WASM, Blazor Server, and .NET MAUI Blazor Hybrid.</Description>
-    <PackageTags>blazor;components;tailwindcss;ui;razor;dotnet;shadcn;dark-mode;maui</PackageTags>
+    <PackageTags>blazor;components;tailwindcss;ui;razor;dotnet;dark-mode;maui;advanced data components</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <!-- Drop a 128x128 icon.png in the repo root to enable package icon -->
