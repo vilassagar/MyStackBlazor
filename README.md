@@ -1,6 +1,6 @@
 # MyStackBlazor
 
-A modern Blazor component library styled with **Tailwind CSS v4**, inspired by shadcn/ui.  
+A modern Blazor component library styled with **Tailwind CSS v4**.  
 Targets **.NET 10** — works on **Blazor WASM**, **Blazor Server**, and **.NET MAUI Blazor Hybrid**.
 
 ---
