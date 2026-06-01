@@ -86,7 +86,6 @@ Targets **.NET 10** — works on **Blazor WASM**, **Blazor Server**, and **.NET 
   - [Table](#table)
   - [DataTable](#datatable)
   - [TreeView](#treeview)
-- [Publishing the NuGet Package](#publishing-the-nuget-package)
 - [License](#license)
 
 ---
