@@ -129,6 +129,21 @@
 
 ---
 
+## Charts
+
+> Pure SVG, zero JS dependencies. Light/dark themed via CSS custom properties. Hover tooltips, legends, accessible ARIA.
+
+| Status | Component | File | Notes |
+|--------|-----------|------|-------|
+| 🆕 | **BarChart** | `Components/Charts/BarChart.razor` | Grouped or stacked bars; multi-series; hover tooltip |
+| 🆕 | **GaugeChart** | `Components/Charts/GaugeChart.razor` | Half-circle gauge; threshold color zones; unit label |
+| 🆕 | **LineChart** | `Components/Charts/LineChart.razor` | Multi-series lines; optional area fill; hover tooltip |
+| 🆕 | **PieChart** | `Components/Charts/PieChart.razor` | Pie or donut; percentage labels; center label; hover tooltip |
+
+**Shared models** (`Components/Charts/ChartModels.cs`): `ChartSeries`, `ChartSegment`, `GaugeThreshold`
+
+---
+
 ## Overlays
 
 | Status | Component | File | Notes |
@@ -150,30 +165,24 @@
 
 The following categories need dedicated third-party rendering engines and are **not included** in MyStackBlazor. Recommended integrations are listed.
 
-### 📊 Charts
-All chart types require a dedicated charting library.
+### 📊 Charts (advanced)
+Basic charts (Line, Bar, Pie, Gauge) are now built-in — see [Charts](#charts) above. Complex types still require a library.
 
 | Component | Recommended Library |
 |-----------|-------------------|
-| Area Chart | [ApexCharts.Blazor](https://github.com/apexcharts/Blazor-ApexCharts) |
-| Bar / Column Chart | ApexCharts.Blazor |
-| Bubble Chart | ApexCharts.Blazor |
+| Bubble / Scatter Chart | [ApexCharts.Blazor](https://github.com/apexcharts/Blazor-ApexCharts) |
 | Candlestick / OHLC / Stock Chart | ApexCharts.Blazor |
-| Donut / Pie Chart | ApexCharts.Blazor |
 | Heatmap Chart | ApexCharts.Blazor |
-| Line / Scatter Chart | ApexCharts.Blazor |
-| Radar Charts | ApexCharts.Blazor |
-| Range Charts | ApexCharts.Blazor |
+| Radar / Spider Chart | ApexCharts.Blazor |
 | Sankey / Waterfall Chart | ApexCharts.Blazor |
-| Trendline Chart | ApexCharts.Blazor |
 
-### 🔵 Gauges
+### 🔵 Gauges (advanced)
+`GaugeChart` (half-circle) is now built-in — see [Charts](#charts) above. Full circular and linear gauges still need a library.
+
 | Component | Recommended Library |
 |-----------|-------------------|
-| Arc Gauge | ApexCharts.Blazor (radialBar) |
-| Circular Gauge | ApexCharts.Blazor |
-| Linear Gauge | Custom SVG or ApexCharts.Blazor |
-| Radial Gauge | ApexCharts.Blazor |
+| Circular / Radial Gauge | ApexCharts.Blazor |
+| Linear Gauge | ApexCharts.Blazor |
 
 ### 📦 Barcodes
 | Component | Recommended Library |
@@ -210,29 +219,30 @@ All chart types require a dedicated charting library.
 ### 🗂️ Complex Data Components
 | Component | Status | Notes |
 |-----------|--------|-------|
-| PivotGrid | ❌ | Requires dedicated pivot engine |
+| TreeList | 🆕 | Hierarchical data table with expand/collapse, ARIA treegrid semantics |
+| PivotGrid | 🆕 | Cross-tab matrix with aggregation, row/column totals, custom aggregate func |
 | Spreadsheet | ❌ | Use [NPOI](https://github.com/tonyqus/npoi) for server-side processing |
-| Grid (advanced) | ⚠️ | `DataTable` covers most use cases |
-| TreeList | ⚠️ | `TreeView` + `DataTable` covers most use cases |
-| Filter (standalone) | ⚠️ | Built into `DataTable` (global + per-column) |
-| DockManager | ❌ | Very complex layout engine |
+| Grid (advanced) | ✅ | `AdvancedTable` covers sorting, filtering, pagination, virtualization |
+| Filter (standalone) | ✅ | Per-column + global search built into `DataTable` and `AdvancedTable` |
+| DockManager | ❌ | Very complex layout engine — no pure-Blazor equivalent |
 
 ### ✏️ Editors (Complex)
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Rich Text Editor | ❌ | Use [Blazor.Quill](https://github.com/Blazored/BlazoredTextEditor) or [TinyMCE](https://www.tiny.cloud/docs/integrations/blazor) |
+| MarkdownEditor | 🆕 | Split edit/preview, toolbar with 13 format actions, live markdown parser, word/char count |
+| DropDownTree | 🆕 | Hierarchical tree in a dropdown, expand/collapse, search, `AllowBranchSelect` |
+| MultiColumnComboBox | 🆕 | Multi-column grid dropdown, searchable across all columns |
+| Rich Text Editor (WYSIWYG) | ❌ | Use [Blazor.Quill](https://github.com/Blazored/BlazoredTextEditor) or [TinyMCE](https://www.tiny.cloud/docs/integrations/blazor) |
 | Signature | ❌ | Requires canvas + pointer events JS |
-| DropDownTree | ❌ | TreeView + Dropdown overlay |
-| MultiColumnComboBox | ❌ | Combobox + custom table dropdown |
-| ColorGradient | ❌ | Advanced canvas-based picker |
+| ColorGradient | ❌ | Advanced canvas-based picker — use `ColorPicker` for basic needs |
 | MaskedTextBox | 🆕 | Basic pattern masking included |
 
 ### 📁 File Management
 | Component | Status | Notes |
 |-----------|--------|-------|
-| DropZone / Upload | ⚠️ | `FileUpload` covers drag-drop + browse |
-| FileManager | ❌ | Complex file-tree explorer, requires backend API |
-| FileSelect | ⚠️ | `FileUpload` covers file selection |
+| DropZone / Upload | ✅ | `FileUpload` — drag-drop + browse, image preview, multi-file |
+| FileManager | 🆕 | Tree sidebar + grid/list view, breadcrumb nav, search, delete callback |
+| FileSelect | ✅ | `FileUpload` covers file selection |
 
 ---
 
