@@ -9,6 +9,7 @@
         @if (HasChildren)
         {
             <svg class="h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform @(_expanded ? "rotate-90" : "")"
+                 aria-hidden="true" focusable="false"
                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <polyline points="9 18 15 12 9 6"></polyline>
             </svg>
@@ -30,7 +31,7 @@
 
     @if (_expanded && HasChildren)
     {
-        <ul>
+        <ul role="group">
             @foreach (var child in _children)
             {
                 <TreeViewNode TItem="TItem"

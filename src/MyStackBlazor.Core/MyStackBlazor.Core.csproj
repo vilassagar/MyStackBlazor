@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PackageId>MyStackBlazor.Core</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Vilas Sagar</Authors>
+    <Description>Core abstractions, interfaces, and state management for the MyStackBlazor component library.</Description>
+    <PackageTags>blazor;components;state;abstractions</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageOutputPath>..\..\..\nupkg</PackageOutputPath>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.7" />
+  </ItemGroup>
+
+</Project>

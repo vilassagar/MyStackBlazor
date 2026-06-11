@@ -1,0 +1,209 @@
+@namespace MyStackBlazor.DataGrid
+@using MyStackBlazor.DataGrid.Models
+@using MyStackBlazor.DataGrid.Services
+@typeparam TItem
+
+<CascadingValue Value="this">
+    @ChildContent
+</CascadingValue>
+
+<div class="ms-datagrid w-full overflow-hidden rounded-lg border border-border bg-background shadow-sm"
+     role="grid"
+     aria-label="@(AriaLabel ?? "Data Grid")"
+     aria-rowcount="@_totalCount"
+     aria-busy="@(_isLoading ? "true" : null)">
+
+    @* Toolbar: search + export *@
+    <div class="ms-datagrid__toolbar flex items-center justify-between gap-4 border-b border-border px-4 py-3">
+        <div class="relative flex-1 max-w-xs">
+            <input type="search"
+                   class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                   placeholder="Search…"
+                   aria-label="Search grid"
+                   value="@_state.SearchTerm"
+                   @oninput="OnSearchInput" />
+        </div>
+        <button class="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
+                aria-label="Export to Excel"
+                @onclick="ExportToExcel">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Export
+        </button>
+    </div>
+
+    @* Header *@
+    <div class="ms-datagrid__header grid bg-muted/40 border-b border-border" role="row"
+         style="grid-template-columns: @_columnTemplate">
+        @foreach (var col in _columns)
+        {
+            var sortState = GetSortState(col.Field);
+            <div class="@HeaderCellClass(col) px-4 py-3 text-sm font-semibold text-foreground"
+                 role="columnheader"
+                 aria-sort="@GetAriaSortValue(sortState)"
+                 style="@(col.Width is not null ? $"width:{col.Width}" : "")"
+                 @onclick="() => OnSortClicked(col)">
+                <span>@col.Title</span>
+                @if (col.Sortable)
+                {
+                    <span class="ms-sort-icon ml-1 opacity-50" aria-hidden="true">
+                        @if (sortState == SortDirection.Ascending) { <span>↑</span> }
+                        else if (sortState == SortDirection.Descending) { <span>↓</span> }
+                        else { <span>↕</span> }
+                    </span>
+                }
+            </div>
+        }
+    </div>
+
+    @* Virtualized rows *@
+    <div class="ms-datagrid__body" style="height: @BodyHeight; overflow-y: auto;">
+        @if (_isLoading && !_hasData)
+        {
+            @for (int i = 0; i < 5; i++)
+            {
+                <div class="grid animate-pulse px-4 py-3 border-b border-border/50"
+                     style="grid-template-columns: @_columnTemplate">
+                    @foreach (var _ in _columns)
+                    {
+                        <div class="h-4 rounded bg-muted"></div>
+                    }
+                </div>
+            }
+        }
+        else if (DataProvider is not null)
+        {
+            <Virtualize ItemsProvider="@LoadServerRowsAsync"
+                        ItemSize="@RowHeight"
+                        Context="row"
+                        @ref="_virtualizeRef">
+                <ItemContent>
+                    <div class="ms-datagrid__row grid border-b border-border/50 hover:bg-muted/30 transition-colors"
+                         role="row"
+                         tabindex="0"
+                         style="grid-template-columns: @_columnTemplate">
+                        @foreach (var col in _columns)
+                        {
+                            <div class="px-4 py-3 text-sm text-foreground truncate" role="gridcell">
+                                @if (col.CellTemplate is not null)
+                                {
+                                    @col.CellTemplate(row)
+                                }
+                                else
+                                {
+                                    @(col.GetValue(row)?.ToString() ?? "")
+                                }
+                            </div>
+                        }
+                    </div>
+                </ItemContent>
+                <Placeholder>
+                    <div class="grid animate-pulse px-4 py-3 border-b border-border/50"
+                         style="grid-template-columns: @_columnTemplate; height: @(RowHeight)px">
+                        @foreach (var _ in _columns)
+                        {
+                            <div class="h-4 rounded bg-muted my-auto"></div>
+                        }
+                    </div>
+                </Placeholder>
+            </Virtualize>
+        }
+    </div>
+
+    @* Footer / pager *@
+    <div class="ms-datagrid__footer flex items-center justify-between border-t border-border px-4 py-2 text-sm text-muted-foreground">
+        <span>@_totalCount total rows</span>
+        <span class="text-xs">@(DataProvider is null ? "No data provider" : "")</span>
+    </div>
+</div>
+
+@code {
+    [Parameter] public IGridDataProvider<TItem>? DataProvider { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter] public string BodyHeight { get; set; } = "480px";
+    [Parameter] public float RowHeight { get; set; } = 52f;
+    [Parameter] public EventCallback<byte[]> OnExported { get; set; }
+
+    private readonly List<MsDataGridColumn<TItem>> _columns = [];
+    private GridState _state = GridState.Default;
+    private int _totalCount;
+    private bool _isLoading;
+    private bool _hasData;
+    private Virtualize<TItem>? _virtualizeRef;
+
+    private string _columnTemplate => _columns.Count > 0
+        ? string.Join(" ", _columns.Select(c => c.Width ?? "1fr"))
+        : "1fr";
+
+    internal void RegisterColumn(MsDataGridColumn<TItem> col)
+    {
+        if (!_columns.Contains(col))
+            _columns.Add(col);
+    }
+
+    private SortDirection? GetSortState(string field)
+        => _state.Sort.FirstOrDefault(s => s.Field == field)?.Direction;
+
+    private static string? GetAriaSortValue(SortDirection? dir) => dir switch
+    {
+        SortDirection.Ascending  => "ascending",
+        SortDirection.Descending => "descending",
+        _                        => null
+    };
+
+    private static string HeaderCellClass(MsDataGridColumn<TItem> col)
+        => col.Sortable ? "cursor-pointer select-none hover:bg-muted/60 flex items-center" : "flex items-center";
+
+    private void OnSortClicked(MsDataGridColumn<TItem> col)
+    {
+        if (!col.Sortable) return;
+        _state = _state.ToggleSort(col.Field);
+        _virtualizeRef?.RefreshDataAsync();
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        _state = _state.WithSearch(e.Value?.ToString());
+        _virtualizeRef?.RefreshDataAsync();
+    }
+
+    private async ValueTask<ItemsProviderResult<TItem>> LoadServerRowsAsync(ItemsProviderRequest request)
+    {
+        if (DataProvider is null) return new([], 0);
+
+        _isLoading = true;
+        StateHasChanged();
+
+        var result = await DataProvider.GetDataAsync(new GridRequest(
+            new Models.PageDescriptor(request.StartIndex, request.Count),
+            _state.Sort,
+            _state.Filters), request.CancellationToken);
+
+        _totalCount = result.TotalCount;
+        _hasData = true;
+        _isLoading = false;
+        StateHasChanged();
+
+        return new(result.Items, result.TotalCount);
+    }
+
+    private async Task ExportToExcel()
+    {
+        if (DataProvider is null) return;
+
+        var result = await DataProvider.GetDataAsync(new GridRequest(
+            new Models.PageDescriptor(0, int.MaxValue),
+            _state.Sort,
+            _state.Filters));
+
+        var colDefs = _columns.Select(c => new Services.ColumnDefinition(
+            c.Title,
+            item => c.GetValue((TItem)item!)));
+
+        var bytes = GridExporter.ExportToExcel(result.Items, colDefs);
+        await OnExported.InvokeAsync(bytes);
+    }
+}

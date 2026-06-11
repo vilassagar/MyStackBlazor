@@ -44,6 +44,11 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.7" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\MyStackBlazor.Core\MyStackBlazor.Core.csproj" />
+    <ProjectReference Include="..\MyStackBlazor.Accessibility\MyStackBlazor.Accessibility.csproj" />
+  </ItemGroup>
+
   <!-- Tailwind CSS: source lives in tailwind/input.css, output goes to wwwroot/css/mystackblazor.css -->
   <!-- Skipped in CI — commit the pre-built CSS -->
   <Target Name="BuildTailwind" BeforeTargets="Build" Condition="'$(CI)' != 'true'">

@@ -1,0 +1,165 @@
+@namespace MyStackBlazor.Components.Charts
+@using System.Globalization
+
+<div class="@($"flex flex-col gap-3 {Class}".Trim())" @attributes="AdditionalAttributes">
+    @if (!string.IsNullOrWhiteSpace(Title))
+    {
+        <div class="text-sm font-medium text-foreground">@Title</div>
+    }
+    <div class="flex items-center gap-6">
+        <svg width="280" height="280"
+             viewBox="0 0 280 280"
+             role="img"
+             aria-label="@(Title ?? "Pie chart")"
+             @onmouseleave="() => _hoverIdx = -1">
+            <title>@(Title ?? "Pie chart")</title>
+
+            @{
+                double total = Segments.Sum(s => s.Value);
+                double startAngle = -Math.PI / 2.0;
+            }
+
+            @for (int i = 0; i < Segments.Count; i++)
+            {
+                var capturedI = i;
+                var seg = Segments[capturedI];
+                double fraction = total > 0 ? seg.Value / total : 0;
+                double sweep = fraction * 2 * Math.PI;
+                double endAngle = startAngle + sweep;
+                double midAngle = startAngle + sweep / 2.0;
+                bool isHovered = _hoverIdx == capturedI;
+
+                double dx = isHovered ? Math.Cos(midAngle) * 6 : 0;
+                double dy = isHovered ? Math.Sin(midAngle) * 6 : 0;
+
+                int largeArc = sweep > Math.PI ? 1 : 0;
+
+                double x1 = Cx + R * Math.Cos(startAngle);
+                double y1 = Cy + R * Math.Sin(startAngle);
+                double x2 = Cx + R * Math.Cos(endAngle);
+                double y2 = Cy + R * Math.Sin(endAngle);
+
+                string pathD;
+                if (Donut)
+                {
+                    double ix1 = Cx + InnerR * Math.Cos(startAngle);
+                    double iy1 = Cy + InnerR * Math.Sin(startAngle);
+                    double ix2 = Cx + InnerR * Math.Cos(endAngle);
+                    double iy2 = Cy + InnerR * Math.Sin(endAngle);
+                    pathD = $"M {Fc(x1)} {Fc(y1)} A {Fc(R)} {Fc(R)} 0 {largeArc} 1 {Fc(x2)} {Fc(y2)} L {Fc(ix2)} {Fc(iy2)} A {Fc(InnerR)} {Fc(InnerR)} 0 {largeArc} 0 {Fc(ix1)} {Fc(iy1)} Z";
+                }
+                else
+                {
+                    pathD = $"M {Fc(Cx)} {Fc(Cy)} L {Fc(x1)} {Fc(y1)} A {Fc(R)} {Fc(R)} 0 {largeArc} 1 {Fc(x2)} {Fc(y2)} Z";
+                }
+
+                <path d="@pathD"
+                      fill="@SegClr(capturedI)"
+                      transform="translate(@Fc(dx), @Fc(dy))"
+                      @onmouseenter="() => _hoverIdx = capturedI"
+                      aria-hidden="true" focusable="false" />
+
+                @* Percentage label inside segment *@
+                @if (ShowPercentages && fraction >= 0.05)
+                {
+                    double labelR = Donut ? (R + InnerR) / 2.0 : R * 0.65;
+                    double lx = Cx + labelR * Math.Cos(midAngle) + dx;
+                    double ly = Cy + labelR * Math.Sin(midAngle) + dy;
+                    @((MarkupString)SvgText(lx, ly + 4, "middle", 11, "white", $"{fraction * 100:F0}%", "600"))
+                }
+
+                startAngle = endAngle;
+            }
+
+            @* Center label for donut *@
+            @if (Donut && !string.IsNullOrWhiteSpace(CenterLabel))
+            {
+                @((MarkupString)SvgText(Cx, Cy - 6, "middle", 14, "var(--color-foreground)", CenterLabel, "700"))
+                @((MarkupString)SvgText(Cx, Cy + 12, "middle", 11, "var(--color-muted-foreground)", "total"))
+            }
+
+            @* Tooltip *@
+            @if (ShowTooltip && _hoverIdx >= 0 && _hoverIdx < Segments.Count)
+            {
+                var seg = Segments[_hoverIdx];
+                double fraction2 = total > 0 ? seg.Value / total : 0;
+
+                double tooltipW = 140;
+                double tooltipH = 52;
+                double ttxPx = Cx + R * 0.8;
+                double ttyPx = Cy - tooltipH / 2.0;
+                if (ttxPx + tooltipW > 280) ttxPx = Cx - R * 0.8 - tooltipW;
+                if (ttyPx < 4) ttyPx = 4;
+                if (ttyPx + tooltipH > 276) ttyPx = 276 - tooltipH;
+
+                <rect x="@Fc(ttxPx)" y="@Fc(ttyPx)" width="@Fc(tooltipW)" height="@Fc(tooltipH)"
+                      rx="4" fill="var(--color-popover)" stroke="var(--color-border)" stroke-width="1"
+                      aria-hidden="true" focusable="false" />
+                @((MarkupString)SvgText(ttxPx + 8, ttyPx + 16, "start", 11, "var(--color-card-foreground)", seg.Label, "600"))
+                @((MarkupString)SvgText(ttxPx + 8, ttyPx + 31, "start", 11, "var(--color-popover-foreground)", FormatVal(seg.Value)))
+                @((MarkupString)SvgText(ttxPx + 8, ttyPx + 46, "start", 11, "var(--color-muted-foreground)", $"{fraction2 * 100:F1}%"))
+            }
+        </svg>
+
+        @if (ShowLegend && Segments.Count > 0)
+        {
+            <div class="flex flex-col gap-1.5">
+                @for (int i = 0; i < Segments.Count; i++)
+                {
+                    var capturedI = i;
+                    <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:@SegClr(capturedI)"></span>
+                        @Segments[capturedI].Label
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [EditorRequired, Parameter] public IReadOnlyList<ChartSegment> Segments { get; set; } = [];
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public bool Donut { get; set; } = false;
+    [Parameter] public string? CenterLabel { get; set; }
+    [Parameter] public bool ShowLegend { get; set; } = true;
+    [Parameter] public bool ShowPercentages { get; set; } = true;
+    [Parameter] public bool ShowTooltip { get; set; } = true;
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private int _hoverIdx = -1;
+
+    private const double Cx = 140;
+    private const double Cy = 140;
+    private const double R = 120;
+    private const double InnerR = 72;
+
+    private static readonly string[] Palette =
+    [
+        "#6366f1", "#22c55e", "#f59e0b", "#ef4444",
+        "#8b5cf6", "#06b6d4", "#f97316", "#ec4899"
+    ];
+
+    private string SegClr(int idx)
+    {
+        if (Segments.Count > idx && Segments[idx].Color is { } c) return c;
+        return Palette[idx % Palette.Length];
+    }
+
+    private static string Fc(double v) => v.ToString("F2", CultureInfo.InvariantCulture);
+
+    private static string FormatVal(double v)
+    {
+        if (Math.Abs(v) >= 1_000_000) return $"{v / 1_000_000:F1}M";
+        if (Math.Abs(v) >= 1_000)     return $"{v / 1_000:F1}k";
+        if (v == Math.Floor(v))        return v.ToString("0", CultureInfo.InvariantCulture);
+        return v.ToString("0.#", CultureInfo.InvariantCulture);
+    }
+
+    private static string SvgText(double x, double y, string anchor, int fontSize, string fill, string content, string fontWeight = "normal")
+    {
+        var escaped = System.Net.WebUtility.HtmlEncode(content);
+        return $"<text x=\"{x.ToString("F2", CultureInfo.InvariantCulture)}\" y=\"{y.ToString("F2", CultureInfo.InvariantCulture)}\" text-anchor=\"{anchor}\" font-size=\"{fontSize}\" font-weight=\"{fontWeight}\" fill=\"{fill}\" aria-hidden=\"true\" focusable=\"false\">{escaped}</text>";
+    }
+}

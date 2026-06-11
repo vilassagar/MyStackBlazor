@@ -1,5 +1,17 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/MyStackBlazor/MyStackBlazor.csproj" />
+    <Project Path="src/MyStackBlazor.Core/MyStackBlazor.Core.csproj" />
+    <Project Path="src/MyStackBlazor.Security/MyStackBlazor.Security.csproj" />
+    <Project Path="src/MyStackBlazor.Accessibility/MyStackBlazor.Accessibility.csproj" />
+    <Project Path="src/MyStackBlazor.DataGrid/MyStackBlazor.DataGrid.csproj" />
+    <Project Path="src/MyStackBlazor.Localization/MyStackBlazor.Localization.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MyStackBlazor.UnitTests/MyStackBlazor.UnitTests.csproj" />
+    <Project Path="tests/MyStackBlazor.E2ETests/MyStackBlazor.E2ETests.csproj" />
+  </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/MyStackBlazor.EnterpriseDemo/MyStackBlazor.EnterpriseDemo.csproj" />
   </Folder>
 </Solution>

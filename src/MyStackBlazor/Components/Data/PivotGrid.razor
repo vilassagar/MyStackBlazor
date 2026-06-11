@@ -1,0 +1,120 @@
+@namespace MyStackBlazor.Components.Data
+@typeparam TItem
+@using System.Globalization
+
+<div class="w-full overflow-auto rounded-md border border-border @Class" @attributes="AdditionalAttributes">
+    @if (!string.IsNullOrWhiteSpace(Title))
+    {
+        <div class="border-b px-4 py-2.5 text-sm font-semibold text-foreground">@Title</div>
+    }
+    <table class="w-full caption-bottom text-sm" role="grid" aria-label="@(Title ?? "Pivot grid")">
+        <thead class="[&_tr]:border-b">
+            <tr class="border-b bg-muted/50">
+                <th class="min-w-32 px-3 py-2.5 text-left text-xs font-medium text-muted-foreground">
+                    @(RowLabel ?? "")
+                </th>
+                @foreach (var colKey in _colKeys)
+                {
+                    <th class="whitespace-nowrap px-3 py-2.5 text-right text-xs font-medium text-muted-foreground"
+                        role="columnheader">
+                        @colKey
+                    </th>
+                }
+                @if (ShowTotals)
+                {
+                    <th class="whitespace-nowrap px-3 py-2.5 text-right text-xs font-semibold text-foreground">
+                        Total
+                    </th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var rowKey in _rowKeys)
+            {
+                var rk = rowKey;
+                <tr class="border-b border-border/50 transition-colors hover:bg-muted/30" role="row">
+                    <td class="px-3 py-2 font-medium text-foreground">@rk</td>
+                    @foreach (var colKey in _colKeys)
+                    {
+                        var ck = colKey;
+                        <td class="px-3 py-2 text-right tabular-nums text-muted-foreground" role="gridcell">
+                            @FormatNum(GetCell(rk, ck))
+                        </td>
+                    }
+                    @if (ShowTotals)
+                    {
+                        <td class="px-3 py-2 text-right tabular-nums font-semibold text-foreground" role="gridcell">
+                            @FormatNum(_colKeys.Sum(ck => GetCell(rk, ck)))
+                        </td>
+                    }
+                </tr>
+            }
+            @if (_rowKeys.Count == 0)
+            {
+                <tr role="row">
+                    <td class="px-3 py-8 text-center text-sm text-muted-foreground"
+                        role="gridcell"
+                        colspan="@(_colKeys.Count + (ShowTotals ? 2 : 1))">
+                        No data
+                    </td>
+                </tr>
+            }
+        </tbody>
+        @if (ShowTotals && _rowKeys.Count > 0)
+        {
+            <tfoot>
+                <tr class="border-t-2 bg-muted/30">
+                    <td class="px-3 py-2 text-xs font-semibold text-foreground">Total</td>
+                    @foreach (var colKey in _colKeys)
+                    {
+                        var ck = colKey;
+                        <td class="px-3 py-2 text-right tabular-nums font-semibold text-foreground">
+                            @FormatNum(_rowKeys.Sum(rk => GetCell(rk, ck)))
+                        </td>
+                    }
+                    <td class="px-3 py-2 text-right tabular-nums font-bold text-foreground">
+                        @FormatNum(_rowKeys.Sum(rk => _colKeys.Sum(ck => GetCell(rk, ck))))
+                    </td>
+                </tr>
+            </tfoot>
+        }
+    </table>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<TItem>                Data        { get; set; } = [];
+    [Parameter, EditorRequired] public Func<TItem, string>                 RowKey      { get; set; } = _ => "";
+    [Parameter, EditorRequired] public Func<TItem, string>                 ColumnKey   { get; set; } = _ => "";
+    [Parameter] public Func<TItem, double>                                 Value       { get; set; } = _ => 1;
+    [Parameter] public Func<IEnumerable<double>, double>?                  Aggregate   { get; set; }
+    [Parameter] public string?                                             RowLabel    { get; set; }
+    [Parameter] public string?                                             Title       { get; set; }
+    [Parameter] public bool                                                ShowTotals  { get; set; } = true;
+    [Parameter] public string?                                             Class       { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private List<string>                              _rowKeys = [];
+    private List<string>                              _colKeys = [];
+    private Dictionary<(string row, string col), double> _cells  = new();
+
+    protected override void OnParametersSet()
+    {
+        var agg = Aggregate ?? (vals => vals.Sum());
+
+        _cells = Data
+            .GroupBy(item => (row: RowKey(item), col: ColumnKey(item)))
+            .ToDictionary(g => g.Key, g => agg(g.Select(item => Value(item))));
+
+        _rowKeys = Data.Select(RowKey).Distinct().OrderBy(k => k, StringComparer.Ordinal).ToList();
+        _colKeys = Data.Select(ColumnKey).Distinct().OrderBy(k => k, StringComparer.Ordinal).ToList();
+    }
+
+    private double GetCell(string rowKey, string colKey) =>
+        _cells.TryGetValue((rowKey, colKey), out var v) ? v : 0;
+
+    private static string FormatNum(double v) =>
+        v == Math.Floor(v)
+            ? ((long)v).ToString(CultureInfo.InvariantCulture)
+            : v.ToString("0.##", CultureInfo.InvariantCulture);
+}

@@ -1,7 +1,13 @@
 @namespace MyStackBlazor.Components.Layout
 
 <div class="@Class" @attributes="AdditionalAttributes">
-    <div @onclick="Toggle" class="cursor-pointer">@Trigger</div>
+    <div role="button"
+         tabindex="0"
+         class="cursor-pointer"
+         @onclick="Toggle"
+         @onkeydown="HandleKeyDown">
+        @Trigger
+    </div>
     @if (IsOpen)
     {
         <div>@ChildContent</div>
@@ -20,5 +26,11 @@
     {
         IsOpen = !IsOpen;
         await IsOpenChanged.InvokeAsync(IsOpen);
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or " ")
+            await Toggle();
     }
 }

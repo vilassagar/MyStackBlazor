@@ -3,12 +3,10 @@
 
 @if (Orientation == "vertical")
 {
-    <!-- ═══════════════════════════════════════════ VERTICAL ══ -->
     <div class="@ContainerClass" @attributes="AdditionalAttributes">
 
         <div class="flex gap-0">
 
-            <!-- Left spine: circles + connectors -->
             <div class="flex flex-col items-center">
                 @for (int i = 0; i < _steps.Count; i++)
                 {
@@ -40,7 +38,6 @@
                 }
             </div>
 
-            <!-- Right info column -->
             <div class="ml-4 flex flex-1 flex-col">
                 @for (int i = 0; i < _steps.Count; i++)
                 {
@@ -69,7 +66,6 @@
 }
 else
 {
-    <!-- ══════════════════════════════════════════ HORIZONTAL ══ -->
     <div class="@ContainerClass" @attributes="AdditionalAttributes">
 
         <div class="flex">

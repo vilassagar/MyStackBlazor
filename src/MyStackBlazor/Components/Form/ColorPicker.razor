@@ -1,7 +1,6 @@
 @namespace MyStackBlazor.Components.Form
 
 <div class="@($"space-y-3 {Class}".Trim())" @attributes="AdditionalAttributes">
-    <!-- Swatch + hex input row -->
     <div class="flex items-center gap-3">
         <button type="button"
                 class="h-10 w-10 flex-shrink-0 overflow-hidden rounded-md border border-input shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -29,7 +28,6 @@
         }
     </div>
 
-    <!-- RGB sliders -->
     @if (ShowSliders)
     {
         <div class="space-y-2">
@@ -57,7 +55,6 @@
         </div>
     }
 
-    <!-- Preset swatches -->
     @if (Swatches.Count > 0)
     {
         <div class="flex flex-wrap gap-1.5">

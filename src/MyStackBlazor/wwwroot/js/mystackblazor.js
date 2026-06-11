@@ -218,6 +218,23 @@ window.MyStackBlazor = {
     },
 
     // ----------------------------------------------------------------
+    //  Markdown editor — cursor-aware text insertion
+    // ----------------------------------------------------------------
+    insertAtCursor(el, before, after, defaultText) {
+        if (!el) return '';
+        const start    = el.selectionStart ?? el.value.length;
+        const end      = el.selectionEnd   ?? el.value.length;
+        const selected = el.value.substring(start, end) || (defaultText ?? '');
+        const insert   = before + selected + after;
+        el.value = el.value.substring(0, start) + insert + el.value.substring(end);
+        const cur = start + before.length + selected.length;
+        el.selectionStart = el.selectionEnd = cur;
+        el.focus();
+        el.dispatchEvent(new InputEvent('input', { bubbles: true }));
+        return el.value;
+    },
+
+    // ----------------------------------------------------------------
     //  File dropzone — bridges drag-drop onto <InputFile>
     // ----------------------------------------------------------------
     setupDropzone(dropzoneId, inputId) {

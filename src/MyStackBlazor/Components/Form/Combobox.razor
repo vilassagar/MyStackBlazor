@@ -1,19 +1,24 @@
 @namespace MyStackBlazor.Components.Form
 
 <div class="relative @Class">
-    <div class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background cursor-pointer"
-         @onclick="ToggleOpen">
+    <div role="combobox"
+         aria-expanded="@IsOpen.ToString().ToLower()"
+         aria-haspopup="listbox"
+         tabindex="0"
+         class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+         @onclick="ToggleOpen"
+         @onkeydown="HandleKeyDown">
         <span class="@(SelectedLabel is null ? "text-muted-foreground" : "")">
             @(SelectedLabel ?? Placeholder ?? "Select...")
         </span>
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-50 @(IsOpen ? "rotate-180" : "")" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-50 @(IsOpen ? "rotate-180" : "")" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="6 9 12 15 18 9"></polyline>
         </svg>
     </div>
 
     @if (IsOpen)
     {
-        <div class="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md animate-fade-in">
+        <div role="listbox" class="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md animate-fade-in">
             <div class="p-1">
                 <input type="text"
                        placeholder="@SearchPlaceholder"
@@ -24,12 +29,15 @@
             <div class="max-h-60 overflow-auto p-1">
                 @foreach (var item in FilteredItems)
                 {
-                    <div class="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
-                         @onclick="() => SelectItem(item)">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="mr-2 h-4 w-4 @(item.Value == Value ? "opacity-100" : "opacity-0")" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    var i = item;
+                    <div role="option"
+                         aria-selected="@(i.Value == Value ? "true" : "false")"
+                         class="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                         @onclick="() => SelectItem(i)">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="mr-2 h-4 w-4 @(i.Value == Value ? "opacity-100" : "opacity-0")" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
-                        @item.Label
+                        @i.Label
                     </div>
                 }
                 @if (!FilteredItems.Any())
@@ -60,6 +68,12 @@
             : Items.Where(i => i.Label.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
 
     private void ToggleOpen() => IsOpen = !IsOpen;
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or " " or "ArrowDown") IsOpen = true;
+        if (e.Key is "Escape") IsOpen = false;
+    }
 
     private async Task SelectItem(ComboboxItem item)
     {

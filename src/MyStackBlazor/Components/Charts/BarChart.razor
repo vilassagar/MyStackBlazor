@@ -1,0 +1,240 @@
+@namespace MyStackBlazor.Components.Charts
+@using System.Globalization
+
+<div class="@($"flex flex-col gap-2 {Class}".Trim())" @attributes="AdditionalAttributes">
+    <svg viewBox="0 0 560 300"
+         role="img"
+         aria-label="@(Title ?? "Bar chart")"
+         class="w-full h-auto"
+         @onmouseleave="() => _hover = (-1, -1)">
+        <title>@(Title ?? "Bar chart")</title>
+
+        @{
+            int N = CategoryCount;
+            int M = Series.Count;
+            var (yMin, yScaleMax, ticks) = NiceScale(0, ComputeYMax());
+            double yScaleRange = yScaleMax - yMin;
+        }
+
+        @* Grid lines and Y-axis labels *@
+        @for (int ti = 0; ti <= ticks; ti++)
+        {
+            var capturedTi = ti;
+            double yVal = yMin + capturedTi * (yScaleMax - yMin) / ticks;
+            double yPx  = MT + PlotH - PlotH * (yVal - yMin) / yScaleRange;
+            <line x1="@F(ML)" y1="@F(yPx)" x2="@F(ML + PlotW)" y2="@F(yPx)"
+                  stroke="var(--color-border)" stroke-width="1" stroke-dasharray="3 3"
+                  aria-hidden="true" focusable="false" />
+            @((MarkupString)SvgText(ML - 6, yPx + 4, "end", 11, "var(--color-muted-foreground)", FormatY(yVal)))
+        }
+
+        @* X-axis labels *@
+        @if (Labels != null)
+        {
+            @for (int g = 0; g < N; g++)
+            {
+                var capturedG = g;
+                double groupCenterX = ML + capturedG * GroupW + GroupW / 2.0;
+                @((MarkupString)SvgText(groupCenterX, MT + PlotH + 20, "middle", 11, "var(--color-muted-foreground)",
+                    capturedG < Labels.Count ? Labels[capturedG] : ""))
+            }
+        }
+
+        @* Bars *@
+        @if (!Stacked)
+        {
+            @for (int g = 0; g < N; g++)
+            {
+                @for (int s = 0; s < M; s++)
+                {
+                    var capturedG = g;
+                    var capturedS = s;
+                    double val = capturedG < Series[capturedS].Values.Count ? Series[capturedS].Values[capturedG] : 0;
+                    double bw = BarWGrouped;
+                    double bx = ML + capturedG * GroupW + GroupW * 0.15 + capturedS * bw;
+                    double bh = PlotH * val / yScaleRange;
+                    double by = MT + PlotH - bh;
+                    bool isHovered = _hover == (capturedG, capturedS);
+                    <rect x="@F(bx)" y="@F(by)"
+                          width="@F(Math.Max(bw - 1, 0))" height="@F(Math.Max(bh, 0))"
+                          rx="2"
+                          fill="@Clr(capturedS)"
+                          opacity="@(isHovered ? "0.8" : "1")"
+                          @onmouseenter="() => _hover = (capturedG, capturedS)"
+                          aria-hidden="true" focusable="false" />
+                }
+            }
+        }
+        else
+        {
+            @for (int g = 0; g < N; g++)
+            {
+                var capturedG = g;
+                double bw   = GroupW * 0.6;
+                double bx   = ML + capturedG * GroupW + GroupW * 0.2;
+                double cumH = 0;
+                @for (int s = 0; s < M; s++)
+                {
+                    var capturedS = s;
+                    double val = capturedG < Series[capturedS].Values.Count ? Series[capturedS].Values[capturedG] : 0;
+                    if (val <= 0) continue;
+                    double segH = PlotH * val / yScaleRange;
+                    double by   = MT + PlotH - cumH - segH;
+                    bool isHovered = _hover == (capturedG, capturedS);
+                    cumH += segH;
+                    <rect x="@F(bx)" y="@F(by)"
+                          width="@F(bw)" height="@F(Math.Max(segH, 0))"
+                          rx="2"
+                          fill="@Clr(capturedS)"
+                          opacity="@(isHovered ? "0.8" : "1")"
+                          @onmouseenter="() => _hover = (capturedG, capturedS)"
+                          aria-hidden="true" focusable="false" />
+                }
+            }
+        }
+
+        @* Hover tooltip *@
+        @if (ShowTooltip && _hover.g >= 0)
+        {
+            int hg = _hover.g;
+            double groupCenterX = ML + hg * GroupW + GroupW / 2.0;
+            double tooltipW = 130;
+            double tooltipH = 16 + M * 18 + 8;
+            double txPx = groupCenterX + 10;
+            if (txPx + tooltipW > ML + PlotW) txPx = groupCenterX - tooltipW - 10;
+            double tyPx = MT + 10;
+
+            <rect x="@F(txPx)" y="@F(tyPx)" width="@F(tooltipW)" height="@F(tooltipH)"
+                  rx="4" fill="var(--color-popover)" stroke="var(--color-border)" stroke-width="1"
+                  aria-hidden="true" focusable="false" />
+            @if (Labels != null && hg < Labels.Count)
+            {
+                @((MarkupString)SvgText(txPx + 8, tyPx + 13, "start", 11, "var(--color-card-foreground)", Labels[hg], "600"))
+            }
+            @for (int si = 0; si < M; si++)
+            {
+                var capturedSi = si;
+                double rowY = tyPx + 16 + capturedSi * 18 + 13;
+                double val  = hg < Series[capturedSi].Values.Count ? Series[capturedSi].Values[hg] : 0;
+                <circle cx="@F(txPx + 12)" cy="@F(rowY - 4)"
+                        r="4" fill="@Clr(capturedSi)"
+                        aria-hidden="true" focusable="false" />
+                @((MarkupString)SvgText(txPx + 22, rowY, "start", 11, "var(--color-popover-foreground)", $"{Series[capturedSi].Name}: {FormatY(val)}"))
+            }
+        }
+
+        @* Axes *@
+        <line x1="@F(ML)" y1="@F(MT)" x2="@F(ML)" y2="@F(MT + PlotH)"
+              stroke="var(--color-border)" stroke-width="1"
+              aria-hidden="true" focusable="false" />
+        <line x1="@F(ML)" y1="@F(MT + PlotH)" x2="@F(ML + PlotW)" y2="@F(MT + PlotH)"
+              stroke="var(--color-border)" stroke-width="1"
+              aria-hidden="true" focusable="false" />
+    </svg>
+
+    @if (ShowLegend && Series.Count > 0)
+    {
+        <div class="flex flex-wrap gap-x-4 gap-y-1 justify-center mt-1">
+            @for (int si = 0; si < Series.Count; si++)
+            {
+                var capturedSi = si;
+                <div class="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:@Clr(capturedSi)"></span>
+                    @Series[capturedSi].Name
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [EditorRequired, Parameter] public IReadOnlyList<ChartSeries> Series { get; set; } = [];
+    [Parameter] public IReadOnlyList<string>? Labels { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public bool Stacked { get; set; } = false;
+    [Parameter] public bool ShowTooltip { get; set; } = true;
+    [Parameter] public bool ShowLegend { get; set; } = true;
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private (int g, int s) _hover = (-1, -1);
+
+    private const double ML = 55;
+    private const double MT = 20;
+    private const double PlotW = 485;
+    private const double PlotH = 235;
+
+    private static readonly string[] Palette =
+    [
+        "#6366f1", "#22c55e", "#f59e0b", "#ef4444",
+        "#8b5cf6", "#06b6d4", "#f97316", "#ec4899"
+    ];
+
+    private int CategoryCount => Series.Count == 0 ? 0 : Series.Max(s => s.Values.Count);
+    private double GroupW => CategoryCount > 0 ? PlotW / CategoryCount : PlotW;
+    private double BarWGrouped => Series.Count > 0 ? GroupW * 0.7 / Series.Count : GroupW * 0.7;
+
+    private string Clr(int idx)
+    {
+        if (Series.Count > idx && Series[idx].Color is { } c) return c;
+        return Palette[idx % Palette.Length];
+    }
+
+    private double ComputeYMax()
+    {
+        if (Series.Count == 0) return 10;
+        if (Stacked)
+        {
+            int n = CategoryCount;
+            double max = 0;
+            for (int g = 0; g < n; g++)
+            {
+                double sum = Series.Sum(s => g < s.Values.Count ? Math.Max(s.Values[g], 0) : 0);
+                if (sum > max) max = sum;
+            }
+            return max > 0 ? max : 10;
+        }
+        else
+        {
+            var allVals = Series.SelectMany(s => s.Values);
+            double m = allVals.Any() ? allVals.Max() : 0;
+            return m > 0 ? m : 10;
+        }
+    }
+
+    private static (double min, double max, int ticks) NiceScale(double rawMin, double rawMax)
+    {
+        var range = rawMax - rawMin;
+        if (range <= 0) { rawMax = rawMin + 10; range = 10; }
+        var step = NiceNum(range / 5.0, true);
+        var nMin = Math.Floor(rawMin / step) * step;
+        var nMax = Math.Ceiling(rawMax / step) * step;
+        var t    = (int)Math.Round((nMax - nMin) / step);
+        return (nMin, nMax, Math.Max(Math.Min(t, 8), 2));
+    }
+
+    private static double NiceNum(double x, bool round)
+    {
+        var exp = Math.Floor(Math.Log10(x));
+        var f   = x / Math.Pow(10, exp);
+        var nf  = round ? (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10.0)
+                        : (f <= 1  ? 1 : f <= 2   ? 2 : f <= 5   ? 5 : 10.0);
+        return nf * Math.Pow(10, exp);
+    }
+
+    private static string F(double v) => v.ToString("F1", CultureInfo.InvariantCulture);
+
+    private static string FormatY(double v)
+    {
+        if (Math.Abs(v) >= 1_000_000) return $"{v / 1_000_000:F1}M";
+        if (Math.Abs(v) >= 1_000)     return $"{v / 1_000:F1}k";
+        if (v == Math.Floor(v))        return v.ToString("0", CultureInfo.InvariantCulture);
+        return v.ToString("0.#", CultureInfo.InvariantCulture);
+    }
+
+    private static string SvgText(double x, double y, string anchor, int fontSize, string fill, string content, string fontWeight = "normal")
+    {
+        var escaped = System.Net.WebUtility.HtmlEncode(content);
+        return $"<text x=\"{x.ToString("F1", CultureInfo.InvariantCulture)}\" y=\"{y.ToString("F1", CultureInfo.InvariantCulture)}\" text-anchor=\"{anchor}\" font-size=\"{fontSize}\" font-weight=\"{fontWeight}\" fill=\"{fill}\" aria-hidden=\"true\" focusable=\"false\">{escaped}</text>";
+    }
+}

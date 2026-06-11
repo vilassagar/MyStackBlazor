@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PackageId>MyStackBlazor.DataGrid</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Vilas Sagar</Authors>
+    <Description>High-performance enterprise data grid for MyStackBlazor. Supports server-side paging, sorting, filtering, virtualization, and Excel export via ClosedXML.</Description>
+    <PackageTags>blazor;datagrid;grid;virtualize;excel;export;enterprise</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageOutputPath>..\..\..\nupkg</PackageOutputPath>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.7" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MyStackBlazor.Core\MyStackBlazor.Core.csproj" />
+    <ProjectReference Include="..\MyStackBlazor.Accessibility\MyStackBlazor.Accessibility.csproj" />
+  </ItemGroup>
+
+</Project>

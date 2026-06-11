@@ -9,15 +9,12 @@
         </div>
     }
 
-    <!-- Two overlapping range inputs -->
     <div class="relative h-5 w-full">
-        <!-- Track fill between thumbs -->
         <div class="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-muted w-full"></div>
         <div class="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-primary"
              style="left:@(LowPct)%; width:@(HighPct - LowPct)%">
         </div>
 
-        <!-- Low thumb -->
         <input type="range"
                min="@Min" max="@Max" step="@Step"
                value="@LowValue"
@@ -25,7 +22,6 @@
                style="z-index:@(LowValue >= HighValue - Step ? 5 : 3)"
                @oninput="OnLowInput" />
 
-        <!-- High thumb -->
         <input type="range"
                min="@Min" max="@Max" step="@Step"
                value="@HighValue"

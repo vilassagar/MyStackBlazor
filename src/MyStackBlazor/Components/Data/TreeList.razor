@@ -1,0 +1,150 @@
+@namespace MyStackBlazor.Components.Data
+@typeparam TItem
+
+<div class="w-full overflow-auto rounded-md border border-border @Class" @attributes="AdditionalAttributes">
+    <table class="w-full caption-bottom text-sm" role="treegrid" aria-label="@(Label ?? "Tree list")">
+        <thead class="sticky top-0 z-10 bg-background [&_tr]:border-b">
+            <tr class="border-b transition-colors hover:bg-muted/50">
+                @foreach (var col in Columns)
+                {
+                    <th class="h-11 px-3 text-left align-middle text-xs font-medium text-muted-foreground @col.Class"
+                        style="@(col.Width is not null ? $"width:{col.Width}" : "")">
+                        @col.Header
+                    </th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var (item, level, hasChildren) in _flatRows)
+            {
+                var current   = item;
+                var expanded  = _expanded.Contains(current!);
+                var lvlAttr   = (level + 1).ToString();
+                <tr class="border-b border-border/50 transition-colors hover:bg-muted/30"
+                    role="row"
+                    aria-level="@lvlAttr"
+                    aria-expanded="@(hasChildren ? (expanded ? "true" : "false") : null)">
+                    @foreach (var (col, colIdx) in Columns.Select((c, i) => (c, i)))
+                    {
+                        <td class="px-3 py-2 align-middle @col.Class" role="gridcell">
+                            @if (colIdx == 0)
+                            {
+                                <div class="flex items-center"
+                                     style="padding-left:@(level * 20)px">
+                                    @if (hasChildren)
+                                    {
+                                        <button type="button"
+                                                class="mr-1.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                                aria-label="@(expanded ? "Collapse" : "Expand") row"
+                                                @onclick="() => ToggleExpand(current)">
+                                            <svg class="h-3.5 w-3.5 transition-transform duration-150 @(expanded ? "rotate-90" : "")"
+                                                 aria-hidden="true" focusable="false"
+                                                 fill="none" stroke="currentColor" stroke-width="2"
+                                                 viewBox="0 0 24 24">
+                                                <polyline points="9 18 15 12 9 6" />
+                                            </svg>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span class="mr-1.5 inline-block h-5 w-5 flex-shrink-0" aria-hidden="true"></span>
+                                    }
+                                    @if (col.Template is not null)
+                                    {
+                                        @col.Template(current)
+                                    }
+                                    else
+                                    {
+                                        @(col.Field?.Invoke(current) ?? "")
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                @if (col.Template is not null)
+                                {
+                                    @col.Template(current)
+                                }
+                                else
+                                {
+                                    @(col.Field?.Invoke(current) ?? "")
+                                }
+                            }
+                        </td>
+                    }
+                </tr>
+            }
+            @if (_flatRows.Count == 0)
+            {
+                <tr role="row">
+                    <td class="px-3 py-8 text-center text-sm text-muted-foreground"
+                        role="gridcell"
+                        colspan="@Columns.Count">
+                        @(EmptyText ?? "No data")
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<TItem>               Items            { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<TreeListColumn<TItem>> Columns        { get; set; } = [];
+    [Parameter] public Func<TItem, IEnumerable<TItem>?>?                   ChildrenSelector { get; set; }
+    [Parameter] public bool                                                 DefaultExpanded  { get; set; } = false;
+    [Parameter] public string?                                              Label            { get; set; }
+    [Parameter] public string?                                              EmptyText        { get; set; }
+    [Parameter] public string?                                              Class            { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private readonly HashSet<TItem> _expanded = new();
+    private List<(TItem item, int level, bool hasChildren)> _flatRows = [];
+
+    protected override void OnInitialized()
+    {
+        if (DefaultExpanded)
+            ExpandAll(Items);
+    }
+
+    protected override void OnParametersSet() => RebuildFlatRows();
+
+    private void ExpandAll(IEnumerable<TItem> items)
+    {
+        foreach (var item in items)
+        {
+            var children = ChildrenSelector?.Invoke(item)?.ToList();
+            if (children is { Count: > 0 })
+            {
+                _expanded.Add(item);
+                ExpandAll(children);
+            }
+        }
+    }
+
+    private void RebuildFlatRows()
+    {
+        _flatRows = [];
+        Flatten(Items, 0);
+    }
+
+    private void Flatten(IEnumerable<TItem> items, int level)
+    {
+        foreach (var item in items)
+        {
+            var children    = ChildrenSelector?.Invoke(item)?.ToList();
+            var hasChildren = children is { Count: > 0 };
+            _flatRows.Add((item, level, hasChildren));
+            if (hasChildren && _expanded.Contains(item))
+                Flatten(children!, level + 1);
+        }
+    }
+
+    private void ToggleExpand(TItem item)
+    {
+        if (_expanded.Contains(item)) _expanded.Remove(item);
+        else                          _expanded.Add(item);
+        RebuildFlatRows();
+    }
+}

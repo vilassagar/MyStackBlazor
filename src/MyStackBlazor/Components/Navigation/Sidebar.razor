@@ -1,7 +1,6 @@
 @namespace MyStackBlazor.Components.Navigation
 
 <div class="flex h-full">
-    <!-- Sidebar panel -->
     <aside class="@ComputedClass">
         @if (ShowToggle)
         {
@@ -9,7 +8,7 @@
                     class="absolute right-2 top-2 p-1.5 rounded-md hover:bg-accent"
                     @onclick="Toggle"
                     aria-label="@(IsCollapsed ? "Expand sidebar" : "Collapse sidebar")">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform @(IsCollapsed ? "rotate-180" : "")" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform @(IsCollapsed ? "rotate-180" : "")" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="15 18 9 12 15 6"></polyline>
                 </svg>
             </button>
@@ -19,7 +18,6 @@
         </div>
     </aside>
 
-    <!-- Main content -->
     @if (MainContent is not null)
     {
         <main class="flex-1 overflow-auto">

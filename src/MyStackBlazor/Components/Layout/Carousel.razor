@@ -1,34 +1,33 @@
 @namespace MyStackBlazor.Components.Layout
 
 <div class="relative overflow-hidden @Class" @attributes="AdditionalAttributes">
-    <!-- Slides -->
     <div class="flex transition-transform duration-300 ease-in-out"
          style="transform:translateX(-@(_current * 100)%)">
         @ChildContent
     </div>
 
-    <!-- Prev / Next arrows -->
     @if (ShowArrows && _count > 1)
     {
         <button type="button"
+                aria-label="Previous slide"
                 class="absolute left-2 top-1/2 z-10 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-background/80 shadow hover:bg-background disabled:opacity-30"
                 disabled="@(!Loop && _current == 0)"
                 @onclick="Prev">
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
         </button>
         <button type="button"
+                aria-label="Next slide"
                 class="absolute right-2 top-1/2 z-10 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-background/80 shadow hover:bg-background disabled:opacity-30"
                 disabled="@(!Loop && _current == _count - 1)"
                 @onclick="Next">
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <polyline points="9 18 15 12 9 6"></polyline>
             </svg>
         </button>
     }
 
-    <!-- Dot indicators -->
     @if (ShowDots && _count > 1)
     {
         <div class="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
@@ -36,6 +35,7 @@
             {
                 var idx = i;
                 <button type="button"
+                        aria-label="Go to slide @(idx + 1)"
                         class="h-2 w-2 rounded-full transition-all @(idx == _current ? "bg-primary w-4" : "bg-primary/40")"
                         @onclick="() => GoTo(idx)">
                 </button>

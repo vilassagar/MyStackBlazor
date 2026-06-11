@@ -1,16 +1,23 @@
 @namespace MyStackBlazor.Components.Common
 
 <button type="@Type"
+        id="@_id"
         class="@ComputedClass"
         disabled="@Disabled"
-        @onclick="OnClick"
+        aria-label="@AriaLabel"
+        aria-describedby="@AriaDescribedBy"
+        aria-disabled="@(Disabled ? "true" : null)"
+        aria-busy="@(IsLoading ? "true" : null)"
+        @onclick="HandleClick"
+        @onkeydown="HandleKeyDown"
         @attributes="AdditionalAttributes">
     @if (IsLoading)
     {
-        <svg class="mr-2 h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <svg class="mr-2 h-4 w-4 animate-spin" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
         </svg>
+        <span class="sr-only">Loading</span>
     }
     @ChildContent
 </button>
@@ -23,8 +30,12 @@
     [Parameter] public bool IsLoading { get; set; }
     [Parameter] public string Type { get; set; } = "button";
     [Parameter] public string? Class { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter] public string? AriaDescribedBy { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private readonly string _id = $"ms-btn-{Guid.NewGuid():N}";
 
     private string ComputedClass => $"{BaseClass} {VariantClass} {SizeClass} {Class}".Trim();
 
@@ -50,4 +61,17 @@
         "icon" => "h-10 w-10",
         _      => "h-10 px-4 py-2",
     };
+
+    private async Task HandleClick(MouseEventArgs e)
+    {
+        if (Disabled || IsLoading) return;
+        await OnClick.InvokeAsync(e);
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (Disabled || IsLoading) return;
+        if (e.Key is "Enter" or " ")
+            await OnClick.InvokeAsync(new MouseEventArgs());
+    }
 }

@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+    tags: ['v*.*.*']
+
+jobs:
+  build-and-test:
+    name: Build & Test (.NET ${{ matrix.dotnet }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dotnet: ['10.0.x']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ matrix.dotnet }}
+
+      - name: Restore
+        run: dotnet restore MyStackBlazor.slnx
+
+      - name: Build
+        run: dotnet build MyStackBlazor.slnx --no-restore -c Release
+
+      - name: Test
+        run: dotnet test MyStackBlazor.slnx --no-build -c Release --logger trx --results-directory TestResults
+        env:
+          CI: true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.dotnet }}
+          path: TestResults/**/*.trx
+
+  publish:
+    name: Pack & Publish NuGet
+    needs: build-and-test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore MyStackBlazor.slnx
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Pack all packages
+        run: |
+          dotnet pack src/MyStackBlazor/MyStackBlazor.csproj \
+            -c Release -o nupkgs /p:Version=${{ steps.version.outputs.VERSION }}
+          dotnet pack src/MyStackBlazor.Core/MyStackBlazor.Core.csproj \
+            -c Release -o nupkgs /p:Version=${{ steps.version.outputs.VERSION }}
+          dotnet pack src/MyStackBlazor.Security/MyStackBlazor.Security.csproj \
+            -c Release -o nupkgs /p:Version=${{ steps.version.outputs.VERSION }}
+          dotnet pack src/MyStackBlazor.Accessibility/MyStackBlazor.Accessibility.csproj \
+            -c Release -o nupkgs /p:Version=${{ steps.version.outputs.VERSION }}
+          dotnet pack src/MyStackBlazor.DataGrid/MyStackBlazor.DataGrid.csproj \
+            -c Release -o nupkgs /p:Version=${{ steps.version.outputs.VERSION }}
+          dotnet pack src/MyStackBlazor.Localization/MyStackBlazor.Localization.csproj \
+            -c Release -o nupkgs /p:Version=${{ steps.version.outputs.VERSION }}
+        env:
+          CI: true
+
+      - name: Push to NuGet.org
+        run: |
+          dotnet nuget push nupkgs/*.nupkg \
+            --api-key ${{ secrets.NUGET_API_KEY }} \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate

@@ -1,7 +1,6 @@
 @namespace MyStackBlazor.Components.Layout
 
 <div class="@Class" @attributes="AdditionalAttributes">
-    <!-- Header -->
     <button type="button"
             class="flex w-full items-center justify-between bg-muted/40 px-4 py-3 text-left text-sm font-medium hover:bg-muted/70 transition-colors focus:outline-none"
             aria-expanded="@IsOpen.ToString().ToLower()"
@@ -11,12 +10,12 @@
             @Title
         </span>
         <svg class="h-4 w-4 shrink-0 transition-transform duration-200 @(IsOpen ? "rotate-180" : "")"
+             aria-hidden="true" focusable="false"
              fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <polyline points="6 9 12 15 18 9"></polyline>
         </svg>
     </button>
 
-    <!-- Animated content -->
     <div style="display:grid; grid-template-rows:@(IsOpen ? "1fr" : "0fr"); transition:grid-template-rows 200ms ease-out;">
         <div style="overflow:hidden;">
             <div class="px-4 py-3 text-sm">@ChildContent</div>

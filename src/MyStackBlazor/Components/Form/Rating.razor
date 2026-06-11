@@ -17,6 +17,7 @@
             @if (state == StarState.Full)
             {
                 <svg class="@SizeClass text-yellow-400 pointer-events-none select-none"
+                     aria-hidden="true" focusable="false"
                      fill="currentColor" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="@_starD" />
                 </svg>
@@ -25,7 +26,7 @@
             @* ── Half star (left half filled, right half outline) *@
             else if (state == StarState.Half)
             {
-                <svg class="@SizeClass pointer-events-none select-none" viewBox="0 0 24 24">
+                <svg class="@SizeClass pointer-events-none select-none" aria-hidden="true" focusable="false" viewBox="0 0 24 24">
                     <defs>
                         <clipPath id="rh-@_uid-@pos">
                             <rect x="0" y="0" width="12" height="24" />
@@ -47,6 +48,7 @@
             else
             {
                 <svg class="@SizeClass text-muted-foreground/40 pointer-events-none select-none"
+                     aria-hidden="true" focusable="false"
                      fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="@_starD" />
                 </svg>

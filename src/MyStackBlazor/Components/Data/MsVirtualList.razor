@@ -1,0 +1,32 @@
+@namespace MyStackBlazor.Components.Data
+@typeparam TItem
+
+<div class="ms-virtual-list @Class" style="height: @Height; overflow-y: auto;" role="list">
+    <Virtualize Items="@Items"
+                ItemSize="@ItemHeight"
+                OverscanCount="5"
+                Context="item">
+        <ItemContent>
+            @ItemTemplate(item)
+        </ItemContent>
+        <Placeholder>
+            <div class="ms-virtual-list__skeleton animate-pulse bg-muted rounded" style="height: @(ItemHeight)px; margin: 2px 0;"></div>
+        </Placeholder>
+    </Virtualize>
+</div>
+
+@code {
+    /// <summary>The data collection to render. For server-side / infinite data use MsInfiniteGrid.</summary>
+    [Parameter, EditorRequired] public ICollection<TItem> Items { get; set; } = [];
+
+    /// <summary>Render template for each item.</summary>
+    [Parameter, EditorRequired] public RenderFragment<TItem> ItemTemplate { get; set; } = null!;
+
+    /// <summary>Fixed pixel height per item — required for Virtualize's scroll math.</summary>
+    [Parameter] public float ItemHeight { get; set; } = 48f;
+
+    /// <summary>CSS height of the scrollable container, e.g. "400px" or "60vh".</summary>
+    [Parameter] public string Height { get; set; } = "400px";
+
+    [Parameter] public string? Class { get; set; }
+}

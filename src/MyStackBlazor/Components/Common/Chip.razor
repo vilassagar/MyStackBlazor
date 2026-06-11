@@ -10,10 +10,10 @@
     {
         <button type="button"
                 class="ml-0.5 inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full hover:bg-black/20 dark:hover:bg-white/20 focus:outline-none focus:ring-1 focus:ring-ring"
-                aria-label="Remove"
+                aria-label="@(RemoveLabel ?? "Remove")"
                 @onclick="OnRemove"
                 @onclick:stopPropagation="true">
-            <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-2.5 w-2.5" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
@@ -28,6 +28,8 @@
     [Parameter] public string Size { get; set; } = "default";
     [Parameter] public string? Class { get; set; }
     [Parameter] public EventCallback OnRemove { get; set; }
+    /// <summary>Accessible label for the remove button, e.g. "Remove JavaScript". Defaults to "Remove".</summary>
+    [Parameter] public string? RemoveLabel { get; set; }
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
 
     private string ComputedClass =>

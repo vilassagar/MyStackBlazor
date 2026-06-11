@@ -4,13 +4,13 @@
 
 <div class="space-y-4">
 
-    <!-- ── Toolbar ── -->
     <div class="flex flex-wrap items-center gap-2">
 
         @if (ShowSearch)
         {
             <div class="relative flex-1 min-w-[180px] max-w-sm">
                 <svg class="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none"
+                     aria-hidden="true" focusable="false"
                      fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <circle cx="11" cy="11" r="8"></circle>
                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -26,9 +26,10 @@
         @if (ShowAdvancedFilter && _filterableColumns.Any())
         {
             <button type="button"
+                    aria-expanded="@_showFilterPanel.ToString().ToLower()"
                     class="inline-flex h-9 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-sm font-medium shadow-sm hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     @onclick="() => _showFilterPanel = !_showFilterPanel">
-                <svg class="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="h-4 w-4 text-muted-foreground" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                 </svg>
                 <span>Filters</span>
@@ -44,7 +45,7 @@
         @ToolbarContent
     </div>
 
-    <!-- ── Active filter chips (panel closed) ── -->
+    @*── Active filter chips ──*@
     @if (!_showFilterPanel && _activeRuleCount > 0)
     {
         <div class="flex flex-wrap gap-1.5">
@@ -61,9 +62,10 @@
                         <span>– @r.Value2</span>
                     }
                     <button type="button"
+                            aria-label="Remove @colLabel filter"
                             class="ml-0.5 rounded-full hover:text-foreground"
                             @onclick="() => { RemoveFilter(r); StateHasChanged(); }">
-                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="h-3 w-3" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
@@ -78,7 +80,7 @@
         </div>
     }
 
-    <!-- ── Filter panel ── -->
+    @*── Filter panel ──*@
     @if (_showFilterPanel && ShowAdvancedFilter)
     {
         <div class="rounded-lg border bg-card shadow-sm">
@@ -94,9 +96,10 @@
                         </button>
                     }
                     <button type="button"
+                            aria-label="Close filters"
                             class="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                             @onclick="() => _showFilterPanel = false">
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
@@ -117,7 +120,6 @@
                         var colType = GetColumnDataType(r.ColumnKey);
                         <div class="flex flex-wrap items-center gap-2">
 
-                            <!-- Column selector -->
                             <select class="h-8 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring min-w-[140px]"
                                     value="@r.ColumnKey"
                                     @onchange="e => OnRuleColumnChanged(r, e.Value?.ToString())">
@@ -128,7 +130,6 @@
                                 }
                             </select>
 
-                            <!-- Operator selector -->
                             @if (!string.IsNullOrEmpty(r.ColumnKey))
                             {
                                 <select class="h-8 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring min-w-[160px]"
@@ -140,7 +141,6 @@
                                     }
                                 </select>
 
-                                <!-- Value input(s) -->
                                 @if (r.Operator == FilterOperator.Between)
                                 {
                                     <input type="@GetInputType(colType)"
@@ -165,11 +165,11 @@
                                 }
                             }
 
-                            <!-- Remove rule -->
                             <button type="button"
+                                    aria-label="Remove filter rule"
                                     class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
                                     @onclick="() => RemoveFilter(r)">
-                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="h-3.5 w-3.5" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <polyline points="3 6 5 6 21 6"></polyline>
                                     <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
                                     <path d="M10 11v6"></path>
@@ -183,7 +183,7 @@
                 <button type="button"
                         class="mt-1 inline-flex items-center gap-1 text-sm text-primary hover:underline underline-offset-2"
                         @onclick="AddFilter">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
@@ -193,7 +193,6 @@
         </div>
     }
 
-    <!-- ── Table ── -->
     <div class="rounded-md border overflow-auto">
         <table class="w-full caption-bottom text-sm">
             <thead class="[&_tr]:border-b sticky top-0 bg-background z-10">
@@ -202,6 +201,7 @@
                     {
                         var c = col;
                         <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground @(c.Sortable ? "cursor-pointer select-none" : "") @c.Class"
+                            aria-sort="@(c.Sortable ? (_sortColumn == c.Key ? (_sortAscending ? "ascending" : "descending") : "none") : null)"
                             @onclick="() => SortBy(c)">
                             <div class="flex items-center gap-1">
                                 @c.Header
@@ -210,13 +210,14 @@
                                     @if (_sortColumn == c.Key)
                                     {
                                         <svg class="h-4 w-4 @(_sortAscending ? "" : "rotate-180") transition-transform"
+                                             aria-hidden="true" focusable="false"
                                              fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <polyline points="18 15 12 9 6 15"></polyline>
                                         </svg>
                                     }
                                     else
                                     {
-                                        <svg class="h-4 w-4 opacity-25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg class="h-4 w-4 opacity-25" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <line x1="12" y1="5" x2="12" y2="19"></line>
                                             <polyline points="19 12 12 5 5 12"></polyline>
                                         </svg>
@@ -256,7 +257,6 @@
         </table>
     </div>
 
-    <!-- ── Footer ── -->
     <div class="flex items-center justify-between px-2">
         <div class="text-sm text-muted-foreground">
             @(_filteredItems.Count()) of @(Items.Count()) row(s)

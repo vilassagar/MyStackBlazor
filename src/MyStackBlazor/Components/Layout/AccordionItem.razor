@@ -1,7 +1,6 @@
 @namespace MyStackBlazor.Components.Layout
 
 <div class="@($"border-b {Class}".Trim())" @attributes="AdditionalAttributes">
-    <!-- Trigger -->
     <h3 class="flex">
         <button type="button"
                 aria-expanded="@IsOpen.ToString().ToLower()"
@@ -9,13 +8,13 @@
                 @onclick="Toggle">
             @Title
             <svg xmlns="http://www.w3.org/2000/svg"
+                 aria-hidden="true" focusable="false"
                  class="h-4 w-4 shrink-0 transition-transform duration-200 @(IsOpen ? "rotate-180" : "")"
                  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="6 9 12 15 18 9"></polyline>
             </svg>
         </button>
     </h3>
-    <!-- Animated content — CSS grid trick: 0fr → 1fr, no JS needed -->
     <div style="display:grid; grid-template-rows:@(IsOpen ? "1fr" : "0fr"); transition:grid-template-rows 200ms ease-out;">
         <div style="overflow:hidden;">
             <div class="overflow-hidden pb-4 pt-0 text-sm">

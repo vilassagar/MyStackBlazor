@@ -2,12 +2,11 @@
 
 <div class="relative @Class" @attributes="AdditionalAttributes">
 
-    <!-- Trigger -->
     <button type="button"
             class="flex h-10 w-full items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             disabled="@Disabled"
             @onclick="ToggleOpen">
-        <svg class="h-4 w-4 flex-shrink-0 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="h-4 w-4 flex-shrink-0 text-muted-foreground" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="10" />
             <polyline points="12 6 12 12 16 14" />
         </svg>
@@ -20,21 +19,18 @@
     {
         <div class="absolute z-50 mt-1 overflow-hidden rounded-xl border bg-popover shadow-xl animate-fade-in" style="width:220px">
 
-            <!-- Header -->
             <div class="flex items-center justify-between border-b bg-muted/30 px-4 py-2.5">
                 <span class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">12-Hour</span>
                 <span class="font-mono text-sm font-bold tabular-nums">@LivePreview</span>
             </div>
 
-            <!-- Drums + AM/PM -->
             <div class="flex items-end justify-center gap-1 px-3 py-3">
 
-                <!-- Hour drum (01–12) -->
                 <div class="flex flex-col items-center gap-0.5">
                     <button type="button"
                             class="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                             @onclick="IncH">
-                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="h-3.5 w-3.5" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <polyline points="18 15 12 9 6 15" />
                         </svg>
                     </button>
@@ -52,7 +48,7 @@
                     <button type="button"
                             class="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                             @onclick="DecH">
-                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="h-3.5 w-3.5" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <polyline points="6 9 12 15 18 9" />
                         </svg>
                     </button>
@@ -61,12 +57,11 @@
 
                 <span class="mb-7 select-none text-2xl font-bold text-muted-foreground/50">:</span>
 
-                <!-- Minute drum -->
                 <div class="flex flex-col items-center gap-0.5">
                     <button type="button"
                             class="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                             @onclick="IncM">
-                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="h-3.5 w-3.5" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <polyline points="18 15 12 9 6 15" />
                         </svg>
                     </button>
@@ -84,14 +79,13 @@
                     <button type="button"
                             class="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                             @onclick="DecM">
-                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="h-3.5 w-3.5" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <polyline points="6 9 12 15 18 9" />
                         </svg>
                     </button>
                     <span class="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground/60">MIN</span>
                 </div>
 
-                <!-- AM / PM pills -->
                 <div class="mb-6 ml-1 flex flex-col gap-2">
                     <button type="button"
                             class="@($"w-14 rounded-lg px-2 py-2.5 text-sm font-bold tracking-wide transition-all {(!_isPm ? "bg-primary text-primary-foreground shadow-sm" : "border border-border text-muted-foreground hover:bg-accent hover:text-foreground")}")"
@@ -107,7 +101,6 @@
 
             </div>
 
-            <!-- Footer -->
             <div class="flex gap-2 border-t bg-muted/20 px-3 py-2.5">
                 <button type="button"
                         class="flex-1 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors hover:bg-accent"

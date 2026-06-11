@@ -1,0 +1,282 @@
+@namespace MyStackBlazor.Components.Charts
+@using System.Globalization
+
+<div class="@($"flex flex-col gap-2 {Class}".Trim())" @attributes="AdditionalAttributes">
+    <svg viewBox="0 0 560 300"
+         role="img"
+         aria-label="@(Title ?? "Line chart")"
+         class="w-full h-auto"
+         @onmouseleave="() => _hoverIdx = -1">
+        <title>@(Title ?? "Line chart")</title>
+
+        @{
+            var (yMin, yMax, ticks) = ComputeScale();
+            double yRange = yMax - yMin;
+        }
+
+        @* Grid lines and Y-axis labels *@
+        @for (int ti = 0; ti <= ticks; ti++)
+        {
+            var capturedTi = ti;
+            double yVal = yMin + capturedTi * (yMax - yMin) / ticks;
+            double yPx  = MT + PlotH - PlotH * (yVal - yMin) / yRange;
+            <line x1="@F(ML)" y1="@F(yPx)" x2="@F(ML + PlotW)" y2="@F(yPx)"
+                  stroke="var(--color-border)" stroke-width="1" stroke-dasharray="3 3"
+                  aria-hidden="true" focusable="false" />
+            @((MarkupString)SvgText(ML - 6, yPx + 4, "end", 11, "var(--color-muted-foreground)", FormatY(yVal)))
+        }
+
+        @* X-axis labels *@
+        @if (Labels != null)
+        {
+            int n = Labels.Count;
+            @for (int i = 0; i < n; i++)
+            {
+                var capturedI = i;
+                double xPx = XPos(capturedI);
+                @((MarkupString)SvgText(xPx, MT + PlotH + 20, "middle", 11, "var(--color-muted-foreground)", Labels[capturedI]))
+            }
+        }
+
+        @* Area fills *@
+        @if (ShowArea)
+        {
+            @for (int si = 0; si < Series.Count; si++)
+            {
+                var capturedSi = si;
+                var s = Series[capturedSi];
+                int count = s.Values.Count;
+                if (count == 0) continue;
+                var pts = new System.Text.StringBuilder();
+                double x0 = XPos(0);
+                double yn = MT + PlotH;
+                pts.Append(CultureInfo.InvariantCulture, $"M {F(x0)} {F(yn)} ");
+                for (int i = 0; i < count; i++)
+                {
+                    var capturedI = i;
+                    double xPx = XPos(capturedI);
+                    double yPx = YPos(s.Values[capturedI], yMin, yRange);
+                    pts.Append(CultureInfo.InvariantCulture, $"L {F(xPx)} {F(yPx)} ");
+                }
+                double xlast = XPos(count - 1);
+                pts.Append(CultureInfo.InvariantCulture, $"L {F(xlast)} {F(yn)} Z");
+                <path d="@pts" fill="@Clr(capturedSi)" opacity="0.12"
+                      aria-hidden="true" focusable="false" />
+            }
+        }
+
+        @* Lines *@
+        @for (int si = 0; si < Series.Count; si++)
+        {
+            var capturedSi = si;
+            var s = Series[capturedSi];
+            int count = s.Values.Count;
+            if (count == 0) continue;
+            var pts = new System.Text.StringBuilder();
+            for (int i = 0; i < count; i++)
+            {
+                var capturedI = i;
+                double xPx = XPos(capturedI);
+                double yPx = YPos(s.Values[capturedI], yMin, yRange);
+                pts.Append(i == 0 ? "M " : "L ");
+                pts.Append(CultureInfo.InvariantCulture, $"{F(xPx)} {F(yPx)} ");
+            }
+            <path d="@pts"
+                  fill="none"
+                  stroke="@Clr(capturedSi)"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true" focusable="false" />
+        }
+
+        @* Dots *@
+        @if (ShowDots)
+        {
+            @for (int si = 0; si < Series.Count; si++)
+            {
+                var capturedSi = si;
+                var s = Series[capturedSi];
+                @for (int i = 0; i < s.Values.Count; i++)
+                {
+                    var capturedI = i;
+                    double xPx = XPos(capturedI);
+                    double yPx = YPos(s.Values[capturedI], yMin, yRange);
+                    bool hovered = _hoverIdx == capturedI;
+                    <circle cx="@F(xPx)" cy="@F(yPx)"
+                            r="@(hovered ? "5" : "3.5")"
+                            fill="@Clr(capturedSi)"
+                            stroke="var(--color-card)" stroke-width="2"
+                            aria-hidden="true" focusable="false" />
+                }
+            }
+        }
+
+        @* Hover vertical line *@
+        @if (ShowTooltip && _hoverIdx >= 0)
+        {
+            double hxPx = XPos(_hoverIdx);
+            <line x1="@F(hxPx)" y1="@F(MT)" x2="@F(hxPx)" y2="@F(MT + PlotH)"
+                  stroke="var(--color-muted-foreground)" stroke-width="1" stroke-dasharray="4 3"
+                  aria-hidden="true" focusable="false" />
+        }
+
+        @* Tooltip *@
+        @if (ShowTooltip && _hoverIdx >= 0)
+        {
+            double hxPx = XPos(_hoverIdx);
+            int lineCount = Series.Count;
+            double tooltipW = 130;
+            double tooltipH = 16 + lineCount * 18 + 8;
+            double txPx = hxPx + 10;
+            if (txPx + tooltipW > ML + PlotW) txPx = hxPx - tooltipW - 10;
+            double tyPx = MT + 10;
+
+            <rect x="@F(txPx)" y="@F(tyPx)" width="@F(tooltipW)" height="@F(tooltipH)"
+                  rx="4" fill="var(--color-popover)" stroke="var(--color-border)" stroke-width="1"
+                  aria-hidden="true" focusable="false" />
+
+            @if (Labels != null && _hoverIdx < Labels.Count)
+            {
+                @((MarkupString)SvgText(txPx + 8, tyPx + 13, "start", 11, "var(--color-card-foreground)", Labels[_hoverIdx], "600"))
+            }
+
+            @for (int si = 0; si < Series.Count; si++)
+            {
+                var capturedSi = si;
+                double rowY = tyPx + 16 + capturedSi * 18 + 13;
+                double val = _hoverIdx < Series[capturedSi].Values.Count ? Series[capturedSi].Values[_hoverIdx] : 0;
+                <circle cx="@F(txPx + 12)" cy="@F(rowY - 4)"
+                        r="4" fill="@Clr(capturedSi)"
+                        aria-hidden="true" focusable="false" />
+                @((MarkupString)SvgText(txPx + 22, rowY, "start", 11, "var(--color-popover-foreground)", $"{Series[capturedSi].Name}: {FormatY(val)}"))
+            }
+        }
+
+        @* Invisible hover zones *@
+        @if (ShowTooltip && MaxPoints > 0)
+        {
+            @for (int i = 0; i < MaxPoints; i++)
+            {
+                var capturedI = i;
+                double xPx = XPos(capturedI);
+                double zoneW = MaxPoints > 1 ? PlotW / (MaxPoints - 1) : PlotW;
+                <rect x="@F(xPx - zoneW / 2)" y="@F(MT)" width="@F(zoneW)" height="@F(PlotH)"
+                      fill="transparent"
+                      @onmouseenter="() => _hoverIdx = capturedI"
+                      aria-hidden="true" focusable="false" />
+            }
+        }
+
+        @* Axes *@
+        <line x1="@F(ML)" y1="@F(MT)" x2="@F(ML)" y2="@F(MT + PlotH)"
+              stroke="var(--color-border)" stroke-width="1"
+              aria-hidden="true" focusable="false" />
+        <line x1="@F(ML)" y1="@F(MT + PlotH)" x2="@F(ML + PlotW)" y2="@F(MT + PlotH)"
+              stroke="var(--color-border)" stroke-width="1"
+              aria-hidden="true" focusable="false" />
+    </svg>
+
+    @if (ShowLegend && Series.Count > 0)
+    {
+        <div class="flex flex-wrap gap-x-4 gap-y-1 justify-center mt-1">
+            @for (int si = 0; si < Series.Count; si++)
+            {
+                var capturedSi = si;
+                <div class="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:@Clr(capturedSi)"></span>
+                    @Series[capturedSi].Name
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [EditorRequired, Parameter] public IReadOnlyList<ChartSeries> Series { get; set; } = [];
+    [Parameter] public IReadOnlyList<string>? Labels { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public bool ShowArea { get; set; } = false;
+    [Parameter] public bool ShowDots { get; set; } = true;
+    [Parameter] public bool ShowTooltip { get; set; } = true;
+    [Parameter] public bool ShowLegend { get; set; } = true;
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private int _hoverIdx = -1;
+
+    private const double ML = 55;
+    private const double MR = 20;
+    private const double MT = 20;
+    private const double MB = 45;
+    private const double PlotW = 485;
+    private const double PlotH = 235;
+
+    private static readonly string[] Palette =
+    [
+        "#6366f1", "#22c55e", "#f59e0b", "#ef4444",
+        "#8b5cf6", "#06b6d4", "#f97316", "#ec4899"
+    ];
+
+    private int MaxPoints => Series.Count == 0 ? 0 : Series.Max(s => s.Values.Count);
+
+    private string Clr(int idx)
+    {
+        if (Series.Count > idx && Series[idx].Color is { } c) return c;
+        return Palette[idx % Palette.Length];
+    }
+
+    private double XPos(int i)
+    {
+        int n = MaxPoints;
+        if (n <= 1) return ML + PlotW / 2.0;
+        return ML + i * PlotW / (n - 1.0);
+    }
+
+    private static double YPos(double val, double yMin, double yRange)
+        => MT + PlotH - (yRange > 0 ? PlotH * (val - yMin) / yRange : PlotH / 2.0);
+
+    private (double min, double max, int ticks) ComputeScale()
+    {
+        if (Series.Count == 0 || !Series.Any(s => s.Values.Count > 0))
+            return (0, 10, 5);
+        var allVals = Series.SelectMany(s => s.Values).ToList();
+        return NiceScale(allVals.Min(), allVals.Max());
+    }
+
+    private static (double min, double max, int ticks) NiceScale(double rawMin, double rawMax)
+    {
+        var range = rawMax - rawMin;
+        if (range <= 0) { rawMax = rawMin + 10; range = 10; }
+        var step = NiceNum(range / 5.0, true);
+        var nMin = Math.Floor(rawMin / step) * step;
+        var nMax = Math.Ceiling(rawMax / step) * step;
+        var t    = (int)Math.Round((nMax - nMin) / step);
+        return (nMin, nMax, Math.Max(Math.Min(t, 8), 2));
+    }
+
+    private static double NiceNum(double x, bool round)
+    {
+        var exp = Math.Floor(Math.Log10(x));
+        var f   = x / Math.Pow(10, exp);
+        var nf  = round ? (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10.0)
+                        : (f <= 1  ? 1 : f <= 2   ? 2 : f <= 5   ? 5 : 10.0);
+        return nf * Math.Pow(10, exp);
+    }
+
+    private static string F(double v) => v.ToString("F1", CultureInfo.InvariantCulture);
+
+    private static string FormatY(double v)
+    {
+        if (Math.Abs(v) >= 1_000_000) return $"{v / 1_000_000:F1}M";
+        if (Math.Abs(v) >= 1_000)     return $"{v / 1_000:F1}k";
+        if (v == Math.Floor(v))        return v.ToString("0", CultureInfo.InvariantCulture);
+        return v.ToString("0.#", CultureInfo.InvariantCulture);
+    }
+
+    private static string SvgText(double x, double y, string anchor, int fontSize, string fill, string content, string fontWeight = "normal")
+    {
+        var escaped = System.Net.WebUtility.HtmlEncode(content);
+        return $"<text x=\"{x.ToString("F1", CultureInfo.InvariantCulture)}\" y=\"{y.ToString("F1", CultureInfo.InvariantCulture)}\" text-anchor=\"{anchor}\" font-size=\"{fontSize}\" font-weight=\"{fontWeight}\" fill=\"{fill}\" aria-hidden=\"true\" focusable=\"false\">{escaped}</text>";
+    }
+}

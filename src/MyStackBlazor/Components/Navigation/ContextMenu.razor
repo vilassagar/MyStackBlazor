@@ -9,8 +9,7 @@
              style="top:@(_y)px;left:@(_x)px;">
             @MenuContent
         </div>
-        <!-- Click-away overlay -->
-        <div class="fixed inset-0 z-40" @onclick="Close"></div>
+        <div class="fixed inset-0 z-40" aria-hidden="true" @onclick="Close"></div>
     }
 </div>
 

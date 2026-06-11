@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using MyStackBlazor.Services;
 
 namespace MyStackBlazor;
 
@@ -18,6 +19,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<ThemeService>();
         services.AddScoped<ToastService>();
+        services.AddScoped<MsStyleLoader>();
         return services;
     }
 }

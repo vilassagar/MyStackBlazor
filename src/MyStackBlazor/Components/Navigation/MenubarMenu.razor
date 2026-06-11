@@ -3,6 +3,8 @@
 <div class="relative">
     <button type="button"
             role="menuitem"
+            aria-haspopup="true"
+            aria-expanded="@IsActive.ToString().ToLower()"
             class="@($"flex cursor-default select-none items-center rounded-sm px-3 py-1.5 text-sm font-medium outline-none {(IsActive ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground")} {Class}".Trim())"
             @onclick="Toggle">
         @Label

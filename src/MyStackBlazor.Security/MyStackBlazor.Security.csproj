@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PackageId>MyStackBlazor.Security</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Vilas Sagar</Authors>
+    <Description>Security utilities for MyStackBlazor: HTML sanitization, token providers, and auth abstractions. Supports CSP-compliant rendering.</Description>
+    <PackageTags>blazor;security;xss;sanitizer;auth;csp</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageOutputPath>..\..\..\nupkg</PackageOutputPath>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="HtmlSanitizer" Version="9.0.892" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.7" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MyStackBlazor.Core\MyStackBlazor.Core.csproj" />
+  </ItemGroup>
+
+</Project>

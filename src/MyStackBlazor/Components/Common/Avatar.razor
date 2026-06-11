@@ -1,10 +1,13 @@
 @namespace MyStackBlazor.Components.Common
 
-<span class="@ComputedClass" @attributes="AdditionalAttributes">
+<span role="img"
+      aria-label="@_accessibleName"
+      class="@ComputedClass"
+      @attributes="AdditionalAttributes">
     @if (!string.IsNullOrEmpty(Src))
     {
         <img src="@Src"
-             alt="@Alt"
+             alt=""
              class="aspect-square h-full w-full object-cover"
              @onerror="HandleImageError" />
     }
@@ -13,7 +16,7 @@
     {
         @if (!string.IsNullOrEmpty(Initials))
         {
-            <span class="flex h-full w-full items-center justify-center text-sm font-medium uppercase">
+            <span class="flex h-full w-full items-center justify-center text-sm font-medium uppercase" aria-hidden="true">
                 @Initials
             </span>
         }
@@ -23,7 +26,8 @@
         }
         else
         {
-            <svg class="h-full w-full text-muted-foreground p-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg class="h-full w-full text-muted-foreground p-1.5" aria-hidden="true" focusable="false"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
             </svg>
         }
@@ -32,6 +36,7 @@
 
 @code {
     [Parameter] public string? Src { get; set; }
+    /// <summary>Accessible label — announced by screen readers. Defaults to Initials, then "User avatar".</summary>
     [Parameter] public string? Alt { get; set; }
     [Parameter] public string? Initials { get; set; }
     [Parameter] public string Size { get; set; } = "default";
@@ -40,6 +45,9 @@
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
 
     private bool _showFallback;
+
+    private string _accessibleName =>
+        Alt ?? (!string.IsNullOrEmpty(Initials) ? Initials : "User avatar");
 
     private string ComputedClass =>
         $"relative flex shrink-0 overflow-hidden rounded-full bg-muted {SizeClass} {Class}".Trim();

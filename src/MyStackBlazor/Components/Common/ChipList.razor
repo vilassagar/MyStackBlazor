@@ -1,46 +1,82 @@
 @namespace MyStackBlazor.Components.Common
 @typeparam TItem
 
-<div class="flex flex-wrap gap-2 @Class" @attributes="AdditionalAttributes">
-    @if (Items is not null)
+<div role="list"
+     aria-label="@(Label ?? "Chip list")"
+     class="flex flex-wrap gap-2 @Class"
+     @attributes="AdditionalAttributes">
+    @if (_hasItems)
     {
-        @foreach (var item in Items)
+        @foreach (var item in Items!)
         {
             var current = item;
-            <span class="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm @ItemClass">
-                @if (ItemTemplate is not null)
-                {
-                    @ItemTemplate(current)
-                }
-                else
-                {
-                    @(ItemLabel?.Invoke(current) ?? current?.ToString())
-                }
-                @if (OnRemove.HasDelegate)
-                {
-                    <button type="button"
-                            class="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full opacity-60 hover:opacity-100 focus:outline-none"
-                            @onclick="() => OnRemove.InvokeAsync(current)"
-                            @onclick:stopPropagation="true">
-                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                    </button>
-                }
+            var label   = ItemLabel?.Invoke(current) ?? current?.ToString() ?? "";
+            <span role="listitem">
+                <Chip Variant="@Variant"
+                      Size="@Size"
+                      OnRemove="@(Removable ? EventCallback.Factory.Create(this, () => OnRemove.InvokeAsync(current)) : default)"
+                      RemoveLabel="@($"Remove {label}")"
+                      Class="@ChipClass">
+                    @if (ItemTemplate is not null)
+                    {
+                        @ItemTemplate(current)
+                    }
+                    else
+                    {
+                        @label
+                    }
+                </Chip>
             </span>
         }
     }
-    @ChildContent
+    else if (EmptyContent is not null)
+    {
+        @EmptyContent
+    }
+    else if (!string.IsNullOrEmpty(EmptyText))
+    {
+        <span class="text-sm text-muted-foreground italic">@EmptyText</span>
+    }
 </div>
 
 @code {
+    /// <summary>Items to render as chips.</summary>
     [Parameter] public IEnumerable<TItem>? Items { get; set; }
-    [Parameter] public Func<TItem, string?>? ItemLabel { get; set; }
-    [Parameter] public RenderFragment<TItem>? ItemTemplate { get; set; }
-    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Fired when a chip's remove button is clicked; receives the removed item.</summary>
     [Parameter] public EventCallback<TItem> OnRemove { get; set; }
-    [Parameter] public string? ItemClass { get; set; }
+
+    /// <summary>Function that returns the display label for an item.</summary>
+    [Parameter] public Func<TItem, string?>? ItemLabel { get; set; }
+
+    /// <summary>Custom template rendered inside each chip in place of the label.</summary>
+    [Parameter] public RenderFragment<TItem>? ItemTemplate { get; set; }
+
+    /// <summary>Content shown when <see cref="Items"/> is empty.</summary>
+    [Parameter] public RenderFragment? EmptyContent { get; set; }
+
+    /// <summary>Plain-text shown when <see cref="Items"/> is empty and no <see cref="EmptyContent"/> is set.</summary>
+    [Parameter] public string? EmptyText { get; set; }
+
+    /// <summary>When false, remove buttons are hidden on all chips.</summary>
+    [Parameter] public bool Removable { get; set; } = true;
+
+    /// <summary>Chip colour variant — default, secondary, destructive, success, warning, outline.</summary>
+    [Parameter] public string Variant { get; set; } = "default";
+
+    /// <summary>Chip size — default, sm, lg.</summary>
+    [Parameter] public string Size { get; set; } = "default";
+
+    /// <summary>Accessible label for the list container (aria-label).</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Extra CSS classes applied to the outer container.</summary>
     [Parameter] public string? Class { get; set; }
+
+    /// <summary>Extra CSS classes forwarded to every <see cref="Chip"/>.</summary>
+    [Parameter] public string? ChipClass { get; set; }
+
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool _hasItems => Items?.Any() == true;
 }

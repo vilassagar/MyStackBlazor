@@ -4,9 +4,7 @@
 
     @if (Vertical)
     {
-        <!-- ── Vertical layout ── -->
         <div class="flex gap-4">
-            <!-- Left column: circle indicators + connector lines -->
             <div class="flex flex-col items-center">
                 @for (var i = 0; i < _steps.Count; i++)
                 {
@@ -22,7 +20,7 @@
                             @onclick="() => GoToStep(idx)">
                         @if (isDone)
                         {
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
                         }
@@ -39,7 +37,6 @@
                 }
             </div>
 
-            <!-- Right column: labels + step content -->
             <div class="flex flex-col flex-1">
                 @for (var i = 0; i < _steps.Count; i++)
                 {
@@ -67,7 +64,6 @@
             </div>
         </div>
 
-        <!-- Step content area -->
         <div>
             <CascadingValue Value="this">
                 @ChildContent
@@ -76,7 +72,6 @@
     }
     else
     {
-        <!-- ── Horizontal layout (original) ── -->
         <nav aria-label="Progress" class="flex items-center">
             @for (var i = 0; i < _steps.Count; i++)
             {
@@ -94,7 +89,7 @@
                         <span class="@GetIndicatorClass(isActive, isDone) flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 text-sm font-medium transition-colors">
                             @if (isDone)
                             {
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <polyline points="20 6 9 17 4 12"></polyline>
                                 </svg>
                             }
@@ -130,7 +125,6 @@
         </div>
     }
 
-    <!-- Navigation buttons (shared for both orientations) -->
     @if (ShowNavigation)
     {
         <div class="flex items-center justify-between pt-2">
@@ -138,7 +132,7 @@
                     class="inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
                     disabled="@(_currentStep == 0)"
                     @onclick="Previous">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <polyline points="15 18 9 12 15 6"></polyline>
                 </svg>
                 Back
@@ -154,7 +148,7 @@
                         class="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                         @onclick="Next">
                     Next
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <polyline points="9 18 15 12 9 6"></polyline>
                     </svg>
                 </button>
@@ -165,7 +159,7 @@
                         class="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                         @onclick="Complete">
                     Complete
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
                 </button>

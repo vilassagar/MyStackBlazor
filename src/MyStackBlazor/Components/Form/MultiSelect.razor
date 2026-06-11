@@ -2,7 +2,6 @@
 @typeparam TItem
 
 <div class="relative @Class" @attributes="AdditionalAttributes">
-    <!-- Input area with tags -->
     <div class="flex min-h-9 cursor-text flex-wrap gap-1 rounded-md border border-input bg-background px-2 py-1 text-sm transition-colors @(_open ? "ring-1 ring-ring" : "")"
          @onclick="Open">
         @foreach (var item in _selected)
@@ -14,7 +13,7 @@
                         class="ml-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full opacity-60 hover:opacity-100"
                         @onclick="() => RemoveItem(current)"
                         @onclick:stopPropagation="true">
-                    <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-2.5 w-2.5" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
                         <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
@@ -40,7 +39,7 @@
                     <div class="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
                          @onclick="() => ToggleItem(current)"
                          @onclick:stopPropagation="true">
-                        <svg class="h-4 w-4 text-primary @(isSelected ? "opacity-100" : "opacity-0")" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="h-4 w-4 text-primary @(isSelected ? "opacity-100" : "opacity-0")" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
                         @(ItemLabel?.Invoke(current) ?? current?.ToString())

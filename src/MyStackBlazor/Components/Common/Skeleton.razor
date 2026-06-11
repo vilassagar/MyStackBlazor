@@ -1,10 +1,15 @@
 @namespace MyStackBlazor.Components.Common
 
-<div class="@($"animate-pulse rounded-md bg-muted {Class}".Trim())"
+<div role="status"
+     aria-busy="true"
+     aria-label="@Label"
+     class="@($"animate-pulse rounded-md bg-muted {Class}".Trim())"
      @attributes="AdditionalAttributes">
+    <span class="sr-only">@Label</span>
 </div>
 
 @code {
     [Parameter] public string? Class { get; set; }
+    [Parameter] public string Label { get; set; } = "Loading...";
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
 }

@@ -4,7 +4,6 @@
 @inject IJSRuntime JS
 
 <div class="space-y-4">
-    <!-- Toolbar -->
     @if (ShowSearch || ToolbarContent is not null)
     {
         <div class="flex items-center justify-between gap-2">
@@ -20,18 +19,17 @@
         </div>
     }
 
-    <!-- Table wrapper -->
     <div id="@_containerId"
          class="rounded-md border @((Virtualize || InfiniteScroll) ? "overflow-auto" : "")"
          style="@((Virtualize || InfiniteScroll) ? $"height:{(InfiniteScroll ? InfiniteScrollHeight : VirtualizeHeight)}" : "")">
         <table class="w-full caption-bottom text-sm">
             <thead class="[&_tr]:border-b sticky top-0 bg-background z-10">
-                <!-- Column headers -->
                 <tr class="border-b transition-colors hover:bg-muted/50">
                     @foreach (var col in Columns)
                     {
                         var c = col;
                         <th class="h-12 cursor-pointer select-none px-4 text-left align-middle font-medium text-muted-foreground @c.Class"
+                            aria-sort="@(c.Sortable ? (_sortColumn == c.Key ? (_sortAscending ? "ascending" : "descending") : "none") : null)"
                             @onclick="() => SortBy(c)">
                             <div class="flex items-center gap-1">
                                 @c.Header
@@ -39,13 +37,13 @@
                                 {
                                     @if (_sortColumn == c.Key)
                                     {
-                                        <svg class="h-4 w-4 @(_sortAscending ? "" : "rotate-180")" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg class="h-4 w-4 @(_sortAscending ? "" : "rotate-180")" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <polyline points="18 15 12 9 6 15"></polyline>
                                         </svg>
                                     }
                                     else
                                     {
-                                        <svg class="h-4 w-4 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg class="h-4 w-4 opacity-30" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <line x1="12" y1="5" x2="12" y2="19"></line>
                                             <polyline points="19 12 12 5 5 12"></polyline>
                                         </svg>
@@ -55,7 +53,6 @@
                         </th>
                     }
                 </tr>
-                <!-- Column filter row — shown only when at least one column is Filterable -->
                 @if (_hasFilterableColumns)
                 {
                     <tr class="border-b bg-muted/30">
@@ -100,7 +97,6 @@
                         </tr>
                     }
                 }
-                <!-- Infinite scroll sentinel + loading indicator -->
                 @if (InfiniteScroll)
                 {
                     <tr>
@@ -108,12 +104,12 @@
                             <div id="@_sentinelId" class="h-px w-full"></div>
                             @if (IsLoading)
                             {
-                                <div class="flex items-center justify-center gap-2 py-3 text-sm text-muted-foreground">
-                                    <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <div role="status" class="flex items-center justify-center gap-2 py-3 text-sm text-muted-foreground">
+                                    <svg class="h-4 w-4 animate-spin" aria-hidden="true" focusable="false" fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                                     </svg>
-                                    Loading…
+                                    <span>Loading…</span>
                                 </div>
                             }
                         </td>
@@ -123,7 +119,6 @@
         </table>
     </div>
 
-    <!-- Footer -->
     @if (!Virtualize && !InfiniteScroll)
     {
         <div class="flex items-center justify-between px-2">

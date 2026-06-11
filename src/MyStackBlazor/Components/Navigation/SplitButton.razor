@@ -1,7 +1,6 @@
 @namespace MyStackBlazor.Components.Navigation
 
 <div class="relative inline-flex rounded-md shadow-sm @Class" @attributes="AdditionalAttributes">
-    <!-- Primary action -->
     <button type="button"
             class="inline-flex items-center gap-2 rounded-l-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
             @onclick="OnClick">
@@ -9,18 +8,20 @@
         @Text
     </button>
 
-    <!-- Dropdown trigger -->
     <button type="button"
+            aria-label="Open options"
+            aria-expanded="@_open.ToString().ToLower()"
+            aria-haspopup="true"
             class="-ml-px rounded-r-md border-l border-primary-foreground/30 bg-primary px-2 py-2 text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             @onclick="ToggleMenu">
-        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <polyline points="6 9 12 15 18 9"></polyline>
         </svg>
     </button>
 
     @if (_open)
     {
-        <div class="fixed inset-0 z-40" @onclick="CloseMenu"></div>
+        <div class="fixed inset-0 z-40" aria-hidden="true" @onclick="CloseMenu"></div>
         <div class="absolute left-0 top-full z-50 mt-1 min-w-[10rem] rounded-md border bg-popover p-1 shadow-md animate-fade-in">
             @MenuContent
         </div>

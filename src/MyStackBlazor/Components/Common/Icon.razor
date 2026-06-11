@@ -6,8 +6,15 @@
      stroke-width="1.5"
      viewBox="0 0 24 24"
      class="@ComputedClass"
-     aria-hidden="true"
+     focusable="false"
+     role="@(Title is not null ? "img" : null)"
+     aria-label="@Title"
+     aria-hidden="@(Title is null ? "true" : null)"
      @attributes="AdditionalAttributes">
+    @if (Title is not null)
+    {
+        <title>@Title</title>
+    }
     @((MarkupString)Icons.Get(Name))
 </svg>
 
@@ -20,6 +27,12 @@
 
     /// <summary>Render as filled (solid) instead of outline.</summary>
     [Parameter] public bool Filled { get; set; }
+
+    /// <summary>
+    /// When set, the icon is treated as meaningful: role="img", aria-label and a SVG title are added.
+    /// Leave null for decorative icons (aria-hidden="true", default).
+    /// </summary>
+    [Parameter] public string? Title { get; set; }
 
     [Parameter] public string? Class { get; set; }
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }

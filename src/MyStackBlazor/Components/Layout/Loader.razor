@@ -2,15 +2,21 @@
 
 @if (Visible)
 {
-    <div class="@(FullScreen ? "fixed inset-0 z-[100]" : "absolute inset-0 z-10") flex flex-col items-center justify-center bg-background/80 @Class"
+    <div role="status"
+         aria-label="@(Text ?? "Loading...")"
+         class="@(FullScreen ? "fixed inset-0 z-[100]" : "absolute inset-0 z-10") flex flex-col items-center justify-center bg-background/80 @Class"
          @attributes="AdditionalAttributes">
-        <svg class="h-8 w-8 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
+        <svg class="h-8 w-8 animate-spin text-primary" aria-hidden="true" focusable="false" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
         </svg>
         @if (!string.IsNullOrEmpty(Text))
         {
             <p class="mt-3 text-sm text-muted-foreground">@Text</p>
+        }
+        else
+        {
+            <span class="sr-only">Loading...</span>
         }
     </div>
 }

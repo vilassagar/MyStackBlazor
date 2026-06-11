@@ -1,0 +1,124 @@
+@namespace MyStackBlazor.Components.Charts
+@using System.Globalization
+
+<div class="@($"flex flex-col items-center gap-1 {Class}".Trim())" @attributes="AdditionalAttributes">
+    @if (!string.IsNullOrWhiteSpace(Title))
+    {
+        <p class="text-sm font-medium text-foreground">@Title</p>
+    }
+
+    <svg width="280" height="185" viewBox="0 0 280 185"
+         role="img"
+         aria-label="@AriaLabel"
+         aria-valuenow="@Value.ToString(CultureInfo.InvariantCulture)"
+         aria-valuemin="@Min.ToString(CultureInfo.InvariantCulture)"
+         aria-valuemax="@Max.ToString(CultureInfo.InvariantCulture)">
+        <title>@AriaLabel</title>
+
+        @{
+            double fraction  = Max > Min ? Math.Clamp((Value - Min) / (Max - Min), 0.0, 1.0) : 0;
+            double cx        = 140, cy = 148, r = 108;
+            double endAngle  = Math.PI * (1.0 - fraction);
+            double ex        = cx + r * Math.Cos(endAngle);
+            double ey        = cy - r * Math.Sin(endAngle);
+            string trackPath = $"M {Fc(cx - r)} {Fc(cy)} A {Fc(r)} {Fc(r)} 0 0 0 {Fc(cx + r)} {Fc(cy)}";
+            string valPath   = $"M {Fc(cx - r)} {Fc(cy)} A {Fc(r)} {Fc(r)} 0 0 0 {Fc(ex)} {Fc(ey)}";
+            string arcColor  = ResolveColor(fraction);
+        }
+
+        @* Background track *@
+        <path d="@trackPath"
+              fill="none"
+              stroke="var(--color-secondary)"
+              stroke-width="18"
+              stroke-linecap="round"
+              aria-hidden="true" focusable="false" />
+
+        @* Value arc *@
+        @if (fraction > 0)
+        {
+            <path d="@valPath"
+                  fill="none"
+                  stroke="@arcColor"
+                  stroke-width="18"
+                  stroke-linecap="round"
+                  aria-hidden="true" focusable="false" />
+        }
+
+        @* Threshold tick marks on the track *@
+        @if (Thresholds is { Count: > 0 })
+        {
+            @foreach (var th in Thresholds)
+            {
+                var tickFrac  = Math.Clamp(th.At, 0, 1);
+                var tickAngle = Math.PI * (1.0 - tickFrac);
+                var tx1 = cx + (r - 10) * Math.Cos(tickAngle);
+                var ty1 = cy - (r - 10) * Math.Sin(tickAngle);
+                var tx2 = cx + (r + 10) * Math.Cos(tickAngle);
+                var ty2 = cy - (r + 10) * Math.Sin(tickAngle);
+                <line x1="@Fc(tx1)" y1="@Fc(ty1)" x2="@Fc(tx2)" y2="@Fc(ty2)"
+                      stroke="@th.Color" stroke-width="2"
+                      aria-hidden="true" focusable="false" />
+            }
+        }
+
+        @* Current value — large centered text *@
+        @((MarkupString)SvgText(cx, cy - 14, "middle", 30, "var(--color-foreground)", FormatVal(Value), "700"))
+
+        @* Optional unit label *@
+        @if (!string.IsNullOrWhiteSpace(Unit))
+        {
+            @((MarkupString)SvgText(cx, cy + 12, "middle", 13, "var(--color-muted-foreground)", Unit!))
+        }
+
+        @* Min / Max axis labels *@
+        @((MarkupString)SvgText(cx - r - 2, cy + 20, "middle", 11, "var(--color-muted-foreground)", FormatVal(Min)))
+        @((MarkupString)SvgText(cx + r + 2, cy + 20, "middle", 11, "var(--color-muted-foreground)", FormatVal(Max)))
+    </svg>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public double Value     { get; set; }
+    [Parameter] public double                 Min       { get; set; } = 0;
+    [Parameter] public double                 Max       { get; set; } = 100;
+    [Parameter] public string?                Title     { get; set; }
+    [Parameter] public string?                Unit      { get; set; }
+    [Parameter] public string?                Color     { get; set; }
+    [Parameter] public IReadOnlyList<GaugeThreshold>? Thresholds { get; set; }
+    [Parameter] public string?                Class     { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string AriaLabel =>
+        !string.IsNullOrWhiteSpace(Title) ? $"{Title}: {FormatVal(Value)}" : $"Gauge: {FormatVal(Value)}";
+
+    private string ResolveColor(double fraction)
+    {
+        if (Color is not null) return Color;
+        if (Thresholds is { Count: > 0 })
+        {
+            foreach (var t in Thresholds.OrderBy(t => t.At))
+                if (fraction <= t.At) return t.Color;
+            return Thresholds[^1].Color;
+        }
+        return "#6366f1";
+    }
+
+    private static string Fc(double v) => v.ToString("F2", CultureInfo.InvariantCulture);
+
+    private static string FormatVal(double v) =>
+        Math.Abs(v) >= 1_000_000 ? $"{v / 1_000_000:0.#}M" :
+        Math.Abs(v) >= 1_000     ? $"{v / 1_000:0.#}k"     :
+        v == Math.Floor(v)       ? ((long)v).ToString()     :
+        v.ToString("0.#", CultureInfo.InvariantCulture);
+
+    private static string SvgText(double x, double y, string anchor, int fontSize,
+                                  string fill, string content, string fontWeight = "normal")
+    {
+        var escaped = System.Net.WebUtility.HtmlEncode(content);
+        return $"<text x=\"{x.ToString("F2", CultureInfo.InvariantCulture)}\" " +
+               $"y=\"{y.ToString("F2", CultureInfo.InvariantCulture)}\" " +
+               $"text-anchor=\"{anchor}\" font-size=\"{fontSize}\" font-weight=\"{fontWeight}\" " +
+               $"fill=\"{fill}\" aria-hidden=\"true\" focusable=\"false\">{escaped}</text>";
+    }
+}

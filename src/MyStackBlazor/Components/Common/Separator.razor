@@ -1,6 +1,7 @@
 @namespace MyStackBlazor.Components.Common
 
-<div role="separator"
+<div role="@(Decorative ? "none" : "separator")"
+     aria-orientation="@(Orientation == "vertical" ? "vertical" : null)"
      class="@ComputedClass"
      @attributes="AdditionalAttributes">
     @if (ChildContent is not null)

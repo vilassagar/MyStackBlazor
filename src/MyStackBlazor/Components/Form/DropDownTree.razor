@@ -1,0 +1,184 @@
+@namespace MyStackBlazor.Components.Form
+@typeparam TItem
+
+<div class="relative @Class" @attributes="AdditionalAttributes">
+    <button type="button"
+            class="flex h-10 w-full cursor-pointer items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            role="combobox"
+            aria-expanded="@(_open ? "true" : "false")"
+            aria-haspopup="tree"
+            @onclick="Toggle"
+            @onkeydown="HandleTriggerKey">
+        <span class="@(Value is null ? "text-muted-foreground" : "truncate")">
+            @(_selectedLabel ?? (Placeholder ?? "Select…"))
+        </span>
+        <svg class="h-4 w-4 flex-shrink-0 opacity-50 transition-transform @(_open ? "rotate-180" : "")"
+             aria-hidden="true" focusable="false"
+             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <polyline points="6 9 12 15 18 9" />
+        </svg>
+    </button>
+
+    @if (_open)
+    {
+        <div class="absolute z-50 mt-1 w-full overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md"
+             role="tree"
+             aria-label="@(Placeholder ?? "Select option")">
+            @if (Searchable)
+            {
+                <div class="border-b px-3 py-2">
+                    <input type="text"
+                           placeholder="Search…"
+                           aria-label="Search tree"
+                           class="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                           value="@_search"
+                           @oninput="OnSearch"
+                           @onclick:stopPropagation="true" />
+                </div>
+            }
+            <div class="max-h-64 overflow-auto p-1">
+                @foreach (var (item, level, hasKids) in _flat)
+                {
+                    var fi  = item;
+                    var fl  = level;
+                    var fk  = hasKids;
+                    var exp = _expanded.Contains(fi);
+                    var sel = EqualityComparer<TItem>.Default.Equals(fi, Value);
+                    <div class="flex cursor-pointer select-none items-center gap-1 rounded-sm py-1.5 pr-2 text-sm transition-colors @(sel ? "bg-accent font-medium" : "hover:bg-accent/60")"
+                         style="padding-left:@(8 + fl * 16)px"
+                         role="treeitem"
+                         aria-expanded="@(fk ? (exp ? "true" : "false") : null)"
+                         aria-selected="@(sel ? "true" : "false")"
+                         tabindex="0"
+                         @onclick="() => OnNodeClick(fi)"
+                         @onkeydown="e => OnNodeKey(e, fi)">
+                        <span class="flex h-4 w-4 flex-shrink-0 items-center justify-center"
+                              @onclick:stopPropagation="true"
+                              @onclick="() => ToggleExpand(fi)">
+                            @if (fk)
+                            {
+                                <svg class="h-3 w-3 text-muted-foreground transition-transform @(exp ? "rotate-90" : "")"
+                                     aria-hidden="true" focusable="false"
+                                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <polyline points="9 18 15 12 9 6" />
+                                </svg>
+                            }
+                        </span>
+                        <span class="flex-1 truncate">@(GetLabel?.Invoke(fi) ?? fi?.ToString() ?? "")</span>
+                        @if (sel)
+                        {
+                            <svg class="h-3.5 w-3.5 flex-shrink-0 text-primary"
+                                 aria-hidden="true" focusable="false"
+                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                        }
+                    </div>
+                }
+                @if (_flat.Count == 0)
+                {
+                    <p class="py-4 text-center text-sm text-muted-foreground">No results</p>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IEnumerable<TItem>         Items       { get; set; } = [];
+    [Parameter] public Func<TItem, IEnumerable<TItem>?>?          GetChildren { get; set; }
+    [Parameter] public Func<TItem, string>?                        GetLabel    { get; set; }
+    [Parameter] public TItem?                                      Value       { get; set; }
+    [Parameter] public EventCallback<TItem?>                       ValueChanged { get; set; }
+    [Parameter] public bool                                        AllowBranchSelect { get; set; } = false;
+    [Parameter] public bool                                        Searchable  { get; set; } = false;
+    [Parameter] public string?                                     Placeholder { get; set; }
+    [Parameter] public string?                                     Class       { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool _open;
+    private string _search = "";
+    private readonly HashSet<TItem> _expanded = new();
+    private List<(TItem item, int level, bool hasKids)> _flat = [];
+
+    private string? _selectedLabel =>
+        Value is not null ? (GetLabel?.Invoke(Value) ?? Value.ToString()) : null;
+
+    protected override void OnParametersSet() => RebuildFlat();
+
+    private void RebuildFlat()
+    {
+        _flat = [];
+        if (!string.IsNullOrWhiteSpace(_search))
+            FlattenSearch(Items, 0);
+        else
+            Flatten(Items, 0);
+    }
+
+    private void Flatten(IEnumerable<TItem> items, int level)
+    {
+        foreach (var item in items)
+        {
+            var children = GetChildren?.Invoke(item)?.ToList() ?? [];
+            _flat.Add((item, level, children.Count > 0));
+            if (_expanded.Contains(item) && children.Count > 0)
+                Flatten(children, level + 1);
+        }
+    }
+
+    private void FlattenSearch(IEnumerable<TItem> items, int level)
+    {
+        foreach (var item in items)
+        {
+            var label    = GetLabel?.Invoke(item) ?? item?.ToString() ?? "";
+            var children = GetChildren?.Invoke(item)?.ToList() ?? [];
+            if (label.Contains(_search, StringComparison.OrdinalIgnoreCase))
+                _flat.Add((item, 0, false));
+            if (children.Count > 0)
+                FlattenSearch(children, level + 1);
+        }
+    }
+
+    private void OnSearch(ChangeEventArgs e)
+    {
+        _search = e.Value?.ToString() ?? "";
+        RebuildFlat();
+    }
+
+    private void Toggle() => _open = !_open;
+
+    private void HandleTriggerKey(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or " " or "ArrowDown") _open = true;
+        else if (e.Key is "Escape") _open = false;
+    }
+
+    private void ToggleExpand(TItem item)
+    {
+        if (_expanded.Contains(item)) _expanded.Remove(item);
+        else _expanded.Add(item);
+        RebuildFlat();
+    }
+
+    private async Task OnNodeClick(TItem item)
+    {
+        var children = GetChildren?.Invoke(item)?.ToList() ?? [];
+        if (children.Count > 0)
+        {
+            ToggleExpand(item);
+            if (!AllowBranchSelect) return;
+        }
+        Value = item;
+        _open  = false;
+        _search = "";
+        RebuildFlat();
+        await ValueChanged.InvokeAsync(Value);
+    }
+
+    private async Task OnNodeKey(KeyboardEventArgs e, TItem item)
+    {
+        if (e.Key is "Enter" or " ") await OnNodeClick(item);
+        else if (e.Key is "Escape")  _open = false;
+    }
+}

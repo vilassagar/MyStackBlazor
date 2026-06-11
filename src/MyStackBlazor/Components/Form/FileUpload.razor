@@ -2,7 +2,6 @@
 @inject IJSRuntime JS
 
 <div class="space-y-3">
-    <!-- Drop zone -->
     <div id="@_dropzoneId"
          class="@DropzoneClass"
          @ondragenter="OnDragEnter"
@@ -12,7 +11,7 @@
                    OnChange="OnFilesChanged"
                    @attributes="GetFileInputAttributes()" />
         <label for="@_inputId" class="flex cursor-pointer flex-col items-center justify-center gap-2 p-6">
-            <svg class="h-10 w-10 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-10 w-10 text-muted-foreground" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                       d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
             </svg>
@@ -26,7 +25,6 @@
         </label>
     </div>
 
-    <!-- File list -->
     @if (Files.Count > 0)
     {
         <ul class="space-y-2">
@@ -42,7 +40,7 @@
                     else
                     {
                         <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded bg-muted text-muted-foreground">
-                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="h-5 w-5" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                       d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
@@ -53,9 +51,10 @@
                         <p class="text-xs text-muted-foreground">@FormatSize(f.Size)</p>
                     </div>
                     <button type="button"
+                            aria-label="Remove @f.Name"
                             class="text-muted-foreground transition-colors hover:text-destructive"
                             @onclick="() => RemoveFile(f)">
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
