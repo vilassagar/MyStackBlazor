@@ -1,0 +1,16 @@
+@namespace MyStackBlazor.Demo.Shared
+
+<NavLink href="@Href"
+         Match="@Match"
+         class="flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors hover:text-foreground hover:bg-accent"
+         ActiveClass="bg-accent text-foreground font-medium"
+         @onclick="@(_ => OnNavigate.InvokeAsync())">
+    @ChildContent
+</NavLink>
+
+@code {
+    [Parameter] public string Href { get; set; } = "";
+    [Parameter] public NavLinkMatch Match { get; set; } = NavLinkMatch.Prefix;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback OnNavigate { get; set; }
+}

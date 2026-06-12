@@ -12,6 +12,6 @@
     <Project Path="tests/MyStackBlazor.E2ETests/MyStackBlazor.E2ETests.csproj" />
   </Folder>
   <Folder Name="/samples/">
-    <Project Path="samples/MyStackBlazor.EnterpriseDemo/MyStackBlazor.EnterpriseDemo.csproj" />
+    <Project Path="samples/MyStackBlazor.Demo/MyStackBlazor.Demo.csproj" />
   </Folder>
 </Solution>

@@ -1,0 +1,145 @@
+@page "/layout"
+
+<PageTitle>Layout — MyStackBlazor Demo</PageTitle>
+
+<h1 class="text-3xl font-bold mb-1">Layout</h1>
+<p class="text-muted-foreground mb-8">Cards, accordion, tabs, and structural layout components.</p>
+
+<!-- Card -->
+<DemoSection Title="Card" Description="Composable card with header, content, and footer slots." Code="@_cardCode">
+    <Card Class="w-full max-w-sm">
+        <CardHeader>
+            <CardTitle>Invoice #1042</CardTitle>
+            <CardDescription>Due on June 30, 2026</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <p class="text-sm text-muted-foreground">Total amount due for Professional plan subscription.</p>
+            <p class="text-2xl font-bold mt-2">$9.00</p>
+        </CardContent>
+        <CardFooter>
+            <div class="demo-row w-full justify-between">
+                <Button Variant="outline" Size="sm">Download</Button>
+                <Button Size="sm">Pay Now</Button>
+            </div>
+        </CardFooter>
+    </Card>
+</DemoSection>
+
+<!-- Accordion -->
+<DemoSection Title="Accordion" Description="Pass AllowMultiple to let multiple items stay open at once." Code="@_accordionCode">
+    <div class="w-full max-w-lg">
+        <Accordion>
+            <AccordionItem Value="item-1" Title="What is MyStackBlazor?">
+                A modern Blazor component library with 70+ components styled with Tailwind CSS v4.
+                Works on Blazor WASM, Blazor Server, and .NET MAUI Blazor Hybrid.
+            </AccordionItem>
+            <AccordionItem Value="item-2" Title="Is it free to use?">
+                Yes — MyStackBlazor is open source and published under the MIT license.
+                Use it in personal and commercial projects without restriction.
+            </AccordionItem>
+            <AccordionItem Value="item-3" Title="Does it support dark mode?">
+                Yes. Wrap your app in <code class="bg-muted px-1 rounded">&lt;ThemeProvider&gt;</code> and place
+                <code class="bg-muted px-1 rounded">&lt;ThemeToggle /&gt;</code> anywhere to switch between
+                light, dark, and system-preferred themes.
+            </AccordionItem>
+        </Accordion>
+    </div>
+</DemoSection>
+
+<!-- Tabs -->
+<DemoSection Title="Tabs" Description="Controlled via ActiveTab / ActiveTabChanged." Code="@_tabsCode">
+    <div class="w-full max-w-lg">
+        <Tabs @bind-ActiveTab="_activeTab">
+            <TabsList Class="w-full">
+                <TabsTrigger Value="overview">Overview</TabsTrigger>
+                <TabsTrigger Value="install">Install</TabsTrigger>
+                <TabsTrigger Value="usage">Usage</TabsTrigger>
+            </TabsList>
+            <TabsContent Value="overview">
+                <Card>
+                    <CardContent Class="pt-4">
+                        <p class="text-sm">MyStackBlazor provides composable, accessible UI primitives for Blazor apps.</p>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+            <TabsContent Value="install">
+                <Card>
+                    <CardContent Class="pt-4">
+                        <pre class="text-sm bg-muted rounded p-3"><code>dotnet add package MyStackBlazor</code></pre>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+            <TabsContent Value="usage">
+                <Card>
+                    <CardContent Class="pt-4">
+                        <pre class="text-sm bg-muted rounded p-3"><code>&lt;Button Variant="primary"&gt;Click me&lt;/Button&gt;</code></pre>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+        </Tabs>
+    </div>
+</DemoSection>
+
+<!-- Separator -->
+<DemoSection Title="Separator" Code="@_separatorCode">
+    <div class="w-full max-w-sm space-y-4">
+        <div>
+            <p class="text-sm font-medium">Section A</p>
+            <Separator Class="my-2" />
+            <p class="text-sm text-muted-foreground">Content below the separator.</p>
+        </div>
+        <div class="flex items-center gap-4">
+            <span class="text-sm">Left</span>
+            <Separator Orientation="vertical" Class="h-4" />
+            <span class="text-sm">Middle</span>
+            <Separator Orientation="vertical" Class="h-4" />
+            <span class="text-sm">Right</span>
+        </div>
+    </div>
+</DemoSection>
+
+@code {
+    private string? _activeTab = "overview";
+
+    private const string _cardCode = """
+        <Card>
+            <CardHeader>
+                <CardTitle>Invoice #1042</CardTitle>
+                <CardDescription>Due on June 30, 2026</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p class="text-2xl font-bold">$9.00</p>
+            </CardContent>
+            <CardFooter>
+                <Button Size="sm">Pay Now</Button>
+            </CardFooter>
+        </Card>
+        """;
+
+    private const string _accordionCode = """
+        <Accordion>
+            <AccordionItem Value="item-1" Title="What is MyStackBlazor?">
+                A modern Blazor component library...
+            </AccordionItem>
+            <AccordionItem Value="item-2" Title="Is it free to use?">
+                Yes — MIT license.
+            </AccordionItem>
+        </Accordion>
+        """;
+
+    private const string _tabsCode = """
+        <Tabs @bind-ActiveTab="_activeTab">
+            <TabsList>
+                <TabsTrigger Value="overview">Overview</TabsTrigger>
+                <TabsTrigger Value="install">Install</TabsTrigger>
+            </TabsList>
+            <TabsContent Value="overview">...</TabsContent>
+            <TabsContent Value="install">...</TabsContent>
+        </Tabs>
+        """;
+
+    private const string _separatorCode = """
+        <Separator Class="my-2" />
+        <Separator Orientation="vertical" Class="h-4" />
+        """;
+}

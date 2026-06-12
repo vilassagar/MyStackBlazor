@@ -1,0 +1,30 @@
+@namespace MyStackBlazor.Demo.Shared
+
+<div class="rounded-lg border bg-card overflow-hidden mb-6">
+    <div class="px-6 py-5">
+        <h3 class="font-semibold mb-0.5">@Title</h3>
+        @if (!string.IsNullOrEmpty(Description))
+        {
+            <p class="text-sm text-muted-foreground mb-4">@Description</p>
+        }
+        <div class="demo-row mt-3">
+            @ChildContent
+        </div>
+    </div>
+    @if (!string.IsNullOrEmpty(Code))
+    {
+        <details class="border-t">
+            <summary class="px-6 py-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground select-none">
+                Show code
+            </summary>
+            <pre class="bg-muted/50 px-6 py-4 text-xs overflow-x-auto m-0"><code>@Code</code></pre>
+        </details>
+    }
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public string? Code { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

@@ -1,0 +1,96 @@
+@page "/"
+
+<PageTitle>MyStackBlazor — Blazor Component Library</PageTitle>
+
+<!-- Hero -->
+<div class="mb-12">
+    <div class="flex items-center gap-2 mb-4">
+        <Badge>New</Badge>
+        <span class="text-sm text-muted-foreground">v1.0.1 now available on NuGet</span>
+    </div>
+    <h1 class="text-4xl font-bold tracking-tight mb-4">
+        Build beautiful Blazor apps<br />
+        <span class="text-primary">faster than ever</span>
+    </h1>
+    <p class="text-lg text-muted-foreground max-w-2xl mb-6">
+        70+ accessible, customizable components for Blazor WASM, Blazor Server, and .NET MAUI.
+        Styled with Tailwind CSS v4, built for .NET 10.
+    </p>
+    <div class="demo-row">
+        <Button Variant="default" OnClick="@(_ => {})">Get Started</Button>
+        <Button Variant="outline" OnClick="@(_ => {})">View on GitHub</Button>
+    </div>
+</div>
+
+<!-- Install -->
+<Card Class="mb-10">
+    <CardHeader>
+        <CardTitle>Quick Install</CardTitle>
+        <CardDescription>Add to your Blazor project in seconds.</CardDescription>
+    </CardHeader>
+    <CardContent>
+        <pre class="bg-muted rounded-md px-4 py-3 text-sm overflow-x-auto"><code>dotnet add package MyStackBlazor</code></pre>
+        <p class="text-sm text-muted-foreground mt-3">Then register services in <code class="bg-muted px-1 rounded">Program.cs</code>:</p>
+        <pre class="bg-muted rounded-md px-4 py-3 text-sm overflow-x-auto mt-2"><code>builder.Services.AddMyStackBlazor();</code></pre>
+        <p class="text-sm text-muted-foreground mt-3">Add the stylesheet to <code class="bg-muted px-1 rounded">index.html</code> / <code class="bg-muted px-1 rounded">App.razor</code>:</p>
+        <pre class="bg-muted rounded-md px-4 py-3 text-sm overflow-x-auto mt-2"><code>&lt;link rel="stylesheet" href="_content/MyStackBlazor/css/mystackblazor.css" /&gt;
+&lt;script src="_content/MyStackBlazor/js/mystackblazor.js"&gt;&lt;/script&gt;</code></pre>
+    </CardContent>
+</Card>
+
+<!-- Feature grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+    @foreach (var f in _features)
+    {
+        <div class="rounded-lg border bg-card p-5">
+            <div class="text-2xl mb-2">@f.Icon</div>
+            <h3 class="font-semibold mb-1">@f.Title</h3>
+            <p class="text-sm text-muted-foreground">@f.Body</p>
+        </div>
+    }
+</div>
+
+<!-- Component preview strip -->
+<div class="mb-8">
+    <h2 class="text-2xl font-bold mb-4">Component Preview</h2>
+    <Card>
+        <CardContent Class="pt-6">
+            <div class="demo-row mb-4">
+                <Button Variant="default">Default</Button>
+                <Button Variant="secondary">Secondary</Button>
+                <Button Variant="outline">Outline</Button>
+                <Button Variant="destructive">Destructive</Button>
+                <Button Variant="ghost">Ghost</Button>
+            </div>
+            <div class="demo-row mb-4">
+                <Badge>Default</Badge>
+                <Badge Variant="secondary">Secondary</Badge>
+                <Badge Variant="destructive">Destructive</Badge>
+                <Badge Variant="outline">Outline</Badge>
+                <Avatar Initials="VS" Size="sm" />
+                <Avatar Initials="AB" Size="sm" />
+                <Spinner Size="sm" />
+            </div>
+            <div class="demo-row">
+                <Alert Class="w-full">
+                    <AlertTitle>Heads up!</AlertTitle>
+                    <AlertDescription>You can explore all components using the sidebar navigation.</AlertDescription>
+                </Alert>
+            </div>
+        </CardContent>
+    </Card>
+</div>
+
+@code {
+    private record Feature(string Icon, string Title, string Body);
+
+    private readonly Feature[] _features =
+    [
+        new("🎨", "Tailwind CSS v4",     "All components styled with Tailwind CSS design tokens. Full light/dark/system theme support."),
+        new("♿", "Accessible",          "ARIA roles, keyboard navigation, focus management, and screen reader support built in."),
+        new("📦", "Multi-package",       "Install only what you need: Core, Security, DataGrid, Accessibility, Localization."),
+        new("🚀", ".NET 10",             "Targets net10.0. Works with Blazor WASM, Blazor Server, and .NET MAUI Blazor Hybrid."),
+        new("🔒", "Security",            "XSS sanitization, token providers, and secure component patterns via MyStackBlazor.Security."),
+        new("📊", "Enterprise DataGrid", "Virtualized data grid with sort, filter, search, and Excel export via MyStackBlazor.DataGrid."),
+    ];
+}

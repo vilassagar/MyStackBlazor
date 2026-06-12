@@ -1,0 +1,66 @@
+name: Release Please
+
+on:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          release-type: simple
+          extra-files: |
+            version.txt
+
+  publish:
+    name: Pack & Publish NuGet
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore MyStackBlazor.slnx
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_REF_NAME: ${{ needs.release-please.outputs.tag_name }}
+
+      - name: Pack all packages
+        run: |
+          for proj in \
+            src/MyStackBlazor/MyStackBlazor.csproj \
+            src/MyStackBlazor.Core/MyStackBlazor.Core.csproj \
+            src/MyStackBlazor.Security/MyStackBlazor.Security.csproj \
+            src/MyStackBlazor.Accessibility/MyStackBlazor.Accessibility.csproj \
+            src/MyStackBlazor.DataGrid/MyStackBlazor.DataGrid.csproj \
+            src/MyStackBlazor.Localization/MyStackBlazor.Localization.csproj; do
+            dotnet pack $proj -c Release -o nupkgs /p:Version=${{ steps.version.outputs.VERSION }}
+          done
+
+      - name: Push to NuGet.org
+        run: |
+          dotnet nuget push nupkgs/*.nupkg \
+            --api-key ${{ secrets.NUGET_API_KEY }} \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate

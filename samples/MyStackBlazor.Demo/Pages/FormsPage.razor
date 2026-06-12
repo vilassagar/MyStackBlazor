@@ -1,0 +1,137 @@
+@page "/forms"
+
+<PageTitle>Form Controls — MyStackBlazor Demo</PageTitle>
+
+<h1 class="text-3xl font-bold mb-1">Form Controls</h1>
+<p class="text-muted-foreground mb-8">Input, select, switch, slider, and more — all keyboard-accessible with two-way binding.</p>
+
+<!-- Text Input -->
+<DemoSection Title="Input"
+             Description="Supports two-way binding. Use Type for email, password, number, etc."
+             Code="@_inputCode">
+    <div class="w-full max-w-sm space-y-3">
+        <Input Placeholder="Your name" @bind-Value="_name" />
+        <Input Placeholder="Email" Type="email" @bind-Value="_email" />
+        <Input Placeholder="Disabled" Disabled />
+        <Input Placeholder="Read-only" Value="Read-only value" ReadOnly />
+        @if (!string.IsNullOrEmpty(_name))
+        {
+            <p class="text-sm text-muted-foreground">Hello, <strong>@_name</strong>!</p>
+        }
+    </div>
+</DemoSection>
+
+<!-- Textarea -->
+<DemoSection Title="Textarea" Code="@_textareaCode">
+    <div class="w-full max-w-sm">
+        <Textarea Placeholder="Write a message..." @bind-Value="_message" Rows="4" />
+        @if (!string.IsNullOrEmpty(_message))
+        {
+            <p class="text-xs text-muted-foreground mt-1">@_message.Length characters</p>
+        }
+    </div>
+</DemoSection>
+
+<!-- Select -->
+<DemoSection Title="Select" Code="@_selectCode">
+    <div class="w-full max-w-sm">
+        <Select @bind-Value="_framework" Placeholder="Choose a framework">
+            <option value="blazor">Blazor</option>
+            <option value="maui">MAUI Blazor</option>
+            <option value="server">Blazor Server</option>
+            <option value="wasm">Blazor WASM</option>
+        </Select>
+        @if (!string.IsNullOrEmpty(_framework))
+        {
+            <p class="text-sm text-muted-foreground mt-2">Selected: <strong>@_framework</strong></p>
+        }
+    </div>
+</DemoSection>
+
+<!-- Switch -->
+<DemoSection Title="Switch" Code="@_switchCode">
+    <div class="space-y-3 w-full max-w-sm">
+        <Switch Id="sw-notif" @bind-Checked="_notifications" Label="Enable notifications" />
+        <Switch Id="sw-dark" @bind-Checked="_darkMode" Label="Dark mode preview" />
+        <Switch Id="sw-disabled" Disabled Label="Disabled switch" />
+        <p class="text-sm text-muted-foreground">
+            Notifications: <strong>@(_notifications ? "on" : "off")</strong> &nbsp;|&nbsp;
+            Dark mode: <strong>@(_darkMode ? "on" : "off")</strong>
+        </p>
+    </div>
+</DemoSection>
+
+<!-- Slider -->
+<DemoSection Title="Slider" Code="@_sliderCode">
+    <div class="w-full max-w-sm space-y-4">
+        <div>
+            <p class="text-sm font-medium mb-2">Volume: @_volume%</p>
+            <Slider @bind-Value="_volume" Min="0" Max="100" Step="5" />
+        </div>
+        <div>
+            <p class="text-sm font-medium mb-2">Brightness: @_brightness%</p>
+            <Slider @bind-Value="_brightness" Min="0" Max="100" Step="10" />
+        </div>
+    </div>
+</DemoSection>
+
+<!-- Radio Group -->
+<DemoSection Title="Radio Group" Code="@_radioCode">
+    <div class="w-full max-w-sm">
+        <RadioGroup @bind-Value="_plan">
+            <RadioGroupItem Value="free" Label="Free — $0/month" Id="plan-free" />
+            <RadioGroupItem Value="pro" Label="Pro — $9/month" Id="plan-pro" />
+            <RadioGroupItem Value="enterprise" Label="Enterprise — Contact us" Id="plan-enterprise" />
+        </RadioGroup>
+        @if (!string.IsNullOrEmpty(_plan))
+        {
+            <p class="text-sm text-muted-foreground mt-3">Selected plan: <strong>@_plan</strong></p>
+        }
+    </div>
+</DemoSection>
+
+@code {
+    private string? _name;
+    private string? _email;
+    private string? _message;
+    private string? _framework;
+    private bool _notifications = true;
+    private bool _darkMode;
+    private double _volume = 60;
+    private double _brightness = 80;
+    private string? _plan = "pro";
+
+    private const string _inputCode = """
+        <Input Placeholder="Your name" @bind-Value="_name" />
+        <Input Placeholder="Email" Type="email" @bind-Value="_email" />
+        <Input Placeholder="Disabled" Disabled />
+        """;
+
+    private const string _textareaCode = """
+        <Textarea Placeholder="Write a message..." @bind-Value="_message" Rows="4" />
+        """;
+
+    private const string _selectCode = """
+        <Select @bind-Value="_framework" Placeholder="Choose a framework">
+            <option value="blazor">Blazor</option>
+            <option value="maui">MAUI Blazor</option>
+        </Select>
+        """;
+
+    private const string _switchCode = """
+        <Switch Id="sw-notif" @bind-Checked="_notifications" Label="Enable notifications" />
+        <Switch Id="sw-dark"  @bind-Checked="_darkMode"      Label="Dark mode preview" />
+        """;
+
+    private const string _sliderCode = """
+        <Slider @bind-Value="_volume" Min="0" Max="100" Step="5" />
+        """;
+
+    private const string _radioCode = """
+        <RadioGroup @bind-Value="_plan">
+            <RadioGroupItem Value="free"       Label="Free — $0/month"        Id="plan-free" />
+            <RadioGroupItem Value="pro"        Label="Pro — $9/month"         Id="plan-pro" />
+            <RadioGroupItem Value="enterprise" Label="Enterprise — Contact us" Id="plan-enterprise" />
+        </RadioGroup>
+        """;
+}

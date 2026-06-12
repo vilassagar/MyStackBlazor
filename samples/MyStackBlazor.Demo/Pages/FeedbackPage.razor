@@ -1,0 +1,162 @@
+@page "/feedback"
+@inject ToastService Toast
+
+<PageTitle>Feedback — MyStackBlazor Demo</PageTitle>
+
+<h1 class="text-3xl font-bold mb-1">Feedback</h1>
+<p class="text-muted-foreground mb-8">Alert banners, progress bars, dialogs, and toast notifications.</p>
+
+<!-- Alert -->
+<DemoSection Title="Alert" Description="Use Variant to control severity. Supports Icon, AlertTitle, and AlertDescription slots." Code="@_alertCode">
+    <div class="w-full space-y-3">
+        <Alert>
+            <AlertTitle>Information</AlertTitle>
+            <AlertDescription>This is a default informational alert message.</AlertDescription>
+        </Alert>
+        <Alert Variant="destructive">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>Something went wrong. Please try again later.</AlertDescription>
+        </Alert>
+    </div>
+</DemoSection>
+
+<!-- Progress -->
+<DemoSection Title="Progress" Description="Controlled via Value (0–Max). Max defaults to 100." Code="@_progressCode">
+    <div class="w-full max-w-sm space-y-4">
+        <div>
+            <p class="text-sm font-medium mb-1">Upload progress</p>
+            <Progress Value="@_progress" />
+            <p class="text-xs text-muted-foreground mt-1">@_progress%</p>
+        </div>
+        <div class="demo-row">
+            <Button Size="sm" Variant="outline" OnClick="DecProgress">-10</Button>
+            <Button Size="sm" Variant="outline" OnClick="IncProgress">+10</Button>
+            <Button Size="sm" OnClick="SimulateUpload" IsLoading="_uploading">
+                @(_uploading ? "Uploading..." : "Simulate Upload")
+            </Button>
+        </div>
+    </div>
+</DemoSection>
+
+<!-- Dialog -->
+<DemoSection Title="Dialog" Description="Controlled by IsOpen / IsOpenChanged. CloseOnBackdropClick defaults to true." Code="@_dialogCode">
+    <Button OnClick="@(_ => _dialogOpen = true)">Open Dialog</Button>
+    <Button Variant="outline" OnClick="@(_ => _confirmOpen = true)">Confirm Action</Button>
+
+    <Dialog @bind-IsOpen="_dialogOpen">
+        <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+        </DialogHeader>
+        <div class="space-y-4 py-2">
+            <div>
+                <label class="text-sm font-medium mb-1 block" for="dlg-name">Display name</label>
+                <Input Id="dlg-name" Placeholder="Vilas Sagar" @bind-Value="_profileName" />
+            </div>
+            <div>
+                <label class="text-sm font-medium mb-1 block" for="dlg-bio">Bio</label>
+                <Textarea Id="dlg-bio" Placeholder="Tell us about yourself..." @bind-Value="_profileBio" Rows="3" />
+            </div>
+        </div>
+        <DialogFooter>
+            <div class="demo-row justify-end w-full">
+                <Button Variant="outline" OnClick="@(_ => _dialogOpen = false)">Cancel</Button>
+                <Button OnClick="SaveProfile">Save changes</Button>
+            </div>
+        </DialogFooter>
+    </Dialog>
+
+    <AlertDialog @bind-IsOpen="_confirmOpen"
+                 Title="Delete item?"
+                 Description="This action cannot be undone. This will permanently delete the item from our servers."
+                 ConfirmText="Delete"
+                 OnConfirm="ConfirmDelete"
+                 OnCancel="@(() => _confirmOpen = false)" />
+</DemoSection>
+
+<!-- Toast -->
+<DemoSection Title="Toast Notifications" Description="Use ToastService (injected) to fire toasts from anywhere. Toaster must be in your layout." Code="@_toastCode">
+    <Button OnClick="@(_ => Toast.Show("Changes saved successfully.", "Saved!", "success"))">
+        Success Toast
+    </Button>
+    <Button Variant="destructive" OnClick="@(_ => Toast.Show("Something went wrong.", "Error", "destructive"))">
+        Error Toast
+    </Button>
+    <Button Variant="outline" OnClick="@(_ => Toast.Show("Update available.", "Info"))">
+        Default Toast
+    </Button>
+</DemoSection>
+
+@code {
+    private double _progress = 40;
+    private bool _uploading;
+    private bool _dialogOpen;
+    private bool _confirmOpen;
+    private string? _profileName;
+    private string? _profileBio;
+
+    private void IncProgress() => _progress = Math.Min(100, _progress + 10);
+    private void DecProgress() => _progress = Math.Max(0, _progress - 10);
+
+    private async Task SimulateUpload()
+    {
+        _uploading = true;
+        _progress = 0;
+        for (var i = 0; i <= 10; i++)
+        {
+            _progress = i * 10;
+            StateHasChanged();
+            await Task.Delay(150);
+        }
+        _uploading = false;
+        Toast.Show("Upload complete!", "Done", "success");
+    }
+
+    private void SaveProfile()
+    {
+        _dialogOpen = false;
+        Toast.Show("Profile updated.", "Saved", "success");
+    }
+
+    private void ConfirmDelete()
+    {
+        _confirmOpen = false;
+        Toast.Show("Item deleted.", "Deleted", "destructive");
+    }
+
+    private const string _alertCode = """
+        <Alert>
+            <AlertTitle>Information</AlertTitle>
+            <AlertDescription>This is an informational alert.</AlertDescription>
+        </Alert>
+        <Alert Variant="destructive">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>Something went wrong.</AlertDescription>
+        </Alert>
+        """;
+
+    private const string _progressCode = """
+        <Progress Value="@_progress" />
+        <Progress Value="75" Max="100" />
+        """;
+
+    private const string _dialogCode = """
+        <Button OnClick="@(_ => _dialogOpen = true)">Open Dialog</Button>
+
+        <Dialog @bind-IsOpen="_dialogOpen">
+            <DialogHeader><DialogTitle>Edit Profile</DialogTitle></DialogHeader>
+            <Input Placeholder="Name" @bind-Value="_name" />
+            <DialogFooter>
+                <Button OnClick="@(_ => _dialogOpen = false)">Cancel</Button>
+                <Button OnClick="Save">Save</Button>
+            </DialogFooter>
+        </Dialog>
+        """;
+
+    private const string _toastCode = """
+        @inject ToastService Toast
+
+        <Button OnClick="@(_ => Toast.Show("Saved!", "success", "Done"))">
+            Show Toast
+        </Button>
+        """;
+}

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Interactive component demos for MyStackBlazor — a Blazor UI library built with Tailwind CSS." />
+    <title>MyStackBlazor Demo</title>
+    <base href="/" />
+
+    <!-- MyStackBlazor component CSS (includes Tailwind base + custom tokens) -->
+    <link rel="stylesheet" href="_content/MyStackBlazor/css/mystackblazor.css" />
+
+    <!-- Tailwind CDN for demo layout utilities -->
+    <script>
+        tailwind = { config: { darkMode: 'class', theme: { extend: {
+            colors: {
+                background: 'hsl(var(--background))',
+                foreground: 'hsl(var(--foreground))',
+                primary:     { DEFAULT: 'hsl(var(--primary))',     foreground: 'hsl(var(--primary-foreground))' },
+                secondary:   { DEFAULT: 'hsl(var(--secondary))',   foreground: 'hsl(var(--secondary-foreground))' },
+                destructive: { DEFAULT: 'hsl(var(--destructive))', foreground: 'hsl(var(--destructive-foreground))' },
+                muted:       { DEFAULT: 'hsl(var(--muted))',       foreground: 'hsl(var(--muted-foreground))' },
+                accent:      { DEFAULT: 'hsl(var(--accent))',      foreground: 'hsl(var(--accent-foreground))' },
+                card:        { DEFAULT: 'hsl(var(--card))',        foreground: 'hsl(var(--card-foreground))' },
+                border: 'hsl(var(--border))',
+                input:  'hsl(var(--input))',
+                ring:   'hsl(var(--ring))',
+            }
+        }}}}
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Demo-specific styles -->
+    <link rel="stylesheet" href="demo.css" />
+</head>
+<body class="bg-background text-foreground">
+    <div id="app">
+        <div style="display:flex;align-items:center;justify-content:center;height:100vh;">
+            <svg style="width:3rem;height:3rem;animation:spin 1s linear infinite;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle style="opacity:.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path style="opacity:.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui" style="display:none;background:lightyellow;padding:1rem;border-top:1px solid #ccc;position:fixed;bottom:0;width:100%;z-index:9999;">
+        An error has occurred. <a href="." style="font-weight:bold">Reload</a>
+    </div>
+
+    <script src="_content/MyStackBlazor/js/mystackblazor.js"></script>
+    <script src="_framework/blazor.webassembly.js"></script>
+    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+</body>
+</html>

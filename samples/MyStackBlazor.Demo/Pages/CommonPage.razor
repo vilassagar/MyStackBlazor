@@ -1,0 +1,173 @@
+@page "/common"
+
+<PageTitle>Buttons &amp; Badges — MyStackBlazor Demo</PageTitle>
+
+<h1 class="text-3xl font-bold mb-1">Buttons &amp; Badges</h1>
+<p class="text-muted-foreground mb-8">Core UI atoms: buttons, badges, chips, avatars, and loading indicators.</p>
+
+<!-- Button Variants -->
+<DemoSection Title="Button Variants"
+             Description="Use Variant to control the visual style."
+             Code="@_btnVariants">
+    <Button Variant="default">Default</Button>
+    <Button Variant="secondary">Secondary</Button>
+    <Button Variant="outline">Outline</Button>
+    <Button Variant="destructive">Destructive</Button>
+    <Button Variant="ghost">Ghost</Button>
+    <Button Variant="link">Link</Button>
+</DemoSection>
+
+<!-- Button Sizes -->
+<DemoSection Title="Button Sizes"
+             Description="Use Size to control the button dimensions."
+             Code="@_btnSizes">
+    <Button Size="sm">Small</Button>
+    <Button Size="default">Default</Button>
+    <Button Size="lg">Large</Button>
+    <Button Size="icon" AriaLabel="Settings">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+    </Button>
+</DemoSection>
+
+<!-- Loading & Disabled -->
+<DemoSection Title="Loading &amp; Disabled States" Code="@_btnStates">
+    <Button IsLoading="_loading" OnClick="SimulateLoad">
+        @(_loading ? "Saving..." : "Save Changes")
+    </Button>
+    <Button Variant="outline" Disabled>Disabled</Button>
+    <Button Variant="secondary" IsLoading>Always Loading</Button>
+</DemoSection>
+
+<!-- Badge Variants -->
+<DemoSection Title="Badge Variants" Code="@_badges">
+    <Badge>Default</Badge>
+    <Badge Variant="secondary">Secondary</Badge>
+    <Badge Variant="destructive">Destructive</Badge>
+    <Badge Variant="outline">Outline</Badge>
+</DemoSection>
+
+<!-- Chips -->
+<DemoSection Title="Chips" Description="Use OnRemove to make chips removable." Code="@_chips">
+    @foreach (var tag in _tags)
+    {
+        <Chip OnRemove="@(() => RemoveTag(tag))" RemoveLabel="@($"Remove {tag}")">@tag</Chip>
+    }
+    <Chip Variant="secondary">React</Chip>
+    <Chip Variant="success">Success</Chip>
+    <Chip Variant="warning">Warning</Chip>
+    <Chip Variant="outline">Outline</Chip>
+    @if (_tags.Count == 0)
+    {
+        <span class="text-xs text-muted-foreground">All tags removed — refresh to reset.</span>
+    }
+</DemoSection>
+
+<!-- Avatar -->
+<DemoSection Title="Avatar" Description="Shows initials as fallback when no image source is set." Code="@_avatars">
+    <Avatar Initials="VS" Size="xs" />
+    <Avatar Initials="AB" Size="sm" />
+    <Avatar Initials="CD" />
+    <Avatar Initials="EF" Size="lg" />
+    <Avatar Initials="GH" Size="xl" />
+    <Avatar />
+</DemoSection>
+
+<!-- Spinner -->
+<DemoSection Title="Spinner" Description="Use for loading states. Size mirrors button sizes." Code="@_spinners">
+    <Spinner Size="xs" />
+    <Spinner Size="sm" />
+    <Spinner />
+    <Spinner Size="lg" />
+    <Spinner Size="xl" />
+</DemoSection>
+
+<!-- Skeleton -->
+<DemoSection Title="Skeleton" Description="Pulse placeholder while content loads." Code="@_skeleton">
+    <div class="w-full space-y-3">
+        <div class="flex items-center gap-3">
+            <Skeleton Class="h-10 w-10 rounded-full" />
+            <div class="flex-1 space-y-2">
+                <Skeleton Class="h-4 w-1/3" />
+                <Skeleton Class="h-3 w-1/2" />
+            </div>
+        </div>
+        <Skeleton Class="h-4 w-full" />
+        <Skeleton Class="h-4 w-4/5" />
+        <Skeleton Class="h-4 w-2/3" />
+    </div>
+</DemoSection>
+
+@code {
+    private bool _loading;
+    private List<string> _tags = ["Blazor", ".NET", "Tailwind"];
+
+    private async Task SimulateLoad()
+    {
+        _loading = true;
+        await Task.Delay(1500);
+        _loading = false;
+    }
+
+    private void RemoveTag(string tag) => _tags.Remove(tag);
+
+    private const string _btnVariants = """
+        <Button Variant="default">Default</Button>
+        <Button Variant="secondary">Secondary</Button>
+        <Button Variant="outline">Outline</Button>
+        <Button Variant="destructive">Destructive</Button>
+        <Button Variant="ghost">Ghost</Button>
+        <Button Variant="link">Link</Button>
+        """;
+
+    private const string _btnSizes = """
+        <Button Size="sm">Small</Button>
+        <Button Size="default">Default</Button>
+        <Button Size="lg">Large</Button>
+        <Button Size="icon" AriaLabel="Settings">...</Button>
+        """;
+
+    private const string _btnStates = """
+        <Button IsLoading="_loading" OnClick="SimulateLoad">
+            @(_loading ? "Saving..." : "Save Changes")
+        </Button>
+        <Button Variant="outline" Disabled>Disabled</Button>
+        """;
+
+    private const string _badges = """
+        <Badge>Default</Badge>
+        <Badge Variant="secondary">Secondary</Badge>
+        <Badge Variant="destructive">Destructive</Badge>
+        <Badge Variant="outline">Outline</Badge>
+        """;
+
+    private const string _chips = """
+        <Chip OnRemove="@(() => RemoveTag(tag))" RemoveLabel="@($"Remove {tag}")">@tag</Chip>
+        <Chip Variant="success">Success</Chip>
+        <Chip Variant="warning">Warning</Chip>
+        """;
+
+    private const string _avatars = """
+        <Avatar Initials="VS" Size="xs" />
+        <Avatar Initials="AB" Size="sm" />
+        <Avatar Initials="CD" />
+        <Avatar Initials="EF" Size="lg" />
+        <Avatar />
+        """;
+
+    private const string _spinners = """
+        <Spinner Size="xs" />
+        <Spinner Size="sm" />
+        <Spinner />
+        <Spinner Size="lg" />
+        """;
+
+    private const string _skeleton = """
+        <Skeleton Class="h-10 w-10 rounded-full" />
+        <Skeleton Class="h-4 w-full" />
+        <Skeleton Class="h-4 w-4/5" />
+        """;
+}
