@@ -1,0 +1,271 @@
+@page "/data"
+
+<PageTitle>Data Controls — MyStackBlazor Demo</PageTitle>
+
+<h1 class="text-3xl font-bold mb-1">Data Controls</h1>
+<p class="text-muted-foreground mb-8">Table, DataTable, ListView, TreeView, and VirtualList.</p>
+
+<!-- Static Table -->
+<DemoSection Title="Table"
+             Description="Composable table primitives. Use TableHeader, TableBody, TableRow, TableHead, TableCell."
+             Code="@_tableCode">
+    <div class="w-full overflow-x-auto">
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead Class="text-right">Joined</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                @foreach (var p in _people)
+                {
+                    <TableRow>
+                        <TableCell Class="font-medium">@p.Name</TableCell>
+                        <TableCell>@p.Role</TableCell>
+                        <TableCell>
+                            <Badge Variant="@(p.Active ? "default" : "secondary")">
+                                @(p.Active ? "Active" : "Inactive")
+                            </Badge>
+                        </TableCell>
+                        <TableCell Class="text-right text-muted-foreground">@p.Joined.ToString("MMM yyyy")</TableCell>
+                    </TableRow>
+                }
+            </TableBody>
+        </Table>
+    </div>
+</DemoSection>
+
+<!-- DataTable — search + sort + filter + pagination -->
+<DemoSection Title="DataTable"
+             Description="Built-in search, column sort, per-column filter, and pagination. Pass ShowSearch, ShowPagination, PageSize."
+             Code="@_dataTableCode">
+    <div class="w-full">
+        <DataTable TItem="Person"
+                   Items="_people"
+                   PageSize="4"
+                   Columns="_columns" />
+    </div>
+</DemoSection>
+
+<!-- ListView -->
+<DemoSection Title="ListView"
+             Description="Generic list with ItemTemplate, selection highlight, and click callback."
+             Code="@_listViewCode">
+    <div class="w-full max-w-sm">
+        <ListView TItem="Person"
+                  Items="_people"
+                  SelectedItem="_selectedPerson"
+                  OnItemClick="p => _selectedPerson = p"
+                  Height="220px">
+            <ItemTemplate Context="person">
+                <div class="flex items-center gap-3 px-4 py-3">
+                    <Avatar Initials="@person.Initials" Size="sm" />
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium truncate">@person.Name</p>
+                        <p class="text-xs text-muted-foreground truncate">@person.Role</p>
+                    </div>
+                    <Badge Variant="@(person.Active ? "default" : "secondary")" >
+                        @(person.Active ? "Active" : "Inactive")
+                    </Badge>
+                </div>
+            </ItemTemplate>
+        </ListView>
+        @if (_selectedPerson is not null)
+        {
+            <p class="text-sm text-muted-foreground mt-2">
+                Selected: <strong>@_selectedPerson.Name</strong> — @_selectedPerson.Role
+            </p>
+        }
+    </div>
+</DemoSection>
+
+<!-- TreeView -->
+<DemoSection Title="TreeView"
+             Description="Recursive tree with expand/collapse, keyboard-accessible selection."
+             Code="@_treeCode">
+    <div class="w-full max-w-xs rounded-md border p-2">
+        <TreeView TItem="TreeNode"
+                  Items="_treeRoots"
+                  GetChildren="n => n.Children"
+                  GetLabel="n => n.Label"
+                  @bind-SelectedItem="_selectedNode" />
+    </div>
+    @if (_selectedNode is not null)
+    {
+        <p class="text-sm text-muted-foreground mt-2 ml-1">
+            Selected: <strong>@_selectedNode.Label</strong>
+        </p>
+    }
+</DemoSection>
+
+<!-- MsVirtualList -->
+<DemoSection Title="MsVirtualList"
+             Description="Blazor Virtualize wrapper for large flat lists. Renders only visible rows."
+             Code="@_virtualCode">
+    <div class="w-full max-w-sm">
+        <MsVirtualList TItem="string"
+                       Items="_virtualItems"
+                       ItemHeight="44"
+                       Height="220px">
+            <ItemTemplate Context="item">
+                <div class="flex items-center gap-3 px-4 border-b hover:bg-muted/50 transition-colors"
+                     style="height:44px">
+                    <span class="h-2 w-2 rounded-full bg-primary flex-shrink-0"></span>
+                    <span class="text-sm truncate">@item</span>
+                </div>
+            </ItemTemplate>
+        </MsVirtualList>
+        <p class="text-xs text-muted-foreground mt-1">@_virtualItems.Count items — only visible rows rendered.</p>
+    </div>
+</DemoSection>
+
+@code {
+    // ── Sample data ──────────────────────────────────────────────────────────
+
+    record Person(string Name, string Role, bool Active, DateOnly Joined)
+    {
+        public string Initials => string.Concat(Name.Split(' ').Select(w => w[0]));
+    }
+
+    private readonly List<Person> _people =
+    [
+        new("Vilas Sagar",   "Lead Engineer",  true,  new DateOnly(2022, 3, 15)),
+        new("Priya Nair",    "Product Manager",true,  new DateOnly(2023, 1, 8)),
+        new("Arjun Mehta",   "Designer",       true,  new DateOnly(2023, 6, 20)),
+        new("Divya Sharma",  "QA Engineer",    false, new DateOnly(2021, 11, 5)),
+        new("Rahul Kumar",   "DevOps",         true,  new DateOnly(2024, 2, 1)),
+        new("Sneha Patel",   "Frontend Dev",   true,  new DateOnly(2024, 4, 14)),
+        new("Amit Joshi",    "Backend Dev",    false, new DateOnly(2022, 7, 30)),
+    ];
+
+    private Person? _selectedPerson;
+
+    // ── DataTable columns ────────────────────────────────────────────────────
+
+    private List<DataTableColumn<Person>> _columns =>
+    [
+        new() { Key = "name",   Header = "Name",   Value = p => p.Name,   Sortable = true,  Filterable = true },
+        new() { Key = "role",   Header = "Role",   Value = p => p.Role,   Sortable = true,  Filterable = true },
+        new() { Key = "joined", Header = "Joined", Value = p => p.Joined, Sortable = true  },
+        new()
+        {
+            Key = "status", Header = "Status", Sortable = false,
+            Template = p =>
+                @<Badge Variant="@(p.Active ? "default" : "secondary")">
+                    @(p.Active ? "Active" : "Inactive")
+                </Badge>
+        },
+    ];
+
+    // ── TreeView data ────────────────────────────────────────────────────────
+
+    record TreeNode(string Label, List<TreeNode>? Children = null);
+
+    private readonly List<TreeNode> _treeRoots =
+    [
+        new("src", [
+            new("components", [
+                new("Button.razor"),
+                new("Badge.razor"),
+                new("Avatar.razor"),
+            ]),
+            new("services", [
+                new("ThemeService.cs"),
+                new("ToastService.cs"),
+            ]),
+        ]),
+        new("tests", [
+            new("MyStackBlazor.UnitTests", [
+                new("ButtonTests.cs"),
+                new("BadgeTests.cs"),
+            ]),
+        ]),
+        new("README.md"),
+    ];
+
+    private TreeNode? _selectedNode;
+
+    // ── VirtualList data ─────────────────────────────────────────────────────
+
+    private readonly List<string> _virtualItems =
+        Enumerable.Range(1, 500)
+                  .Select(i => $"Component item #{i:000} — MyStackBlazor")
+                  .ToList();
+
+    // ── Code snippets ────────────────────────────────────────────────────────
+
+    private const string _tableCode = """
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Status</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                @foreach (var p in _people)
+                {
+                    <TableRow>
+                        <TableCell Class="font-medium">@p.Name</TableCell>
+                        <TableCell>@p.Role</TableCell>
+                        <TableCell><Badge>@p.Status</Badge></TableCell>
+                    </TableRow>
+                }
+            </TableBody>
+        </Table>
+        """;
+
+    private const string _dataTableCode = """
+        private List<DataTableColumn<Person>> _columns =>
+        [
+            new() { Key = "name",   Header = "Name",   Value = p => p.Name,  Sortable = true, Filterable = true },
+            new() { Key = "role",   Header = "Role",   Value = p => p.Role,  Sortable = true, Filterable = true },
+            new() { Key = "joined", Header = "Joined", Value = p => p.Joined, Sortable = true },
+            new() { Key = "status", Header = "Status", Template = p => @<Badge>@p.Status</Badge> },
+        ];
+
+        <DataTable TItem="Person" Items="_people" PageSize="5" Columns="_columns" />
+        """;
+
+    private const string _listViewCode = """
+        <ListView TItem="Person"
+                  Items="_people"
+                  SelectedItem="_selected"
+                  OnItemClick="p => _selected = p"
+                  Height="220px">
+            <ItemTemplate Context="person">
+                <div class="flex items-center gap-3 px-4 py-3">
+                    <Avatar Initials="@person.Initials" Size="sm" />
+                    <span>@person.Name</span>
+                </div>
+            </ItemTemplate>
+        </ListView>
+        """;
+
+    private const string _treeCode = """
+        record TreeNode(string Label, List<TreeNode>? Children = null);
+
+        <TreeView TItem="TreeNode"
+                  Items="_roots"
+                  GetChildren="n => n.Children"
+                  GetLabel="n => n.Label"
+                  @bind-SelectedItem="_selectedNode" />
+        """;
+
+    private const string _virtualCode = """
+        <MsVirtualList TItem="string"
+                       Items="_items"
+                       ItemHeight="44"
+                       Height="300px">
+            <ItemTemplate Context="item">
+                <div style="height:44px" class="px-4 flex items-center border-b">
+                    @item
+                </div>
+            </ItemTemplate>
+        </MsVirtualList>
+        """;
+}
