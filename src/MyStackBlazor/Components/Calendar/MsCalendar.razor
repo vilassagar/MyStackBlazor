@@ -1,0 +1,1008 @@
+@namespace MyStackBlazor.Components.Calendar
+
+<div class="flex flex-col h-full bg-background text-foreground @Class" @attributes="AdditionalAttributes">
+
+    <!-- ═══════════════════════════════════════════════════
+         TOOLBAR
+    ═══════════════════════════════════════════════════ -->
+    <div class="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2.5 flex-shrink-0">
+        <div class="flex items-center gap-1">
+            <button type="button"
+                    class="rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors"
+                    @onclick="GoToToday">
+                Today
+            </button>
+            <button type="button" class="rounded-md p-1.5 hover:bg-accent transition-colors" @onclick="NavigatePrev" aria-label="Previous">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <button type="button" class="rounded-md p-1.5 hover:bg-accent transition-colors" @onclick="NavigateNext" aria-label="Next">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+            <h2 class="ml-1 min-w-[160px] text-sm font-semibold sm:text-base">@PeriodLabel</h2>
+        </div>
+        <div class="flex items-center gap-2">
+            @if (AllowAdd)
+            {
+                <button type="button"
+                        class="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                        @onclick="@(() => OpenAddModal(null))">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    <span class="hidden sm:inline">Add event</span>
+                    <span class="sm:hidden">Add</span>
+                </button>
+            }
+            <div class="flex overflow-hidden rounded-md border text-xs font-medium">
+                <button type="button"
+                        class="px-3 py-1.5 transition-colors @(_view == CalendarViewMode.Month ? "bg-primary text-primary-foreground" : "hover:bg-accent")"
+                        @onclick="@(() => SetView(CalendarViewMode.Month))">Month</button>
+                <button type="button"
+                        class="border-x px-3 py-1.5 transition-colors @(_view == CalendarViewMode.Week ? "bg-primary text-primary-foreground" : "hover:bg-accent")"
+                        @onclick="@(() => SetView(CalendarViewMode.Week))">Week</button>
+                <button type="button"
+                        class="px-3 py-1.5 transition-colors @(_view == CalendarViewMode.Day ? "bg-primary text-primary-foreground" : "hover:bg-accent")"
+                        @onclick="@(() => SetView(CalendarViewMode.Day))">Day</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
+         BODY
+    ═══════════════════════════════════════════════════ -->
+    <div class="flex flex-1 overflow-hidden min-h-0">
+
+        <!-- ── Mini calendar sidebar ────────────────────── -->
+        @if (ShowMiniCalendar)
+        {
+            <aside class="hidden lg:flex w-52 flex-shrink-0 flex-col gap-4 border-r p-3 overflow-y-auto">
+
+                <!-- Mini month nav -->
+                <div>
+                    <div class="mb-2 flex items-center justify-between">
+                        <button type="button" class="rounded p-1 hover:bg-accent" @onclick="PrevMiniMonth" aria-label="Previous month">
+                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                        </button>
+                        <span class="text-xs font-semibold">@_miniMonth.ToString("MMM yyyy")</span>
+                        <button type="button" class="rounded p-1 hover:bg-accent" @onclick="NextMiniMonth" aria-label="Next month">
+                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-7 mb-1">
+                        @foreach (var h in _dayAbbr)
+                        {
+                            <div class="text-center text-[10px] font-medium text-muted-foreground">@h</div>
+                        }
+                    </div>
+                    @foreach (var week in GetMiniGrid(_miniMonth))
+                    {
+                        <div class="grid grid-cols-7">
+                            @foreach (var day in week)
+                            {
+                                var isSel = day.Date == _currentDate.Date;
+                                var isOther = day.Month != _miniMonth.Month;
+                                var hasDot = _events.Any(e => day.Date >= e.Start.Date && day.Date <= e.End.Date);
+                                <button type="button"
+                                        class="flex flex-col items-center justify-center rounded-full py-0.5 text-[11px] transition-colors
+                                               @(isSel ? "bg-primary text-primary-foreground font-semibold" :
+                                                 day.Date == DateTime.Today ? "border border-primary text-primary font-semibold" :
+                                                 isOther ? "text-muted-foreground/30" : "hover:bg-accent")"
+                                        @onclick="@(() => NavigateToDate(day))">
+                                    @day.Day
+                                    @if (hasDot && !isSel)
+                                    {
+                                        <span class="h-1 w-1 rounded-full bg-primary"></span>
+                                    }
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <!-- Category legend -->
+                <div>
+                    <p class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Colors</p>
+                    <div class="space-y-1">
+                        @foreach (var c in _colors)
+                        {
+                            <div class="flex items-center gap-2">
+                                <span class="h-2.5 w-2.5 rounded-full flex-shrink-0" style="background-color: @c.Hex;"></span>
+                                <span class="text-xs text-muted-foreground">@c.Label</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </aside>
+        }
+
+        <!-- ── Main content ─────────────────────────────── -->
+        <div class="flex-1 overflow-auto min-w-0">
+
+            <!-- ════════════════════════════════════
+                 MONTH VIEW
+            ════════════════════════════════════ -->
+            @if (_view == CalendarViewMode.Month)
+            {
+                <div class="flex flex-col h-full">
+                    <!-- Day-of-week headers -->
+                    <div class="grid grid-cols-7 border-b">
+                        @foreach (var h in _dayNames)
+                        {
+                            <div class="py-2 text-center text-xs font-medium text-muted-foreground">@h</div>
+                        }
+                    </div>
+                    <!-- Week rows -->
+                    @foreach (var week in GetMonthGrid())
+                    {
+                        var spanEvts = GetSpanEventsForWeek(week);
+                        var spanRowCount = spanEvts.Count > 0 ? Math.Min(spanEvts.Max(s => s.Row) + 1, MaxSpanRows) : 0;
+                        var spanAreaH = spanRowCount > 0 ? spanRowCount * SpanRowPx + 4 : 0;
+
+                        <div class="border-b flex-1 flex flex-col" style="min-height: 110px;">
+                            <!-- Spanning event bars -->
+                            <div class="relative" style="height: @(spanAreaH)px;">
+                                @foreach (var se in spanEvts.Where(s => s.Row < MaxSpanRows))
+                                {
+                                    var leftPct = se.StartCol * 100.0 / 7;
+                                    var widthPct = (se.EndCol - se.StartCol + 1) * 100.0 / 7;
+                                    var isStart = se.Event.Start.Date >= week[0].Date;
+                                    <div class="absolute truncate rounded px-1.5 text-[11px] font-medium text-white cursor-pointer hover:opacity-90 z-10"
+                                         style="left: calc(@(Pct(leftPct))% + 2px); width: calc(@(Pct(widthPct))% - 4px); top: @(se.Row * SpanRowPx + 2)px; height: @(SpanRowPx - 2)px; line-height: @(SpanRowPx - 2)px; @ColorBg(se.Event.Color)"
+                                         @onclick="@(() => OpenDetailModal(se.Event))"
+                                         @onclick:stopPropagation="true">
+                                        @(isStart ? se.Event.Title : "↳ " + se.Event.Title)
+                                    </div>
+                                }
+                            </div>
+                            <!-- Day cells -->
+                            <div class="grid grid-cols-7">
+                                @foreach (var day in week)
+                                {
+                                    var isOtherMonth = day.Month != _currentDate.Month;
+                                    var dayEvts = GetDayEvents(day);
+                                    var visibleEvts = dayEvts.Take(MaxDayEvents).ToList();
+                                    var moreCount = dayEvts.Count - visibleEvts.Count;
+                                    var capturedDay = day;
+
+                                    <div class="border-r last:border-r-0 p-1 cursor-pointer hover:bg-accent/30 transition-colors"
+                                         style="min-height: 72px;"
+                                         @onclick="@(() => OpenAddModal(capturedDay))">
+                                        <div class="mb-0.5 flex justify-center">
+                                            <span class="flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium
+                                                         @(day.Date == DateTime.Today ? "bg-primary text-primary-foreground" :
+                                                           isOtherMonth ? "text-muted-foreground/30" : "text-foreground")">
+                                                @day.Day
+                                            </span>
+                                        </div>
+                                        @foreach (var evt in visibleEvts)
+                                        {
+                                            var capturedEvt = evt;
+                                            <div class="mb-0.5 flex items-center gap-1 truncate rounded px-1 py-0.5 text-[11px] cursor-pointer hover:opacity-80"
+                                                 style="@ColorPill(evt.Color)"
+                                                 @onclick:stopPropagation="true"
+                                                 @onclick="@(() => OpenDetailModal(capturedEvt))">
+                                                <span class="h-1.5 w-1.5 flex-shrink-0 rounded-full" style="@ColorBg(evt.Color)"></span>
+                                                <span class="truncate">@(evt.AllDay ? evt.Title : $"{evt.Start:h:mmtt} {evt.Title}")</span>
+                                            </div>
+                                        }
+                                        @if (moreCount > 0)
+                                        {
+                                            var capturedMore = capturedDay;
+                                            <button type="button"
+                                                    class="px-1 text-[11px] text-muted-foreground hover:text-foreground"
+                                                    @onclick:stopPropagation="true"
+                                                    @onclick="@(() => ShowMore(capturedMore))">
+                                                +@moreCount more
+                                            </button>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+            <!-- ════════════════════════════════════
+                 WEEK VIEW
+            ════════════════════════════════════ -->
+            else if (_view == CalendarViewMode.Week)
+            {
+                <div style="min-width: 560px;">
+                    <!-- Sticky header -->
+                    <div class="sticky top-0 z-20 grid bg-background border-b"
+                         style="grid-template-columns: 52px repeat(7, 1fr);">
+                        <div class="border-r py-2"></div>
+                        @foreach (var day in WeekViewDays)
+                        {
+                            <div class="border-r last:border-r-0 py-2 text-center">
+                                <div class="text-[10px] text-muted-foreground">@day.ToString("ddd").ToUpper()</div>
+                                <div class="mt-0.5 flex justify-center">
+                                    <span class="flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold
+                                                 @(day.Date == DateTime.Today ? "bg-primary text-primary-foreground" : "")">
+                                        @day.Day
+                                    </span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- All-day row -->
+                    @if (WeekViewHasAllDay)
+                    {
+                        <div class="grid border-b" style="grid-template-columns: 52px repeat(7, 1fr);">
+                            <div class="border-r px-1 py-1 text-right text-[10px] text-muted-foreground leading-tight">All<br/>day</div>
+                            @foreach (var day in WeekViewDays)
+                            {
+                                <div class="border-r last:border-r-0 min-h-[22px] p-0.5">
+                                    @foreach (var evt in WeekViewAllDay.Where(e => e.Start.Date <= day.Date && e.End.Date >= day.Date))
+                                    {
+                                        var capturedEvt = evt;
+                                        <div class="mb-0.5 truncate rounded px-1 text-[11px] font-medium text-white cursor-pointer hover:opacity-90"
+                                             style="@ColorBg(evt.Color)"
+                                             @onclick="@(() => OpenDetailModal(capturedEvt))">
+                                            @(evt.Start.Date < day.Date ? "↳" : evt.Title)
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <!-- Time grid -->
+                    <div class="flex" style="height: @(24 * HourPx)px;">
+                        <!-- Hour labels -->
+                        <div class="relative w-[52px] flex-shrink-0 border-r" style="height: @(24 * HourPx)px;">
+                            @for (int h = 0; h < 24; h++)
+                            {
+                                <div class="absolute right-1.5 text-[10px] text-muted-foreground" style="top: @(h * HourPx - 7)px;">@(h > 0 ? HourLabel(h) : "")</div>
+                                <div class="absolute left-0 right-0 border-t border-border/30" style="top: @(h * HourPx)px;"></div>
+                            }
+                        </div>
+                        <!-- Day columns -->
+                        @foreach (var day in WeekViewDays)
+                        {
+                            var capturedDay = day;
+                            <div class="relative flex-1 border-r last:border-r-0 cursor-pointer"
+                                 style="height: @(24 * HourPx)px;"
+                                 @onclick="@(() => OpenAddModal(capturedDay))">
+                                @for (int h = 0; h < 24; h++)
+                                {
+                                    <div class="pointer-events-none absolute left-0 right-0 border-t border-border/30" style="top: @(h * HourPx)px;"></div>
+                                    <div class="pointer-events-none absolute left-0 right-0 border-t border-border/10" style="top: @(h * HourPx + 30)px;"></div>
+                                }
+                                @if (day.Date == DateTime.Today)
+                                {
+                                    <div class="pointer-events-none absolute inset-0 bg-primary/5"></div>
+                                }
+                                @foreach (var evt in GetTimedEventsForDay(day))
+                                {
+                                    var top = EventTopPx(evt);
+                                    var ht = EventHeightPx(evt);
+                                    var capturedEvt = evt;
+                                    <div class="absolute left-0.5 right-0.5 z-10 overflow-hidden rounded cursor-pointer hover:opacity-90"
+                                         style="top: @(top)px; height: @(ht)px; @ColorCard(evt.Color)"
+                                         @onclick:stopPropagation="true"
+                                         @onclick="@(() => OpenDetailModal(capturedEvt))">
+                                        <div class="truncate px-1 pt-0.5 text-[11px] font-medium leading-tight">@evt.Title</div>
+                                        @if (ht > 36)
+                                        {
+                                            <div class="px-1 text-[10px] opacity-75">@evt.Start.ToString("h:mm tt") – @evt.End.ToString("h:mm tt")</div>
+                                        }
+                                        @if (ht > 54 && !string.IsNullOrEmpty(evt.Location))
+                                        {
+                                            <div class="px-1 text-[10px] opacity-60 truncate">@evt.Location</div>
+                                        }
+                                    </div>
+                                }
+                                @if (day.Date == DateTime.Today)
+                                {
+                                    var nowPx = DateTime.Now.Hour * HourPx + DateTime.Now.Minute;
+                                    <div class="pointer-events-none absolute left-0 right-0 z-20 flex items-center"
+                                         style="top: @(nowPx)px;">
+                                        <div class="h-2.5 w-2.5 flex-shrink-0 rounded-full bg-red-500" style="margin-left: -5px;"></div>
+                                        <div class="flex-1 border-t-2 border-red-500"></div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- ════════════════════════════════════
+                 DAY VIEW
+            ════════════════════════════════════ -->
+            else
+            {
+                <div style="min-width: 280px;">
+                    <!-- Header -->
+                    <div class="sticky top-0 z-20 grid bg-background border-b"
+                         style="grid-template-columns: 52px 1fr;">
+                        <div class="border-r py-2"></div>
+                        <div class="px-4 py-2">
+                            <div class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">@_currentDate.ToString("dddd")</div>
+                            <div class="mt-0.5 flex items-center gap-2">
+                                <span class="flex h-8 w-8 items-center justify-center rounded-full text-lg font-bold
+                                             @(_currentDate.Date == DateTime.Today ? "bg-primary text-primary-foreground" : "")">
+                                    @_currentDate.Day
+                                </span>
+                                <span class="text-sm text-muted-foreground">@_currentDate.ToString("MMMM yyyy")</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- All-day events -->
+                    @if (DayViewAllDay.Any())
+                    {
+                        <div class="grid border-b" style="grid-template-columns: 52px 1fr;">
+                            <div class="border-r px-1 py-1 text-right text-[10px] text-muted-foreground leading-tight">All<br/>day</div>
+                            <div class="min-h-[24px] p-1 space-y-0.5">
+                                @foreach (var evt in DayViewAllDay)
+                                {
+                                    var capturedEvt = evt;
+                                    <div class="truncate rounded px-2 py-0.5 text-xs font-medium text-white cursor-pointer hover:opacity-90"
+                                         style="@ColorBg(evt.Color)"
+                                         @onclick="@(() => OpenDetailModal(capturedEvt))">
+                                        @evt.Title
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Time grid -->
+                    <div class="flex" style="height: @(24 * HourPx)px;">
+                        <!-- Hour labels -->
+                        <div class="relative w-[52px] flex-shrink-0 border-r" style="height: @(24 * HourPx)px;">
+                            @for (int h = 0; h < 24; h++)
+                            {
+                                <div class="absolute right-1.5 text-[10px] text-muted-foreground" style="top: @(h * HourPx - 7)px;">@(h > 0 ? HourLabel(h) : "")</div>
+                                <div class="absolute left-0 right-0 border-t border-border/30" style="top: @(h * HourPx)px;"></div>
+                            }
+                        </div>
+                        <!-- Event column -->
+                        <div class="relative flex-1 cursor-pointer"
+                             style="height: @(24 * HourPx)px;"
+                             @onclick="@(() => OpenAddModal(_currentDate))">
+                            @for (int h = 0; h < 24; h++)
+                            {
+                                <div class="pointer-events-none absolute left-0 right-0 border-t border-border/30" style="top: @(h * HourPx)px;"></div>
+                                <div class="pointer-events-none absolute left-0 right-0 border-t border-border/10" style="top: @(h * HourPx + 30)px;"></div>
+                            }
+                            @foreach (var evt in DayViewTimed)
+                            {
+                                var top = EventTopPx(evt);
+                                var ht = EventHeightPx(evt);
+                                var capturedEvt = evt;
+                                <div class="absolute left-2 right-2 z-10 overflow-hidden rounded cursor-pointer hover:opacity-90"
+                                     style="top: @(top)px; height: @(ht)px; @ColorCard(evt.Color)"
+                                     @onclick:stopPropagation="true"
+                                     @onclick="@(() => OpenDetailModal(capturedEvt))">
+                                    <div class="px-2 pt-1 text-sm font-semibold leading-tight">@evt.Title</div>
+                                    <div class="px-2 text-xs opacity-75">@evt.Start.ToString("h:mm tt") – @evt.End.ToString("h:mm tt")</div>
+                                    @if (!string.IsNullOrEmpty(evt.Location))
+                                    {
+                                        <div class="px-2 text-xs opacity-60 truncate">📍 @evt.Location</div>
+                                    }
+                                    @if (ht > 60 && !string.IsNullOrEmpty(evt.Description))
+                                    {
+                                        <div class="px-2 text-xs opacity-60 truncate">@evt.Description</div>
+                                    }
+                                </div>
+                            }
+                            @if (_currentDate.Date == DateTime.Today)
+                            {
+                                var nowPx = DateTime.Now.Hour * HourPx + DateTime.Now.Minute;
+                                <div class="pointer-events-none absolute left-0 right-0 z-20 flex items-center"
+                                     style="top: @(nowPx)px;">
+                                    <div class="h-2.5 w-2.5 flex-shrink-0 rounded-full bg-red-500" style="margin-left: -5px;"></div>
+                                    <div class="flex-1 border-t-2 border-red-500"></div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     ADD / EDIT EVENT MODAL
+═══════════════════════════════════════════════════ -->
+@if (_showAddModal && _editingEvent is not null)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+         @onclick="@(() => _showAddModal = false)">
+        <div class="w-full max-w-md overflow-hidden rounded-xl border bg-background shadow-2xl"
+             @onclick:stopPropagation="true">
+            <div class="flex items-center justify-between border-b px-4 py-3">
+                <span class="font-semibold">@(_isEditing ? "Edit event" : "New event")</span>
+                <button type="button" class="opacity-60 hover:opacity-100" @onclick="@(() => _showAddModal = false)">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="max-h-[70vh] space-y-4 overflow-y-auto p-4">
+                <!-- Title -->
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium">Title <span class="text-destructive">*</span></label>
+                    <input class="@InputCls" placeholder="Event title"
+                           value="@_editingEvent.Title"
+                           @oninput="@(e => _editingEvent.Title = e.Value?.ToString() ?? "")" />
+                </div>
+                <!-- All day -->
+                <label class="flex cursor-pointer select-none items-center gap-2 text-sm">
+                    <input type="checkbox" class="h-4 w-4 rounded"
+                           checked="@_editingEvent.AllDay"
+                           @onchange="@(e => _editingEvent.AllDay = (bool)(e.Value ?? false))" />
+                    All day
+                </label>
+                <!-- Start / End -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-muted-foreground">Start</label>
+                        <input type="@DateInputType" class="@InputCls text-xs"
+                               value="@FormatInput(_editingEvent.Start)"
+                               @oninput="@(e => SetStart(e.Value?.ToString()))" />
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-muted-foreground">End</label>
+                        <input type="@DateInputType" class="@InputCls text-xs"
+                               value="@FormatInput(_editingEvent.End)"
+                               @oninput="@(e => SetEnd(e.Value?.ToString()))" />
+                    </div>
+                </div>
+                <!-- Location -->
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium">Location</label>
+                    <input class="@InputCls" placeholder="Add location"
+                           value="@_editingEvent.Location"
+                           @oninput="@(e => _editingEvent.Location = e.Value?.ToString())" />
+                </div>
+                <!-- Description -->
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium">Description</label>
+                    <textarea class="@InputCls resize-none" rows="3" placeholder="Add description"
+                              @oninput="@(e => _editingEvent.Description = e.Value?.ToString())">@_editingEvent.Description</textarea>
+                </div>
+                <!-- Category -->
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium">Category</label>
+                    <select class="@InputCls"
+                            value="@_editingEvent.Category"
+                            @onchange="@(e => _editingEvent.Category = e.Value?.ToString())">
+                        <option value="">None</option>
+                        <option value="Work">Work</option>
+                        <option value="Personal">Personal</option>
+                        <option value="Family">Family</option>
+                        <option value="Health">Health</option>
+                        <option value="Social">Social</option>
+                        <option value="Reminder">Reminder</option>
+                        <option value="Holiday">Holiday</option>
+                    </select>
+                </div>
+                <!-- Color picker -->
+                <div>
+                    <label class="mb-2 block text-sm font-medium">Color</label>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach (var c in _colors)
+                        {
+                            var capturedKey = c.Key;
+                            <button type="button" title="@c.Label"
+                                    class="h-7 w-7 rounded-full transition-transform @(_editingEvent.Color == c.Key ? "scale-125 ring-2 ring-offset-2 ring-foreground/40" : "hover:scale-110")"
+                                    style="background-color: @c.Hex;"
+                                    @onclick="@(() => _editingEvent.Color = capturedKey)">
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center justify-end gap-2 border-t px-4 py-3">
+                @if (_isEditing)
+                {
+                    <button type="button"
+                            class="mr-auto rounded-md px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+                            @onclick="DeleteEvent">Delete</button>
+                }
+                <button type="button"
+                        class="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-accent transition-colors"
+                        @onclick="@(() => _showAddModal = false)">Cancel</button>
+                <button type="button"
+                        class="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                        @onclick="SaveEvent">Save</button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- ═══════════════════════════════════════════════════
+     EVENT DETAIL MODAL
+═══════════════════════════════════════════════════ -->
+@if (_showDetailModal && _detailEvent is not null)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+         @onclick="@(() => _showDetailModal = false)">
+        <div class="w-full max-w-sm overflow-hidden rounded-xl border bg-background shadow-2xl"
+             @onclick:stopPropagation="true">
+            <!-- Header strip -->
+            <div class="h-1.5 w-full" style="@ColorBg(_detailEvent.Color)"></div>
+            <div class="flex items-start gap-3 border-b px-4 py-3">
+                <div class="flex-1 min-w-0">
+                    <h3 class="font-semibold text-base leading-tight truncate">@_detailEvent.Title</h3>
+                    @if (!string.IsNullOrEmpty(_detailEvent.Category))
+                    {
+                        <span class="mt-0.5 inline-block text-xs font-medium px-1.5 py-0.5 rounded"
+                              style="@ColorPill(_detailEvent.Color)">@_detailEvent.Category</span>
+                    }
+                </div>
+                <div class="flex items-center gap-0.5 flex-shrink-0">
+                    <button type="button" class="rounded p-1.5 hover:bg-accent transition-colors" title="Edit" @onclick="EditFromDetail">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    </button>
+                    <button type="button" class="rounded p-1.5 hover:bg-destructive/10 transition-colors text-destructive" title="Delete" @onclick="DeleteFromDetail">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </button>
+                    <button type="button" class="rounded p-1.5 opacity-60 hover:opacity-100" @onclick="@(() => _showDetailModal = false)">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="space-y-3 p-4">
+                <!-- Date/time -->
+                <div class="flex items-start gap-3 text-sm text-muted-foreground">
+                    <svg class="mt-0.5 h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    <div>
+                        @if (_detailEvent.AllDay)
+                        {
+                            @if (_detailEvent.IsMultiDay)
+                            {
+                                <span>@_detailEvent.Start.ToString("MMM d") – @_detailEvent.End.ToString("MMM d, yyyy")</span>
+                            }
+                            else
+                            {
+                                <span>@_detailEvent.Start.ToString("dddd, MMMM d, yyyy")</span>
+                                <span class="block text-xs">All day</span>
+                            }
+                        }
+                        else
+                        {
+                            <span>@_detailEvent.Start.ToString("dddd, MMMM d, yyyy")</span>
+                            <span class="block">@_detailEvent.Start.ToString("h:mm tt") – @_detailEvent.End.ToString("h:mm tt")</span>
+                        }
+                    </div>
+                </div>
+                <!-- Location -->
+                @if (!string.IsNullOrEmpty(_detailEvent.Location))
+                {
+                    <div class="flex items-center gap-3 text-sm text-muted-foreground">
+                        <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        @_detailEvent.Location
+                    </div>
+                }
+                <!-- Description -->
+                @if (!string.IsNullOrEmpty(_detailEvent.Description))
+                {
+                    <div class="flex items-start gap-3 text-sm">
+                        <svg class="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h10M4 18h14"/></svg>
+                        <p class="whitespace-pre-wrap text-muted-foreground">@_detailEvent.Description</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+<!-- ═══════════════════════════════════════════════════
+     MORE EVENTS MODAL
+═══════════════════════════════════════════════════ -->
+@if (_showMoreModal)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+         @onclick="@(() => _showMoreModal = false)">
+        <div class="w-72 overflow-hidden rounded-xl border bg-background shadow-2xl"
+             @onclick:stopPropagation="true">
+            <div class="flex items-center justify-between border-b px-4 py-3">
+                <span class="font-semibold text-sm">@_moreDate.ToString("MMMM d, yyyy")</span>
+                <button type="button" class="opacity-60 hover:opacity-100" @onclick="@(() => _showMoreModal = false)">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="max-h-72 overflow-y-auto p-2 space-y-0.5">
+                @foreach (var evt in _moreEvents)
+                {
+                    var capturedEvt = evt;
+                    <button type="button"
+                            class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left hover:bg-accent transition-colors"
+                            @onclick="@(() => { _showMoreModal = false; OpenDetailModal(capturedEvt); })">
+                        <span class="h-2 w-2 flex-shrink-0 rounded-full" style="@ColorBg(evt.Color)"></span>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm font-medium truncate">@evt.Title</div>
+                            @if (!evt.AllDay)
+                            {
+                                <div class="text-xs text-muted-foreground">@evt.Start.ToString("h:mm tt") – @evt.End.ToString("h:mm tt")</div>
+                            }
+                        </div>
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    // ── Parameters ───────────────────────────────────────────────────────────
+    [Parameter] public List<CalendarEvent> Events { get; set; } = [];
+    [Parameter] public EventCallback<CalendarEvent> OnEventAdd { get; set; }
+    [Parameter] public EventCallback<CalendarEvent> OnEventEdit { get; set; }
+    [Parameter] public EventCallback<CalendarEvent> OnEventDelete { get; set; }
+    [Parameter] public EventCallback<CalendarEvent> OnEventClick { get; set; }
+    [Parameter] public EventCallback<DateTime> OnDateClick { get; set; }
+    [Parameter] public bool ShowMiniCalendar { get; set; } = true;
+    [Parameter] public bool AllowAdd { get; set; } = true;
+    [Parameter] public CalendarViewMode DefaultView { get; set; } = CalendarViewMode.Month;
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    // ── Internal state ───────────────────────────────────────────────────────
+    private List<CalendarEvent> _events = [];
+    private DateTime _currentDate = DateTime.Today;
+    private CalendarViewMode _view;
+    private DateTime _miniMonth;
+
+    // Modal state
+    private bool _showAddModal;
+    private bool _showDetailModal;
+    private bool _showMoreModal;
+    private CalendarEvent? _editingEvent;
+    private CalendarEvent? _detailEvent;
+    private bool _isEditing;
+    private DateTime _moreDate;
+    private List<CalendarEvent> _moreEvents = [];
+
+    // ── Constants ────────────────────────────────────────────────────────────
+    private const int HourPx = 64;        // pixels per hour in time grid
+    private const int MaxSpanRows = 3;    // max spanning-event rows shown per week in month view
+    private const int SpanRowPx = 22;     // height of each spanning event row (px)
+    private const int MaxDayEvents = 2;   // max timed events shown per day cell in month view
+
+    private static readonly string[] _dayAbbr = ["S", "M", "T", "W", "T", "F", "S"];
+    private static readonly string[] _dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    // ── Lifecycle ────────────────────────────────────────────────────────────
+    protected override void OnInitialized()
+    {
+        _events = [.. Events];
+        _view = DefaultView;
+        _miniMonth = DateTime.Today;
+    }
+
+    protected override void OnParametersSet()
+    {
+        _events = [.. Events];
+    }
+
+    // ── Navigation ───────────────────────────────────────────────────────────
+    private void GoToToday()
+    {
+        _currentDate = DateTime.Today;
+        _miniMonth = DateTime.Today;
+    }
+
+    private void NavigatePrev() => _currentDate = _view switch
+    {
+        CalendarViewMode.Month => _currentDate.AddMonths(-1),
+        CalendarViewMode.Week  => _currentDate.AddDays(-7),
+        _                      => _currentDate.AddDays(-1),
+    };
+
+    private void NavigateNext() => _currentDate = _view switch
+    {
+        CalendarViewMode.Month => _currentDate.AddMonths(1),
+        CalendarViewMode.Week  => _currentDate.AddDays(7),
+        _                      => _currentDate.AddDays(1),
+    };
+
+    private void SetView(CalendarViewMode v) => _view = v;
+
+    private void NavigateToDate(DateTime date)
+    {
+        _currentDate = date;
+        _miniMonth = new DateTime(date.Year, date.Month, 1);
+    }
+
+    private void PrevMiniMonth() => _miniMonth = _miniMonth.AddMonths(-1);
+    private void NextMiniMonth() => _miniMonth = _miniMonth.AddMonths(1);
+
+    private string PeriodLabel => _view switch
+    {
+        CalendarViewMode.Month => _currentDate.ToString("MMMM yyyy"),
+        CalendarViewMode.Week  => WeekLabel(),
+        _                      => _currentDate.ToString("dddd, MMMM d, yyyy"),
+    };
+
+    private string WeekLabel()
+    {
+        var s = WeekStart(_currentDate);
+        var e = s.AddDays(6);
+        return s.Month == e.Month
+            ? $"{s:MMM d} – {e:d, yyyy}"
+            : s.Year == e.Year
+                ? $"{s:MMM d} – {e:MMM d, yyyy}"
+                : $"{s:MMM d, yyyy} – {e:MMM d, yyyy}";
+    }
+
+    // ── Month view helpers ───────────────────────────────────────────────────
+    private List<List<DateTime>> GetMonthGrid()
+    {
+        var first = new DateTime(_currentDate.Year, _currentDate.Month, 1);
+        var start = first.AddDays(-(int)first.DayOfWeek);
+        var grid = new List<List<DateTime>>();
+        var d = start;
+        for (int r = 0; r < 6; r++)
+        {
+            var week = new List<DateTime>();
+            for (int c = 0; c < 7; c++) { week.Add(d); d = d.AddDays(1); }
+            grid.Add(week);
+        }
+        return grid;
+    }
+
+    private List<List<DateTime>> GetMiniGrid(DateTime month)
+    {
+        var first = new DateTime(month.Year, month.Month, 1);
+        var start = first.AddDays(-(int)first.DayOfWeek);
+        var grid = new List<List<DateTime>>();
+        var d = start;
+        for (int r = 0; r < 6; r++)
+        {
+            var week = new List<DateTime>();
+            for (int c = 0; c < 7; c++) { week.Add(d); d = d.AddDays(1); }
+            grid.Add(week);
+        }
+        return grid;
+    }
+
+    private record SpanEvent(CalendarEvent Event, int StartCol, int EndCol, int Row);
+
+    private List<SpanEvent> GetSpanEventsForWeek(List<DateTime> week)
+    {
+        var ws = week[0].Date;
+        var we = week[6].Date;
+
+        var evts = _events
+            .Where(e => (e.AllDay || e.IsMultiDay) && e.Start.Date <= we && e.End.Date >= ws)
+            .OrderBy(e => e.Start)
+            .ThenByDescending(e => (e.End - e.Start).TotalDays)
+            .ToList();
+
+        if (evts.Count == 0) return [];
+
+        var rowEnds = new List<int>(); // end column per row
+        var result = new List<SpanEvent>();
+
+        foreach (var evt in evts)
+        {
+            var sc = Math.Max(0, (evt.Start.Date - ws).Days);
+            var ec = Math.Min(6, (evt.End.Date - ws).Days);
+
+            int row = -1;
+            for (int i = 0; i < rowEnds.Count; i++)
+            {
+                if (rowEnds[i] < sc) { rowEnds[i] = ec; row = i; break; }
+            }
+            if (row == -1) { row = rowEnds.Count; rowEnds.Add(ec); }
+
+            result.Add(new SpanEvent(evt, sc, ec, row));
+        }
+        return result;
+    }
+
+    // Only single-day timed events for month day cells
+    private List<CalendarEvent> GetDayEvents(DateTime date)
+        => _events
+            .Where(e => !e.AllDay && !e.IsMultiDay && e.Start.Date == date.Date)
+            .OrderBy(e => e.Start)
+            .ToList();
+
+    // ── Week / day computed properties (used directly in markup) ────────────
+    private List<DateTime> WeekViewDays => GetWeekDays();
+    private List<CalendarEvent> WeekViewAllDay => GetWeekAllDayEvents(GetWeekDays());
+    private bool WeekViewHasAllDay => WeekViewAllDay.Any();
+    private List<CalendarEvent> DayViewAllDay => GetAllDayEventsForDay(_currentDate);
+    private List<CalendarEvent> DayViewTimed => GetTimedEventsForDay(_currentDate);
+
+    // ── Week view helpers ────────────────────────────────────────────────────
+    private DateTime WeekStart(DateTime d)
+    {
+        var diff = (7 + (int)d.DayOfWeek) % 7;
+        return d.AddDays(-diff);
+    }
+
+    private List<DateTime> GetWeekDays()
+    {
+        var s = WeekStart(_currentDate);
+        return [.. Enumerable.Range(0, 7).Select(i => s.AddDays(i))];
+    }
+
+    private List<CalendarEvent> GetWeekAllDayEvents(List<DateTime> days)
+    {
+        var ws = days[0].Date;
+        var we = days[6].Date;
+        return _events
+            .Where(e => (e.AllDay || e.IsMultiDay) && e.Start.Date <= we && e.End.Date >= ws)
+            .OrderBy(e => e.Start)
+            .ToList();
+    }
+
+    private List<CalendarEvent> GetAllDayEventsForDay(DateTime date)
+        => _events
+            .Where(e => (e.AllDay || e.IsMultiDay) && e.Start.Date <= date.Date && e.End.Date >= date.Date)
+            .OrderBy(e => e.Start)
+            .ToList();
+
+    private List<CalendarEvent> GetTimedEventsForDay(DateTime date)
+        => _events
+            .Where(e => !e.AllDay && !e.IsMultiDay && e.Start.Date == date.Date)
+            .OrderBy(e => e.Start)
+            .ToList();
+
+    // ── Time grid positioning ────────────────────────────────────────────────
+    private int EventTopPx(CalendarEvent e) => e.Start.Hour * HourPx + e.Start.Minute;
+
+    private int EventHeightPx(CalendarEvent e)
+        => Math.Max((int)(e.End - e.Start).TotalMinutes, 30);
+
+    // ── Color helpers (inline styles, dark-mode friendly) ────────────────────
+    private record ColorDef(string Key, string Label, string Hex, string LightBg, string DarkText);
+
+    private static readonly ColorDef[] _colors =
+    [
+        new("blue",   "Blue",   "#3b82f6", "#dbeafe", "#1e40af"),
+        new("green",  "Green",  "#22c55e", "#dcfce7", "#15803d"),
+        new("red",    "Red",    "#ef4444", "#fee2e2", "#991b1b"),
+        new("orange", "Orange", "#f97316", "#ffedd5", "#9a3412"),
+        new("purple", "Purple", "#a855f7", "#f3e8ff", "#6b21a8"),
+        new("pink",   "Pink",   "#ec4899", "#fce7f3", "#831843"),
+        new("teal",   "Teal",   "#14b8a6", "#ccfbf1", "#0f766e"),
+        new("yellow", "Yellow", "#eab308", "#fef9c3", "#713f12"),
+        new("indigo", "Indigo", "#6366f1", "#e0e7ff", "#3730a3"),
+    ];
+
+    private ColorDef GetColor(string? key)
+        => _colors.FirstOrDefault(c => c.Key == key) ?? _colors[0];
+
+    // Solid background for spanning bars and dots
+    private string ColorBg(string? color)
+        => $"background-color: {GetColor(color).Hex};";
+
+    // Light-bg + dark-text pill for month day cells
+    private string ColorPill(string? color)
+    {
+        var c = GetColor(color);
+        return $"background-color: {c.LightBg}; color: {c.DarkText};";
+    }
+
+    // Left-border card style for week/day time grid
+    private string ColorCard(string? color)
+    {
+        var c = GetColor(color);
+        return $"background-color: {c.LightBg}; color: {c.DarkText}; border-left: 3px solid {c.Hex};";
+    }
+
+    // ── Misc helpers ─────────────────────────────────────────────────────────
+    private static string Pct(double v) => v.ToString("F2");
+
+    private static string HourLabel(int h)
+        => h == 0 ? "12 AM" : h < 12 ? $"{h} AM" : h == 12 ? "12 PM" : $"{h - 12} PM";
+
+    private string InputCls =>
+        "flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm " +
+        "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 " +
+        "focus-visible:ring-ring focus-visible:ring-offset-2";
+
+    private string DateInputType => _editingEvent?.AllDay == true ? "date" : "datetime-local";
+
+    private string FormatInput(DateTime dt)
+        => _editingEvent?.AllDay == true ? dt.ToString("yyyy-MM-dd") : dt.ToString("yyyy-MM-ddTHH:mm");
+
+    private void SetStart(string? val)
+    {
+        if (_editingEvent is null || !DateTime.TryParse(val, out var dt)) return;
+        _editingEvent.Start = dt;
+        if (_editingEvent.End <= _editingEvent.Start)
+            _editingEvent.End = _editingEvent.Start.AddHours(1);
+    }
+
+    private void SetEnd(string? val)
+    {
+        if (_editingEvent is null || !DateTime.TryParse(val, out var dt)) return;
+        _editingEvent.End = dt;
+    }
+
+    // ── CRUD operations ──────────────────────────────────────────────────────
+    private void OpenAddModal(DateTime? date)
+    {
+        var d = (date ?? DateTime.Today).Date;
+        _editingEvent = new CalendarEvent
+        {
+            Start = d.AddHours(9),
+            End   = d.AddHours(10),
+            Color = "blue",
+        };
+        _isEditing = false;
+        _showAddModal = true;
+    }
+
+    private void OpenDetailModal(CalendarEvent evt)
+    {
+        _detailEvent = evt;
+        _showDetailModal = true;
+    }
+
+    private void EditFromDetail()
+    {
+        if (_detailEvent is null) return;
+        _showDetailModal = false;
+        _editingEvent = new CalendarEvent
+        {
+            Id          = _detailEvent.Id,
+            Title       = _detailEvent.Title,
+            Description = _detailEvent.Description,
+            Start       = _detailEvent.Start,
+            End         = _detailEvent.End,
+            AllDay      = _detailEvent.AllDay,
+            Color       = _detailEvent.Color,
+            Category    = _detailEvent.Category,
+            Location    = _detailEvent.Location,
+        };
+        _isEditing = true;
+        _showAddModal = true;
+    }
+
+    private async Task DeleteFromDetail()
+    {
+        if (_detailEvent is null) return;
+        _events.RemoveAll(e => e.Id == _detailEvent.Id);
+        await OnEventDelete.InvokeAsync(_detailEvent);
+        _showDetailModal = false;
+        _detailEvent = null;
+    }
+
+    private async Task SaveEvent()
+    {
+        if (_editingEvent is null || string.IsNullOrWhiteSpace(_editingEvent.Title)) return;
+
+        if (_isEditing)
+        {
+            var idx = _events.FindIndex(e => e.Id == _editingEvent.Id);
+            if (idx >= 0) _events[idx] = _editingEvent;
+            else _events.Add(_editingEvent);
+            await OnEventEdit.InvokeAsync(_editingEvent);
+        }
+        else
+        {
+            _editingEvent.Id = Guid.NewGuid().ToString();
+            _events.Add(_editingEvent);
+            await OnEventAdd.InvokeAsync(_editingEvent);
+        }
+
+        _showAddModal = false;
+        _editingEvent = null;
+    }
+
+    private async Task DeleteEvent()
+    {
+        if (_editingEvent is null) return;
+        _events.RemoveAll(e => e.Id == _editingEvent.Id);
+        await OnEventDelete.InvokeAsync(_editingEvent);
+        _showAddModal = false;
+        _editingEvent = null;
+    }
+
+    private void ShowMore(DateTime date)
+    {
+        _moreDate = date;
+        _moreEvents = [.. GetDayEvents(date)];
+        _showMoreModal = true;
+    }
+}

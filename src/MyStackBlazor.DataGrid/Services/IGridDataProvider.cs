@@ -14,6 +14,7 @@ public interface IGridDataProvider<TItem>
 public record GridRequest(
     PageDescriptor Page,
     IReadOnlyList<SortDescriptor> Sort,
-    IReadOnlyList<FilterDescriptor> Filters);
+    IReadOnlyList<FilterDescriptor> Filters,
+    string? SearchTerm = null);
 
 public record GridDataResult<TItem>(IEnumerable<TItem> Items, int TotalCount);

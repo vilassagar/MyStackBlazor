@@ -101,9 +101,96 @@
     </div>
 </DemoSection>
 
+<!-- Typography -->
+<DemoSection Title="Typography"
+             Description="Semantic text elements. Use Variant to switch between h1–h6, p, lead, large, small, muted, blockquote, and code."
+             Code="@_typographyCode">
+    <div class="w-full space-y-2">
+        <Typography Variant="h1">Heading 1</Typography>
+        <Typography Variant="h2">Heading 2</Typography>
+        <Typography Variant="h3">Heading 3</Typography>
+        <Typography Variant="h4">Heading 4</Typography>
+        <Typography Variant="lead">Lead paragraph — larger introductory text.</Typography>
+        <Typography Variant="p">Body paragraph — the default text style for content.</Typography>
+        <Typography Variant="large">Large text</Typography>
+        <Typography Variant="small">Small text</Typography>
+        <Typography Variant="muted">Muted / secondary text</Typography>
+        <Typography Variant="blockquote">"Great components are composed, not configured." — someone wise</Typography>
+        <Typography Variant="code">npm install mystack-blazor</Typography>
+    </div>
+</DemoSection>
+
+<!-- Label -->
+<DemoSection Title="Label"
+             Description="Associates with an input via For. Styled to match the design system."
+             Code="@_labelCode">
+    <div class="w-full max-w-xs space-y-1">
+        <Label For="lbl-demo">Your email address</Label>
+        <Input Id="lbl-demo" Type="email" Placeholder="you@example.com" />
+    </div>
+</DemoSection>
+
+<!-- ButtonGroup -->
+<DemoSection Title="Button Group"
+             Description="Groups related buttons together, removing gaps between them."
+             Code="@_btnGroupCode">
+    <div class="space-y-3">
+        <ButtonGroup>
+            <Button Variant="outline" Size="sm">Left</Button>
+            <Button Variant="outline" Size="sm">Center</Button>
+            <Button Variant="outline" Size="sm">Right</Button>
+        </ButtonGroup>
+        <ButtonGroup>
+            <Button Size="sm">Save</Button>
+            <Button Variant="outline" Size="sm">Preview</Button>
+            <Button Variant="outline" Size="sm">Discard</Button>
+        </ButtonGroup>
+    </div>
+</DemoSection>
+
+<!-- ToggleButton -->
+<DemoSection Title="Toggle Button"
+             Description="Stateful button that tracks a pressed/active state via IsPressed / IsPressedChanged."
+             Code="@_toggleCode">
+    <div class="flex flex-wrap gap-3">
+        <ToggleButton @bind-IsPressed="_boldOn">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 4h8a4 4 0 010 8H6zM6 12h9a4 4 0 010 8H6z" />
+            </svg>
+            Bold
+        </ToggleButton>
+        <ToggleButton @bind-IsPressed="_italicOn">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 4h-9M14 20H5M15 4L9 20" />
+            </svg>
+            Italic
+        </ToggleButton>
+        <ToggleButton @bind-IsPressed="_underlineOn">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v8a5 5 0 0010 0V4M5 20h14" />
+            </svg>
+            Underline
+        </ToggleButton>
+        <p class="text-sm text-muted-foreground w-full">
+            Active: @(string.Join(", ", new[] {
+                _boldOn ? "Bold" : null,
+                _italicOn ? "Italic" : null,
+                _underlineOn ? "Underline" : null
+            }.Where(x => x is not null)) is "" ? "none" : string.Join(", ", new[] {
+                _boldOn ? "Bold" : null,
+                _italicOn ? "Italic" : null,
+                _underlineOn ? "Underline" : null
+            }.Where(x => x is not null)))
+        </p>
+    </div>
+</DemoSection>
+
 @code {
     private bool _loading;
     private List<string> _tags = ["Blazor", ".NET", "Tailwind"];
+    private bool _boldOn;
+    private bool _italicOn;
+    private bool _underlineOn;
 
     private async Task SimulateLoad()
     {
@@ -169,5 +256,33 @@
         <Skeleton Class="h-10 w-10 rounded-full" />
         <Skeleton Class="h-4 w-full" />
         <Skeleton Class="h-4 w-4/5" />
+        """;
+
+    private const string _typographyCode = """
+        <Typography Variant="h1">Heading 1</Typography>
+        <Typography Variant="h2">Heading 2</Typography>
+        <Typography Variant="lead">Lead paragraph</Typography>
+        <Typography Variant="p">Body paragraph</Typography>
+        <Typography Variant="muted">Muted text</Typography>
+        <Typography Variant="blockquote">"A quote."</Typography>
+        <Typography Variant="code">dotnet add package MyStackBlazor</Typography>
+        """;
+
+    private const string _labelCode = """
+        <Label For="email">Your email address</Label>
+        <Input Id="email" Type="email" Placeholder="you@example.com" />
+        """;
+
+    private const string _btnGroupCode = """
+        <ButtonGroup>
+            <Button Variant="outline" Size="sm">Left</Button>
+            <Button Variant="outline" Size="sm">Center</Button>
+            <Button Variant="outline" Size="sm">Right</Button>
+        </ButtonGroup>
+        """;
+
+    private const string _toggleCode = """
+        <ToggleButton @bind-IsPressed="_bold">Bold</ToggleButton>
+        <ToggleButton @bind-IsPressed="_italic">Italic</ToggleButton>
         """;
 }

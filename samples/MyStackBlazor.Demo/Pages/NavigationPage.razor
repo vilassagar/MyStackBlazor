@@ -1,0 +1,292 @@
+@page "/navigation"
+@inject ToastService Toast
+
+<PageTitle>Navigation — MyStackBlazor Demo</PageTitle>
+
+<h1 class="text-3xl font-bold mb-1">Navigation</h1>
+<p class="text-muted-foreground mb-8">Breadcrumbs, dropdowns, toolbars, app bars, FAB, steppers, and wizards.</p>
+
+<!-- Breadcrumb -->
+<DemoSection Title="Breadcrumb"
+             Description="Navigational trail. The last BreadcrumbItem should have IsCurrentPage set."
+             Code="@_breadcrumbCode">
+    <Breadcrumb>
+        <BreadcrumbItem Href="/">Home</BreadcrumbItem>
+        <BreadcrumbItem Href="/components">Components</BreadcrumbItem>
+        <BreadcrumbItem IsCurrentPage ShowSeparator="false">Navigation</BreadcrumbItem>
+    </Breadcrumb>
+</DemoSection>
+
+<!-- DropdownMenu -->
+<DemoSection Title="Dropdown Menu"
+             Description="Click the trigger to open. Items close the menu on click. Supports Icon, Shortcut, Disabled, and Destructive."
+             Code="@_dropdownCode">
+    <div class="flex flex-wrap gap-4">
+        <DropdownMenu>
+            <Trigger>
+                <Button Variant="outline">
+                    Options
+                    <svg class="ml-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </Button>
+            </Trigger>
+            <Content>
+                <DropdownMenuItem Shortcut="⌘P" OnClick="@(() => Toast.Show("Profile clicked"))">
+                    <Icon>
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                    </Icon>
+                    <ChildContent>Profile</ChildContent>
+                </DropdownMenuItem>
+                <DropdownMenuItem Shortcut="⌘," OnClick="@(() => Toast.Show("Settings clicked"))">
+                    <Icon>
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </Icon>
+                    <ChildContent>Settings</ChildContent>
+                </DropdownMenuItem>
+                <DropdownMenuItem Disabled>Billing (coming soon)</DropdownMenuItem>
+                <DropdownMenuItem Destructive Shortcut="⇧⌘Q" OnClick="@(() => Toast.Show("Logged out", "Bye!", "destructive"))">
+                    Log out
+                </DropdownMenuItem>
+            </Content>
+        </DropdownMenu>
+
+        <DropdownMenu Align="end">
+            <Trigger>
+                <Button Size="icon" Variant="ghost" AriaLabel="More actions">
+                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                        <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                    </svg>
+                </Button>
+            </Trigger>
+            <Content>
+                <DropdownMenuItem OnClick="@(() => Toast.Show("Copied!"))">Copy link</DropdownMenuItem>
+                <DropdownMenuItem OnClick="@(() => Toast.Show("Shared!"))">Share</DropdownMenuItem>
+                <DropdownMenuItem Destructive>Delete</DropdownMenuItem>
+            </Content>
+        </DropdownMenu>
+    </div>
+</DemoSection>
+
+<!-- Toolbar -->
+<DemoSection Title="Toolbar"
+             Description="Horizontal toolbar container. Pair with ButtonGroup, ToggleButton, and Separator."
+             Code="@_toolbarCode">
+    <div class="w-full max-w-lg">
+        <Toolbar Class="rounded-md border p-1 bg-background">
+            <ButtonGroup>
+                <Button Size="icon" Variant="ghost" AriaLabel="Bold">
+                    <svg class="h-4 w-4 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 4h8a4 4 0 010 8H6zM6 12h9a4 4 0 010 8H6z" /></svg>
+                </Button>
+                <Button Size="icon" Variant="ghost" AriaLabel="Italic">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 4h-9M14 20H5M15 4L9 20" /></svg>
+                </Button>
+                <Button Size="icon" Variant="ghost" AriaLabel="Underline">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v8a5 5 0 0010 0V4M5 20h14" /></svg>
+                </Button>
+            </ButtonGroup>
+            <Separator Orientation="vertical" Class="h-6 mx-1" />
+            <ButtonGroup>
+                <Button Size="icon" Variant="ghost" AriaLabel="Align left">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h10M4 18h14" /></svg>
+                </Button>
+                <Button Size="icon" Variant="ghost" AriaLabel="Align center">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M7 12h10M5 18h14" /></svg>
+                </Button>
+                <Button Size="icon" Variant="ghost" AriaLabel="Align right">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M10 12h10M6 18h14" /></svg>
+                </Button>
+            </ButtonGroup>
+        </Toolbar>
+    </div>
+</DemoSection>
+
+<!-- AppBar -->
+<DemoSection Title="App Bar"
+             Description="Sticky top header with StartContent and EndContent slots."
+             Code="@_appBarCode">
+    <div class="w-full max-w-2xl rounded-lg border overflow-hidden">
+        <AppBar>
+            <StartContent>
+                <div class="flex items-center gap-2">
+                    <span class="font-bold text-primary">MyStack</span><span class="font-bold">Blazor</span>
+                </div>
+            </StartContent>
+            <EndContent>
+                <div class="flex items-center gap-2">
+                    <Button Variant="ghost" Size="sm">Docs</Button>
+                    <Button Size="sm">Sign in</Button>
+                </div>
+            </EndContent>
+        </AppBar>
+        <div class="p-6 text-sm text-muted-foreground">Page content goes here.</div>
+    </div>
+</DemoSection>
+
+<!-- FloatingActionButton -->
+<DemoSection Title="Floating Action Button"
+             Description="Fixed-position circular button. Set Position to choose corner."
+             Code="@_fabCode">
+    <div class="relative w-full h-32 rounded-lg border bg-muted/30 overflow-hidden">
+        <p class="p-4 text-sm text-muted-foreground">Container simulating a page area</p>
+        <div class="absolute bottom-3 right-3">
+            <FloatingActionButton Position="bottom-right" OnClick="@(() => Toast.Show("FAB clicked!"))">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+            </FloatingActionButton>
+        </div>
+    </div>
+</DemoSection>
+
+<!-- Stepper -->
+<DemoSection Title="Stepper"
+             Description="Multi-step workflow with linear progression. Set Vertical for a sidebar layout."
+             Code="@_stepperCode">
+    <div class="w-full max-w-lg">
+        <Stepper ShowNavigation Linear OnComplete="@(() => Toast.Show("All steps complete!", "Done", "success"))">
+            <StepperStep Title="Account" Description="Basic details">
+                <div class="space-y-3 py-2">
+                    <Input Placeholder="Email address" Type="email" />
+                    <Input Placeholder="Display name" />
+                </div>
+            </StepperStep>
+            <StepperStep Title="Profile" Description="About you">
+                <div class="space-y-3 py-2">
+                    <Textarea Placeholder="Short bio…" Rows="3" />
+                    <Select Placeholder="Country">
+                        <option value="in">India</option>
+                        <option value="us">United States</option>
+                        <option value="uk">United Kingdom</option>
+                    </Select>
+                </div>
+            </StepperStep>
+            <StepperStep Title="Confirm" Description="Review and submit">
+                <p class="text-sm text-muted-foreground py-2">Review your details and click <strong>Finish</strong> to complete setup.</p>
+            </StepperStep>
+        </Stepper>
+    </div>
+</DemoSection>
+
+<!-- Wizard -->
+<DemoSection Title="Wizard"
+             Description="Tab-style multi-step form. Similar to Stepper but with a horizontal header."
+             Code="@_wizardCode">
+    <div class="w-full max-w-lg">
+        <Wizard ShowNavigation OnFinish="@(() => Toast.Show("Wizard finished!", "Complete", "success"))">
+            <WizardStep Title="Choose plan">
+                <div class="py-3">
+                    <RadioGroup @bind-Value="_wizPlan">
+                        <RadioGroupItem Value="free" Label="Free — $0/month" Id="wiz-free" />
+                        <RadioGroupItem Value="pro" Label="Pro — $9/month" Id="wiz-pro" />
+                    </RadioGroup>
+                </div>
+            </WizardStep>
+            <WizardStep Title="Payment">
+                <div class="space-y-3 py-3">
+                    <Input Placeholder="Card number" />
+                    <div class="flex gap-2">
+                        <Input Placeholder="MM/YY" Class="w-24" />
+                        <Input Placeholder="CVV" Class="w-20" />
+                    </div>
+                </div>
+            </WizardStep>
+            <WizardStep Title="Confirm">
+                <p class="text-sm text-muted-foreground py-3">
+                    Plan: <strong>@(_wizPlan ?? "not selected")</strong>. Click Finish to subscribe.
+                </p>
+            </WizardStep>
+        </Wizard>
+    </div>
+</DemoSection>
+
+@code {
+    private string? _wizPlan = "pro";
+
+    private const string _breadcrumbCode = """
+        <Breadcrumb>
+            <BreadcrumbItem Href="/">Home</BreadcrumbItem>
+            <BreadcrumbItem Href="/components">Components</BreadcrumbItem>
+            <BreadcrumbItem IsCurrentPage ShowSeparator="false">Navigation</BreadcrumbItem>
+        </Breadcrumb>
+        """;
+
+    private const string _dropdownCode = """
+        <DropdownMenu>
+            <Trigger>
+                <Button Variant="outline">Options ▾</Button>
+            </Trigger>
+            <Content>
+                <DropdownMenuItem OnClick="HandleProfile">Profile</DropdownMenuItem>
+                <DropdownMenuItem Shortcut="⌘,">Settings</DropdownMenuItem>
+                <DropdownMenuItem Disabled>Billing (soon)</DropdownMenuItem>
+                <DropdownMenuItem Destructive>Log out</DropdownMenuItem>
+            </Content>
+        </DropdownMenu>
+        """;
+
+    private const string _toolbarCode = """
+        <Toolbar>
+            <ButtonGroup>
+                <Button Size="icon" Variant="ghost" AriaLabel="Bold">B</Button>
+                <Button Size="icon" Variant="ghost" AriaLabel="Italic">I</Button>
+            </ButtonGroup>
+            <Separator Orientation="vertical" Class="h-6 mx-1" />
+            <ButtonGroup>
+                <Button Size="icon" Variant="ghost" AriaLabel="Align left">⬅</Button>
+                <Button Size="icon" Variant="ghost" AriaLabel="Align center">⬌</Button>
+            </ButtonGroup>
+        </Toolbar>
+        """;
+
+    private const string _appBarCode = """
+        <AppBar>
+            <StartContent>
+                <span class="font-bold">MyStackBlazor</span>
+            </StartContent>
+            <EndContent>
+                <Button Variant="ghost" Size="sm">Docs</Button>
+                <Button Size="sm">Sign in</Button>
+            </EndContent>
+        </AppBar>
+        """;
+
+    private const string _fabCode = """
+        <FloatingActionButton Position="bottom-right" OnClick="HandleAdd">
+            <svg class="h-5 w-5" ...><path d="M12 4v16m8-8H4" /></svg>
+        </FloatingActionButton>
+        """;
+
+    private const string _stepperCode = """
+        <Stepper ShowNavigation Linear OnComplete="HandleComplete">
+            <StepperStep Title="Account" Description="Basic details">
+                <Input Placeholder="Email" Type="email" />
+            </StepperStep>
+            <StepperStep Title="Profile" Description="About you">
+                <Textarea Placeholder="Bio…" />
+            </StepperStep>
+            <StepperStep Title="Confirm">
+                <p>Review and submit.</p>
+            </StepperStep>
+        </Stepper>
+        """;
+
+    private const string _wizardCode = """
+        <Wizard ShowNavigation OnFinish="HandleFinish">
+            <WizardStep Title="Choose plan">
+                <RadioGroup @bind-Value="_plan">...</RadioGroup>
+            </WizardStep>
+            <WizardStep Title="Payment">
+                <Input Placeholder="Card number" />
+            </WizardStep>
+            <WizardStep Title="Confirm">
+                <p>Click Finish to subscribe.</p>
+            </WizardStep>
+        </Wizard>
+        """;
+}

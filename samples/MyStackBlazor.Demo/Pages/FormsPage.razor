@@ -90,9 +90,169 @@
     </div>
 </DemoSection>
 
+<!-- Floating Label -->
+<DemoSection Title="Floating Label"
+             Description="Label animates above the input when focused or filled."
+             Code="@_floatingCode">
+    <div class="w-full max-w-sm space-y-4">
+        <FloatingLabel Label="First name" @bind-Value="_floatName" />
+        <FloatingLabel Label="Email" Type="email" @bind-Value="_floatEmail" />
+        <FloatingLabel Label="Password" Type="password" @bind-Value="_floatPass" />
+    </div>
+</DemoSection>
+
+<!-- NumericInput -->
+<DemoSection Title="Numeric Input"
+             Description="Number input with optional stepper buttons and min/max clamping."
+             Code="@_numericCode">
+    <div class="w-full max-w-xs space-y-4">
+        <div>
+            <Label For="ni-qty">Quantity (1–99)</Label>
+            <NumericInput Id="ni-qty" @bind-Value="_quantity" Min="1" Max="99" Step="1" />
+        </div>
+        <div>
+            <Label For="ni-price">Price ($)</Label>
+            <NumericInput Id="ni-price" @bind-Value="_price" Min="0" Max="9999" Step="0.01" />
+        </div>
+        <div>
+            <Label For="ni-nospin">No stepper</Label>
+            <NumericInput Id="ni-nospin" @bind-Value="_quantity" ShowStepper="false" />
+        </div>
+        <p class="text-sm text-muted-foreground">Qty: <strong>@_quantity</strong> — Price: <strong>$@_price</strong></p>
+    </div>
+</DemoSection>
+
+<!-- InputOtp -->
+<DemoSection Title="OTP Input"
+             Description="Auto-advances focus on each digit. GroupAt adds a visual separator."
+             Code="@_otpCode">
+    <div class="space-y-3">
+        <div>
+            <Label>6-digit code (grouped 3+3)</Label>
+            <InputOtp Length="6" GroupAt="3" @bind-Value="_otp" />
+        </div>
+        <div>
+            <Label>4-digit PIN</Label>
+            <InputOtp Length="4" GroupAt="4" @bind-Value="_pin" />
+        </div>
+        @if (!string.IsNullOrEmpty(_otp))
+        {
+            <p class="text-sm text-muted-foreground">Code: <strong>@_otp</strong></p>
+        }
+    </div>
+</DemoSection>
+
+<!-- MaskedTextBox -->
+<DemoSection Title="Masked Text Box"
+             Description="Enforces an input pattern. 0=digit, a=letter, *=any character."
+             Code="@_maskedCode">
+    <div class="w-full max-w-xs space-y-4">
+        <div>
+            <Label For="msk-phone">Phone (000-000-0000)</Label>
+            <MaskedTextBox Id="msk-phone" Mask="000-000-0000" @bind-Value="_maskedPhone" />
+        </div>
+        <div>
+            <Label For="msk-date">Date (DD/MM/YYYY)</Label>
+            <MaskedTextBox Id="msk-date" Mask="00/00/0000" @bind-Value="_maskedDate" />
+        </div>
+        <div>
+            <Label For="msk-card">Card number (0000 0000 0000 0000)</Label>
+            <MaskedTextBox Id="msk-card" Mask="0000 0000 0000 0000" @bind-Value="_maskedCard" />
+        </div>
+    </div>
+</DemoSection>
+
+<!-- FormField -->
+<DemoSection Title="Form Field"
+             Description="Wrapper that adds a Label, helper text, and error message around any input."
+             Code="@_formFieldCode">
+    <div class="w-full max-w-sm space-y-4">
+        <FormField Label="Username" For="ff-user" Description="Only letters, numbers, and underscores.">
+            <Input Id="ff-user" Placeholder="vilas_sagar" @bind-Value="_ffUsername" />
+        </FormField>
+        <FormField Label="Email" For="ff-email" Required ErrorMessage="@_ffEmailError">
+            <Input Id="ff-email" Type="email" Placeholder="you@example.com" @bind-Value="_ffEmail" @onblur="ValidateEmail" />
+        </FormField>
+        <FormField Label="Notes" For="ff-notes" Description="Optional. Max 200 characters." Disabled="_ffDisabled">
+            <Textarea Id="ff-notes" Placeholder="Any extra notes..." Disabled="_ffDisabled" />
+        </FormField>
+        <Switch @bind-Checked="_ffDisabled" Label="Disable notes field" />
+    </div>
+</DemoSection>
+
+<!-- ListBox -->
+<DemoSection Title="List Box"
+             Description="Scrollable selection list. Set MultiSelect for multiple picks."
+             Code="@_listboxCode">
+    <div class="flex flex-wrap gap-6">
+        <div>
+            <Label>Single select</Label>
+            <ListBox TItem="string"
+                     Items="_frameworks"
+                     @bind-Value="_selectedFramework"
+                     ItemLabel="x => x"
+                     Height="160px"
+                     Class="w-48" />
+            @if (_selectedFramework is not null)
+            {
+                <p class="text-xs text-muted-foreground mt-1">Selected: <strong>@_selectedFramework</strong></p>
+            }
+        </div>
+        <div>
+            <Label>Multi select</Label>
+            <ListBox TItem="string"
+                     Items="_frameworks"
+                     MultiSelect
+                     @bind-SelectedItems="_selectedFrameworks"
+                     ItemLabel="x => x"
+                     Height="160px"
+                     Class="w-48" />
+            @if (_selectedFrameworks?.Count > 0)
+            {
+                <p class="text-xs text-muted-foreground mt-1">@string.Join(", ", _selectedFrameworks)</p>
+            }
+        </div>
+    </div>
+</DemoSection>
+
+<!-- ColorPalette -->
+<DemoSection Title="Color Palette"
+             Description="Click a swatch to select a color. ShowHex displays the selected hex value."
+             Code="@_colorCode">
+    <div class="space-y-4">
+        <ColorPalette Label="Brand color" @bind-Value="_brandColor" ShowHex />
+        <ColorPalette Label="Accent color" @bind-Value="_accentColor" ShowHex
+                      Colors="@(new[] { "#ef4444","#f97316","#eab308","#22c55e","#3b82f6","#8b5cf6","#ec4899" })" />
+    </div>
+</DemoSection>
+
 @code {
     private string? _name;
     private string? _email;
+    private string? _floatName;
+    private string? _floatEmail;
+    private string? _floatPass;
+    private double? _quantity = 1;
+    private double? _price = 9.99;
+    private string? _otp;
+    private string? _pin;
+    private string? _maskedPhone;
+    private string? _maskedDate;
+    private string? _maskedCard;
+    private string? _ffUsername;
+    private string? _ffEmail;
+    private string? _ffEmailError;
+    private bool _ffDisabled;
+    private string? _selectedFramework;
+    private IList<string>? _selectedFrameworks;
+    private string? _brandColor = "#3b82f6";
+    private string? _accentColor = "#8b5cf6";
+    private readonly List<string> _frameworks = ["Blazor WASM", "Blazor Server", "MAUI Blazor", "Blazor United", ".NET 10"];
+
+    private void ValidateEmail()
+        => _ffEmailError = !string.IsNullOrEmpty(_ffEmail) && !_ffEmail.Contains('@')
+            ? "Please enter a valid email address."
+            : null;
     private string? _message;
     private string? _framework;
     private bool _notifications = true;
@@ -133,5 +293,49 @@
             <RadioGroupItem Value="pro"        Label="Pro — $9/month"         Id="plan-pro" />
             <RadioGroupItem Value="enterprise" Label="Enterprise — Contact us" Id="plan-enterprise" />
         </RadioGroup>
+        """;
+
+    private const string _floatingCode = """
+        <FloatingLabel Label="First name" @bind-Value="_name" />
+        <FloatingLabel Label="Email" Type="email" @bind-Value="_email" />
+        """;
+
+    private const string _numericCode = """
+        <NumericInput @bind-Value="_qty" Min="1" Max="99" Step="1" />
+        <NumericInput @bind-Value="_price" Min="0" Step="0.01" ShowStepper="false" />
+        """;
+
+    private const string _otpCode = """
+        <InputOtp Length="6" GroupAt="3" @bind-Value="_otp" />
+        <InputOtp Length="4" GroupAt="4" @bind-Value="_pin" />
+        """;
+
+    private const string _maskedCode = """
+        <MaskedTextBox Mask="000-000-0000" @bind-Value="_phone" />   <!-- phone -->
+        <MaskedTextBox Mask="00/00/0000"   @bind-Value="_date" />    <!-- date  -->
+        """;
+
+    private const string _formFieldCode = """
+        <FormField Label="Username" For="user" Description="Letters, numbers, underscores only.">
+            <Input Id="user" Placeholder="vilas_sagar" @bind-Value="_username" />
+        </FormField>
+        <FormField Label="Email" For="email" Required ErrorMessage="@_emailError">
+            <Input Id="email" Type="email" @bind-Value="_email" />
+        </FormField>
+        """;
+
+    private const string _listboxCode = """
+        <!-- Single select -->
+        <ListBox TItem="string" Items="_items" @bind-Value="_selected" ItemLabel="x => x" />
+
+        <!-- Multi select -->
+        <ListBox TItem="string" Items="_items" MultiSelect @bind-SelectedItems="_selectedList" ItemLabel="x => x" />
+        """;
+
+    private const string _colorCode = """
+        <ColorPalette Label="Brand color" @bind-Value="_color" ShowHex />
+        <ColorPalette Label="Accent"
+                      Colors="@(new[] { "#ef4444","#3b82f6","#22c55e","#8b5cf6" })"
+                      @bind-Value="_accent" ShowHex />
         """;
 }

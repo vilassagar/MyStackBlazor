@@ -1,0 +1,403 @@
+@page "/pivot-grid"
+
+<PageTitle>Pivot Grid — MyStackBlazor Demo</PageTitle>
+
+<h1 class="text-3xl font-bold mb-1">Pivot Grid</h1>
+<p class="text-muted-foreground mb-6">
+    Full-featured data grid with global search, per-column filters, multi-column sort,
+    column visibility, alternating rows, and row / cell click callbacks.
+</p>
+
+<!-- Feature chips -->
+<div class="mb-6 flex flex-wrap gap-2">
+    @foreach (var f in _features)
+    {
+        <span class="rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground">@f</span>
+    }
+</div>
+
+<!-- Quick config toggles -->
+<div class="mb-4 flex flex-wrap gap-5 rounded-lg border bg-card px-4 py-3 text-sm">
+    <label class="flex cursor-pointer items-center gap-2">
+        <input type="checkbox" class="h-4 w-4 rounded accent-primary" checked="@_showNumbers"
+               @onchange="@(e => _showNumbers    = (bool)(e.Value ?? true))" /> Row numbers
+    </label>
+    <label class="flex cursor-pointer items-center gap-2">
+        <input type="checkbox" class="h-4 w-4 rounded accent-primary" checked="@_altColors"
+               @onchange="@(e => _altColors      = (bool)(e.Value ?? true))" /> Alternate colours
+    </label>
+    <label class="flex cursor-pointer items-center gap-2">
+        <input type="checkbox" class="h-4 w-4 rounded accent-primary" checked="@_showSearch"
+               @onchange="@(e => _showSearch     = (bool)(e.Value ?? true))" /> Search bar
+    </label>
+    <label class="flex cursor-pointer items-center gap-2">
+        <input type="checkbox" class="h-4 w-4 rounded accent-primary" checked="@_showColToggle"
+               @onchange="@(e => _showColToggle  = (bool)(e.Value ?? true))" /> Column toggle
+    </label>
+    <label class="flex cursor-pointer items-center gap-2">
+        <input type="checkbox" class="h-4 w-4 rounded accent-primary" checked="@_showPaging"
+               @onchange="@(e => _showPaging     = (bool)(e.Value ?? true))" /> Pagination
+    </label>
+</div>
+
+<!-- Grid -->
+<div class="rounded-xl overflow-hidden shadow-sm">
+    <MsPivotGrid TItem="Employee"
+                 Items="_employees"
+                 Columns="_columns"
+                 ShowSearchBar="@_showSearch"
+                 ShowRowNumbers="@_showNumbers"
+                 AlternateRowColor="@_altColors"
+                 ShowColumnToggle="@_showColToggle"
+                 ShowPagination="@_showPaging"
+                 PageSize="12"
+                 EmptyMessage="No employees match the current filters"
+                 OnRowClick="HandleRowClick"
+                 OnCellClick="HandleCellClick" />
+</div>
+
+<!-- Detail + log -->
+<div class="mt-6 grid gap-4 lg:grid-cols-2">
+
+    <!-- Selected row detail -->
+    @if (_selected is not null)
+    {
+        <div class="rounded-lg border bg-card p-4">
+            <p class="mb-3 text-sm font-semibold">Selected row</p>
+            <div class="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+                <span class="text-muted-foreground">Name</span>       <span class="font-medium">@_selected.Name</span>
+                <span class="text-muted-foreground">Department</span> <span>@_selected.Department</span>
+                <span class="text-muted-foreground">Role</span>       <span>@_selected.Role</span>
+                <span class="text-muted-foreground">Salary</span>     <span>₹@_selected.Salary.ToString("N0")</span>
+                <span class="text-muted-foreground">Status</span>
+                <span>
+                    <span class="rounded-full px-2 py-0.5 text-xs font-medium @StatusClass(_selected.Status)">
+                        @_selected.Status
+                    </span>
+                </span>
+                <span class="text-muted-foreground">Country</span>    <span>@_selected.Country</span>
+                <span class="text-muted-foreground">Start date</span> <span>@_selected.StartDate.ToString("dd MMM yyyy")</span>
+                <span class="text-muted-foreground">Experience</span> <span>@_selected.Experience yrs</span>
+                <span class="text-muted-foreground">Performance</span>
+                <span class="font-medium" style="color:@PerfColor(_selected.Performance);">@_selected.Performance%</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="flex items-center justify-center rounded-lg border border-dashed bg-muted/20 p-8 text-sm text-muted-foreground">
+            Click any row to see details
+        </div>
+    }
+
+    <!-- Event log -->
+    <div class="rounded-lg border bg-card p-4">
+        <div class="mb-3 flex items-center justify-between">
+            <p class="text-sm font-semibold">Event log</p>
+            @if (_log.Count > 0)
+            {
+                <button type="button" class="text-xs text-muted-foreground hover:text-foreground" @onclick="@(() => _log.Clear())">Clear</button>
+            }
+        </div>
+        @if (_log.Count == 0)
+        {
+            <p class="text-xs text-muted-foreground">Row / cell clicks will appear here…</p>
+        }
+        else
+        {
+            <div class="space-y-1 max-h-52 overflow-y-auto">
+                @foreach (var entry in ((IEnumerable<LogEntry>)_log).Reverse())
+                {
+                    <div class="flex items-start gap-2 rounded-md px-2 py-1 text-xs @(entry.IsCell ? "bg-accent/40" : "bg-primary/5")">
+                        <span class="shrink-0 rounded px-1 py-0.5 font-mono text-[10px] font-semibold
+                                     @(entry.IsCell ? "bg-accent text-accent-foreground" : "bg-primary/20 text-primary")">
+                            @(entry.IsCell ? "CELL" : "ROW ")
+                        </span>
+                        <span class="text-muted-foreground leading-tight">@entry.Message</span>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    // ── UI config ───────────────────────────────────────────────────────────────
+    private bool _showNumbers   = true;
+    private bool _altColors     = true;
+    private bool _showSearch    = true;
+    private bool _showColToggle = true;
+    private bool _showPaging    = true;
+
+    private Employee? _selected;
+    private readonly List<LogEntry> _log = [];
+
+    private sealed class LogEntry
+    {
+        public string Message { get; init; } = "";
+        public bool IsCell { get; init; }
+    }
+
+    private static readonly string[] _features =
+    [
+        "Global search", "Per-column filter", "3-state sort", "Column show/hide",
+        "Show all / hide all", "Alternate row colours", "Row click", "Cell click",
+        "Selected row highlight", "Pagination + page size", "Custom cell templates",
+        "Cell style callbacks", "Format strings (N0, dd MMM yyyy)",
+    ];
+
+    // ── Employee model ──────────────────────────────────────────────────────────
+    private sealed class Employee
+    {
+        public int      Id          { get; init; }
+        public string   Name        { get; init; } = "";
+        public string   Department  { get; init; } = "";
+        public string   Role        { get; init; } = "";
+        public decimal  Salary      { get; init; }
+        public DateTime StartDate   { get; init; }
+        public string   Status      { get; init; } = "";
+        public string   Country     { get; init; } = "";
+        public int      Experience  { get; init; }
+        public string   Email       { get; init; } = "";
+        public int      Performance { get; init; }
+    }
+
+    // ── Seed data ────────────────────────────────────────────────────────────────
+    private static readonly string[] _roles =
+        ["Manager", "Senior Engineer", "Junior Engineer", "Lead", "Director", "Analyst", "Coordinator", "Specialist"];
+    private static readonly string[] _statuses = ["Active", "Active", "Active", "On Leave", "Inactive"];
+
+    private static readonly (string Name, string Dept, string Country)[] _seed =
+    [
+        ("Priya Sharma",     "Engineering", "India"),   ("James Wilson",     "Sales",       "USA"),
+        ("Ananya Patel",     "HR",          "India"),   ("Michael Brown",    "Finance",     "UK"),
+        ("Rahul Gupta",      "Engineering", "India"),   ("Sarah Johnson",    "Marketing",   "USA"),
+        ("Deepa Nair",       "Design",      "India"),   ("David Lee",        "Operations",  "Canada"),
+        ("Arjun Mehta",      "Legal",       "India"),   ("Emma Davis",       "Engineering", "UK"),
+        ("Kavya Reddy",      "Sales",       "India"),   ("Robert Martinez",  "HR",          "USA"),
+        ("Siddharth Joshi",  "Finance",     "India"),   ("Olivia Taylor",    "Marketing",   "Australia"),
+        ("Nisha Singh",      "Engineering", "India"),   ("William Anderson", "Operations",  "USA"),
+        ("Pooja Iyer",       "Design",      "India"),   ("Sophia Thomas",    "Sales",       "UK"),
+        ("Varun Agarwal",    "Engineering", "India"),   ("Daniel Jackson",   "Finance",     "Germany"),
+        ("Meera Bose",       "HR",          "India"),   ("Emily White",      "Engineering", "Canada"),
+        ("Aakash Kumar",     "Marketing",   "India"),   ("Christopher Hall", "Legal",       "USA"),
+        ("Swati Mishra",     "Engineering", "India"),   ("Amanda Martin",    "Design",      "Australia"),
+        ("Vikram Tiwari",    "Operations",  "India"),   ("Joshua Thompson",  "Engineering", "USA"),
+        ("Anjali Kapoor",    "Sales",       "India"),   ("Nicole Garcia",    "Finance",     "Singapore"),
+        ("Rohit Verma",      "Engineering", "India"),   ("Kevin Rodriguez",  "Marketing",   "USA"),
+        ("Tanvi Shah",       "Design",      "India"),   ("Megan Lewis",      "HR",          "UK"),
+        ("Manish Yadav",     "Finance",     "India"),   ("Steven Walker",    "Engineering", "Germany"),
+        ("Divya Pillai",     "Engineering", "India"),   ("Lauren Hall",      "Operations",  "Canada"),
+        ("Suresh Babu",      "Legal",       "India"),   ("Ryan Allen",       "Sales",       "UAE"),
+        ("Riya Ghosh",       "Marketing",   "India"),   ("Jessica Young",    "Engineering", "USA"),
+        ("Kiran Rao",        "Operations",  "India"),   ("Brian Hernandez",  "Design",      "UK"),
+        ("Aditi Jain",       "Sales",       "India"),   ("Samantha King",    "Finance",     "Australia"),
+        ("Nikhil Pandey",    "Engineering", "India"),   ("Timothy Wright",   "Marketing",   "USA"),
+        ("Sneha Menon",      "HR",          "India"),   ("Brittany Lopez",   "Engineering", "Canada"),
+        ("Gaurav Saxena",    "Finance",     "India"),   ("Patrick Hill",     "Operations",  "Singapore"),
+        ("Lakshmi Devi",     "Design",      "India"),   ("Heather Green",    "Legal",       "USA"),
+        ("Rajan Srivastava", "Engineering", "India"),   ("Donald Adams",     "Sales",       "Germany"),
+    ];
+
+    private List<Employee> _employees = [];
+
+    protected override void OnInitialized()
+    {
+        var rng = new Random(42);
+        _employees = _seed.Select((p, i) =>
+        {
+            var baseSalary = p.Dept switch
+            {
+                "Engineering" => 900000m,
+                "Finance"     => 850000m,
+                "Legal"       => 950000m,
+                "Design"      => 780000m,
+                "Sales"       => 750000m,
+                "Marketing"   => 720000m,
+                "HR"          => 680000m,
+                _             => 700000m,
+            };
+            var exp   = rng.Next(1, 18);
+            var start = DateTime.Today.AddDays(-exp * 365 - rng.Next(0, 180));
+            var first = p.Name.Split(' ')[0].ToLower();
+            var last  = p.Name.Split(' ')[^1].ToLower();
+            return new Employee
+            {
+                Id          = i + 1,
+                Name        = p.Name,
+                Department  = p.Dept,
+                Role        = _roles[rng.Next(_roles.Length)],
+                Salary      = baseSalary + rng.Next(-150000, 400000),
+                StartDate   = start,
+                Status      = _statuses[rng.Next(_statuses.Length)],
+                Country     = p.Country,
+                Experience  = exp,
+                Email       = $"{first}.{last}@company.com",
+                Performance = rng.Next(60, 100),
+            };
+        }).ToList();
+    }
+
+    // ── Cell templates (RenderFragment<Employee> properties) ────────────────────
+    private RenderFragment<Employee> DeptTemplate => e => @<span class="inline-flex items-center gap-1.5">
+        <span class="h-2 w-2 rounded-full shrink-0" style="background-color:@DeptColor(e.Department);"></span>
+        @e.Department
+    </span>;
+
+    private RenderFragment<Employee> StatusTemplate => e => @<span class="rounded-full px-2 py-0.5 text-xs font-medium @StatusClass(e.Status)">@e.Status</span>;
+
+    private RenderFragment<Employee> PerfTemplate => e => @<div class="flex items-center gap-1.5 justify-center">
+        <div class="h-1.5 w-14 rounded-full bg-muted overflow-hidden">
+            <div class="h-full rounded-full transition-all" style="width:@(e.Performance)%;background-color:@PerfColor(e.Performance);"></div>
+        </div>
+        <span class="text-xs tabular-nums w-7 text-right" style="color:@PerfColor(e.Performance);">@(e.Performance)%</span>
+    </div>;
+
+    // ── Column definitions ──────────────────────────────────────────────────────
+    private List<PivotColumn<Employee>> _columns =>
+    [
+        new()
+        {
+            Key           = "Id",
+            Title         = "#",
+            Align         = "center",
+            Width         = "52px",
+            Sortable      = true,
+            Filterable    = false,
+            ValueSelector = e => e.Id,
+        },
+        new()
+        {
+            Key           = "Name",
+            Title         = "Name",
+            Width         = "170px",
+            ValueSelector = e => e.Name,
+        },
+        new()
+        {
+            Key           = "Department",
+            Title         = "Department",
+            ValueSelector = e => e.Department,
+            Template      = DeptTemplate,
+        },
+        new()
+        {
+            Key           = "Role",
+            Title         = "Role",
+            ValueSelector = e => e.Role,
+        },
+        new()
+        {
+            Key           = "Country",
+            Title         = "Country",
+            ValueSelector = e => e.Country,
+        },
+        new()
+        {
+            Key           = "Salary",
+            Title         = "Salary (₹)",
+            Align         = "right",
+            Width         = "120px",
+            Type          = PivotColumnType.Number,
+            Format        = "N0",
+            ValueSelector = e => e.Salary,
+            CellClass     = e => e.Salary >= 1200000m ? "font-semibold text-green-600 dark:text-green-400" : null,
+        },
+        new()
+        {
+            Key           = "Experience",
+            Title         = "Exp (yrs)",
+            Align         = "center",
+            Width         = "90px",
+            Type          = PivotColumnType.Number,
+            ValueSelector = e => e.Experience,
+        },
+        new()
+        {
+            Key           = "StartDate",
+            Title         = "Start Date",
+            Align         = "center",
+            Width         = "120px",
+            Type          = PivotColumnType.Date,
+            Format        = "dd MMM yyyy",
+            ValueSelector = e => e.StartDate,
+        },
+        new()
+        {
+            Key           = "Status",
+            Title         = "Status",
+            Align         = "center",
+            Width         = "100px",
+            ValueSelector = e => e.Status,
+            Template      = StatusTemplate,
+        },
+        new()
+        {
+            Key           = "Performance",
+            Title         = "Perf %",
+            Align         = "center",
+            Width         = "130px",
+            Type          = PivotColumnType.Number,
+            ValueSelector = e => e.Performance,
+            Template      = PerfTemplate,
+        },
+        new()
+        {
+            Key           = "Email",
+            Title         = "Email",
+            Hidden        = true,
+            ValueSelector = e => e.Email,
+        },
+    ];
+
+    // ── Callbacks ───────────────────────────────────────────────────────────────
+    private void HandleRowClick(Employee emp)
+    {
+        _selected = emp;
+        AddLog($"{emp.Name} — {emp.Department} / {emp.Role}", isCell: false);
+    }
+
+    private void HandleCellClick(CellClickArgs<Employee> args)
+    {
+        if (args.Row is not null)
+        {
+            _selected = args.Row;
+            AddLog($"[{args.ColumnTitle}] = \"{args.Value}\"  ({args.Row.Name})", isCell: true);
+        }
+    }
+
+    private void AddLog(string msg, bool isCell)
+    {
+        _log.Add(new LogEntry { Message = msg, IsCell = isCell });
+        if (_log.Count > 30) _log.RemoveAt(0);
+    }
+
+    // ── Colour helpers ──────────────────────────────────────────────────────────
+    private static string DeptColor(string dept) => dept switch
+    {
+        "Engineering" => "#3b82f6",
+        "Sales"       => "#22c55e",
+        "HR"          => "#ec4899",
+        "Finance"     => "#f97316",
+        "Marketing"   => "#a855f7",
+        "Operations"  => "#14b8a6",
+        "Design"      => "#eab308",
+        "Legal"       => "#6366f1",
+        _             => "#94a3b8",
+    };
+
+    private static string StatusClass(string status) => status switch
+    {
+        "Active"   => "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+        "On Leave" => "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300",
+        _          => "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+    };
+
+    private static string PerfColor(int perf) => perf switch
+    {
+        >= 90 => "#22c55e",
+        >= 75 => "#3b82f6",
+        >= 60 => "#f97316",
+        _     => "#ef4444",
+    };
+}

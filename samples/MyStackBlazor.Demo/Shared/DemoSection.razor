@@ -1,6 +1,6 @@
 @namespace MyStackBlazor.Demo.Shared
 
-<div class="rounded-lg border bg-card overflow-hidden mb-6">
+<div class="rounded-lg border bg-card overflow-hidden mb-6 @Class">
     <div class="px-6 py-5">
         <h3 class="font-semibold mb-0.5">@Title</h3>
         @if (!string.IsNullOrEmpty(Description))
@@ -26,5 +26,6 @@
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public string? Description { get; set; }
     [Parameter] public string? Code { get; set; }
+    [Parameter] public string? Class { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
 }

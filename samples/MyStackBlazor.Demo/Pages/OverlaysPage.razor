@@ -1,0 +1,358 @@
+@page "/overlays"
+@inject ToastService Toast
+
+<PageTitle>Overlays — MyStackBlazor Demo</PageTitle>
+
+<h1 class="text-3xl font-bold mb-1">Overlays</h1>
+<p class="text-muted-foreground mb-8">Sheet, drawer, popover, tooltip, hover card, window, and popup.</p>
+
+<!-- Tooltip -->
+<DemoSection Title="Tooltip"
+             Description="Appears on hover. Use Text for simple labels, Content for rich markup. Side controls placement."
+             Code="@_tooltipCode">
+    <div class="flex flex-wrap gap-6">
+        <Tooltip Text="This is a tooltip" Side="top">
+            <Button Variant="outline" Size="sm">Hover me (top)</Button>
+        </Tooltip>
+        <Tooltip Text="Appears below" Side="bottom">
+            <Button Variant="outline" Size="sm">Hover me (bottom)</Button>
+        </Tooltip>
+        <Tooltip Side="right">
+            <ChildContent>
+                <Button Variant="outline" Size="sm">Rich tooltip →</Button>
+            </ChildContent>
+            <Content>
+                <div class="space-y-1">
+                    <p class="font-medium text-xs">Keyboard shortcut</p>
+                    <p class="text-xs text-muted-foreground">Press <kbd class="bg-muted px-1 rounded text-xs">⌘K</kbd> to open command palette</p>
+                </div>
+            </Content>
+        </Tooltip>
+    </div>
+</DemoSection>
+
+<!-- Popover -->
+<DemoSection Title="Popover"
+             Description="Click-triggered floating panel with arbitrary content. Closes when clicking outside."
+             Code="@_popoverCode">
+    <div class="flex flex-wrap gap-4">
+        <Popover>
+            <Trigger>
+                <Button Variant="outline">Open popover</Button>
+            </Trigger>
+            <Content>
+                <div class="space-y-3 p-1">
+                    <p class="text-sm font-semibold">Notification settings</p>
+                    <div class="space-y-2">
+                        <Switch Id="pop-email" Label="Email notifications" Checked />
+                        <Switch Id="pop-push" Label="Push notifications" />
+                        <Switch Id="pop-sms" Label="SMS alerts" />
+                    </div>
+                    <Button Size="sm" Class="w-full">Save</Button>
+                </div>
+            </Content>
+        </Popover>
+
+        <Popover Align="end">
+            <Trigger>
+                <Button Variant="ghost" Size="icon" AriaLabel="Filter options">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+                    </svg>
+                </Button>
+            </Trigger>
+            <Content>
+                <div class="p-1 space-y-1 text-sm">
+                    <p class="font-semibold mb-2">Filter by status</p>
+                    <label class="flex items-center gap-2"><input type="checkbox" class="rounded" /> Active</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" class="rounded" /> Inactive</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" class="rounded" /> Pending</label>
+                </div>
+            </Content>
+        </Popover>
+    </div>
+</DemoSection>
+
+<!-- HoverCard -->
+<DemoSection Title="Hover Card"
+             Description="Richer preview card that appears on hover. Great for user/link previews."
+             Code="@_hoverCardCode">
+    <div class="flex flex-wrap gap-6">
+        <HoverCard>
+            <Trigger>
+                <a href="#" class="text-sm font-medium underline underline-offset-4 text-primary" @onclick:preventDefault>
+                    @@vilas_sagar
+                </a>
+            </Trigger>
+            <Content>
+                <div class="flex gap-3 p-1">
+                    <Avatar Initials="VS" Size="lg" />
+                    <div>
+                        <p class="text-sm font-semibold">Vilas Sagar</p>
+                        <p class="text-xs text-muted-foreground">Lead Engineer · MyStackBlazor</p>
+                        <p class="text-xs text-muted-foreground mt-1">Building modern Blazor component libraries.</p>
+                    </div>
+                </div>
+            </Content>
+        </HoverCard>
+
+        <HoverCard>
+            <Trigger>
+                <Badge Variant="outline" Class="cursor-default">MyStackBlazor v1.0</Badge>
+            </Trigger>
+            <Content>
+                <div class="p-1 space-y-1">
+                    <p class="text-sm font-semibold">Release notes</p>
+                    <p class="text-xs text-muted-foreground">100+ components · Tailwind CSS v4 · .NET 10</p>
+                    <Badge Variant="secondary" Class="text-xs">Stable</Badge>
+                </div>
+            </Content>
+        </HoverCard>
+    </div>
+</DemoSection>
+
+<!-- Sheet -->
+<DemoSection Title="Sheet"
+             Description="Slides in from a side of the screen. Use Side to control direction."
+             Code="@_sheetCode">
+    <div class="flex flex-wrap gap-3">
+        <Button Variant="outline" OnClick="@(() => _sheetRight = true)">Open right sheet</Button>
+        <Button Variant="outline" OnClick="@(() => _sheetLeft = true)">Open left sheet</Button>
+        <Button Variant="outline" OnClick="@(() => _sheetBottom = true)">Open bottom sheet</Button>
+    </div>
+
+    <Sheet @bind-IsOpen="_sheetRight" Side="right">
+        <div class="p-6 space-y-4">
+            <h3 class="text-lg font-semibold">Edit settings</h3>
+            <p class="text-sm text-muted-foreground">Make changes to your account here.</p>
+            <div class="space-y-3">
+                <FormField Label="Display name" For="sh-name">
+                    <Input Id="sh-name" Placeholder="Vilas Sagar" />
+                </FormField>
+                <FormField Label="Role" For="sh-role">
+                    <Select Id="sh-role" Placeholder="Select role">
+                        <option value="admin">Admin</option>
+                        <option value="editor">Editor</option>
+                        <option value="viewer">Viewer</option>
+                    </Select>
+                </FormField>
+            </div>
+            <Button Class="w-full" OnClick="@(() => { _sheetRight = false; Toast.Show("Settings saved."); })">Save changes</Button>
+        </div>
+    </Sheet>
+
+    <Sheet @bind-IsOpen="_sheetLeft" Side="left">
+        <div class="p-6 space-y-4">
+            <h3 class="text-lg font-semibold">Navigation</h3>
+            <nav class="space-y-1">
+                @foreach (var item in new[] { "Dashboard", "Analytics", "Reports", "Settings" })
+                {
+                    <button class="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-muted transition-colors"
+                            @onclick="@(() => { _sheetLeft = false; Toast.Show($"{item} clicked"); })">
+                        @item
+                    </button>
+                }
+            </nav>
+        </div>
+    </Sheet>
+
+    <Sheet @bind-IsOpen="_sheetBottom" Side="bottom">
+        <div class="p-6 space-y-4">
+            <h3 class="text-lg font-semibold">Share this item</h3>
+            <div class="flex gap-3">
+                <Button Variant="outline" Class="flex-1" OnClick="@(() => { _sheetBottom = false; Toast.Show("Copied to clipboard!"); })">Copy link</Button>
+                <Button Class="flex-1" OnClick="@(() => { _sheetBottom = false; Toast.Show("Shared!"); })">Share</Button>
+            </div>
+        </div>
+    </Sheet>
+</DemoSection>
+
+<!-- Drawer -->
+<DemoSection Title="Drawer"
+             Description="Bottom drawer with a handle bar. Ideal for mobile action sheets."
+             Code="@_drawerCode">
+    <Button Variant="outline" OnClick="@(() => _drawerOpen = true)">Open drawer</Button>
+
+    <Drawer @bind-IsOpen="_drawerOpen">
+        <div class="p-6 space-y-4">
+            <h3 class="text-lg font-semibold">Quick actions</h3>
+            <div class="grid grid-cols-2 gap-3">
+                @foreach (var action in new[] { ("New item", "default"), ("Duplicate", "outline"), ("Archive", "outline"), ("Delete", "destructive") })
+                {
+                    <Button Variant="@action.Item2"
+                            OnClick="@(() => { _drawerOpen = false; Toast.Show($"{action.Item1} triggered."); })">
+                        @action.Item1
+                    </Button>
+                }
+            </div>
+        </div>
+    </Drawer>
+</DemoSection>
+
+<!-- Window -->
+<DemoSection Title="Window"
+             Description="Modal window with title bar, scrollable content, and footer. Use Width (sm/md/lg/xl/full)."
+             Code="@_windowCode">
+    <div class="flex flex-wrap gap-3">
+        <Button OnClick="@(() => _windowOpen = true)">Open window</Button>
+        <Button Variant="outline" OnClick="@(() => _windowLg = true)">Large window</Button>
+    </div>
+
+    <Window @bind-IsOpen="_windowOpen"
+            Title="Create new project"
+            Width="md">
+        <ChildContent>
+            <div class="space-y-4">
+                <FormField Label="Project name" For="win-name" Required>
+                    <Input Id="win-name" Placeholder="my-blazor-app" />
+                </FormField>
+                <FormField Label="Template" For="win-tmpl">
+                    <Select Id="win-tmpl" Placeholder="Choose template">
+                        <option value="blank">Blank</option>
+                        <option value="wasm">Blazor WASM</option>
+                        <option value="server">Blazor Server</option>
+                    </Select>
+                </FormField>
+                <Switch Label="Initialize with git" Checked />
+            </div>
+        </ChildContent>
+        <FooterContent>
+            <div class="flex justify-end gap-2">
+                <Button Variant="outline" OnClick="@(() => _windowOpen = false)">Cancel</Button>
+                <Button OnClick="@(() => { _windowOpen = false; Toast.Show("Project created!", "Success", "success"); })">Create</Button>
+            </div>
+        </FooterContent>
+    </Window>
+
+    <Window @bind-IsOpen="_windowLg"
+            Title="Data preview"
+            Width="lg">
+        <ChildContent>
+            <ScrollArea MaxHeight="300px">
+                @for (int i = 1; i <= 30; i++)
+                {
+                    <div class="py-2 border-b border-border/50 text-sm">Row @i — sample data content</div>
+                }
+            </ScrollArea>
+        </ChildContent>
+        <FooterContent>
+            <div class="flex justify-end">
+                <Button Variant="outline" OnClick="@(() => _windowLg = false)">Close</Button>
+            </div>
+        </FooterContent>
+    </Window>
+</DemoSection>
+
+<!-- Popup -->
+<DemoSection Title="Popup"
+             Description="Lightweight positioned popup relative to an anchor element."
+             Code="@_popupCode">
+    <div class="flex flex-wrap gap-4">
+        <Popup Placement="bottom" Align="start">
+            <Anchor>
+                <Button Variant="outline">Bottom start</Button>
+            </Anchor>
+            <Content>
+                <div class="p-3 text-sm space-y-1">
+                    <p class="font-medium">Quick options</p>
+                    <button class="block w-full text-left px-2 py-1 rounded hover:bg-muted text-sm" @onclick="@(() => Toast.Show("Edit"))">Edit</button>
+                    <button class="block w-full text-left px-2 py-1 rounded hover:bg-muted text-sm" @onclick="@(() => Toast.Show("Duplicate"))">Duplicate</button>
+                    <button class="block w-full text-left px-2 py-1 rounded hover:bg-muted text-sm text-destructive" @onclick="@(() => Toast.Show("Deleted"))">Delete</button>
+                </div>
+            </Content>
+        </Popup>
+
+        <Popup Placement="top" Align="center">
+            <Anchor>
+                <Button Variant="ghost">Top center</Button>
+            </Anchor>
+            <Content>
+                <div class="p-2 text-xs text-muted-foreground">This popup appears above</div>
+            </Content>
+        </Popup>
+    </div>
+</DemoSection>
+
+@code {
+    private bool _sheetRight;
+    private bool _sheetLeft;
+    private bool _sheetBottom;
+    private bool _drawerOpen;
+    private bool _windowOpen;
+    private bool _windowLg;
+
+    private const string _tooltipCode = """
+        <Tooltip Text="Simple label" Side="top">
+            <Button>Hover me</Button>
+        </Tooltip>
+        <Tooltip Side="right">
+            <Button>Rich tooltip</Button>
+            <Content><p>Rich <strong>HTML</strong> content</p></Content>
+        </Tooltip>
+        """;
+
+    private const string _popoverCode = """
+        <Popover>
+            <Trigger><Button>Open popover</Button></Trigger>
+            <Content>
+                <Switch Label="Email notifications" />
+                <Switch Label="Push notifications" />
+                <Button Size="sm">Save</Button>
+            </Content>
+        </Popover>
+        """;
+
+    private const string _hoverCardCode = """
+        <HoverCard>
+            <Trigger><a href="#">@@username</a></Trigger>
+            <Content>
+                <Avatar Initials="VS" />
+                <p>Vilas Sagar — Lead Engineer</p>
+            </Content>
+        </HoverCard>
+        """;
+
+    private const string _sheetCode = """
+        <Button OnClick="@(() => _open = true)">Open sheet</Button>
+        <Sheet @bind-IsOpen="_open" Side="right">
+            <div class="p-6">
+                <h3>Edit settings</h3>
+                <Input Placeholder="Name" />
+                <Button OnClick="@(() => _open = false)">Save</Button>
+            </div>
+        </Sheet>
+        """;
+
+    private const string _drawerCode = """
+        <Button OnClick="@(() => _open = true)">Open drawer</Button>
+        <Drawer @bind-IsOpen="_open">
+            <div class="p-6">
+                <h3>Quick actions</h3>
+                <Button>New item</Button>
+                <Button Variant="destructive">Delete</Button>
+            </div>
+        </Drawer>
+        """;
+
+    private const string _windowCode = """
+        <Window @bind-IsOpen="_open" Title="Create project" Width="md">
+            <Input Placeholder="Project name" />
+            <FooterContent>
+                <Button OnClick="@(() => _open = false)">Cancel</Button>
+                <Button>Create</Button>
+            </FooterContent>
+        </Window>
+        """;
+
+    private const string _popupCode = """
+        <Popup Placement="bottom" Align="start">
+            <Anchor><Button>Trigger</Button></Anchor>
+            <Content>
+                <div class="p-2">
+                    <button>Edit</button>
+                    <button>Delete</button>
+                </div>
+            </Content>
+        </Popup>
+        """;
+}

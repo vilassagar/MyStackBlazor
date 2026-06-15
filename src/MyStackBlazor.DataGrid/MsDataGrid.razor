@@ -2,6 +2,7 @@
 @using MyStackBlazor.DataGrid.Models
 @using MyStackBlazor.DataGrid.Services
 @typeparam TItem
+@attribute [CascadingTypeParameter(nameof(TItem))]
 
 <CascadingValue Value="this">
     @ChildContent
@@ -23,18 +24,25 @@
                    value="@_state.SearchTerm"
                    @oninput="OnSearchInput" />
         </div>
-        <button class="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
-                aria-label="Export to Excel"
-                @onclick="ExportToExcel">
-            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Export
-        </button>
+        <div class="flex items-center gap-2">
+            @if (_isLoading)
+            {
+                <span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-primary" aria-label="Loading" role="status"></span>
+            }
+            <button class="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
+                    aria-label="Export to Excel"
+                    disabled="@(_isLoading || DataProvider is null)"
+                    @onclick="ExportToExcel">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Export
+            </button>
+        </div>
     </div>
 
-    @* Header *@
+    @* Column header row *@
     <div class="ms-datagrid__header grid bg-muted/40 border-b border-border" role="row"
          style="grid-template-columns: @_columnTemplate">
         @foreach (var col in _columns)
@@ -58,32 +66,44 @@
         }
     </div>
 
-    @* Virtualized rows *@
-    <div class="ms-datagrid__body" style="height: @BodyHeight; overflow-y: auto;">
-        @if (_isLoading && !_hasData)
-        {
-            @for (int i = 0; i < 5; i++)
+    @* Per-column filter inputs (shown when any column has Filterable=true) *@
+    @if (_columns.Any(c => c.Filterable))
+    {
+        <div class="ms-datagrid__filters grid border-b border-border bg-background" role="row"
+             style="grid-template-columns: @_columnTemplate">
+            @foreach (var col in _columns)
             {
-                <div class="grid animate-pulse px-4 py-3 border-b border-border/50"
-                     style="grid-template-columns: @_columnTemplate">
-                    @foreach (var _ in _columns)
+                <div class="px-3 py-1.5" role="columnheader" aria-label="@($"Filter {col.Title}")">
+                    @if (col.Filterable)
                     {
-                        <div class="h-4 rounded bg-muted"></div>
+                        <input type="search"
+                               class="w-full rounded border border-input bg-muted/30 px-2 py-1 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                               placeholder="Filter…"
+                               aria-label="@($"Filter by {col.Title}")"
+                               value="@(_filterInputs.TryGetValue(col.Field, out var fv) ? fv : "")"
+                               @oninput="e => OnFilterInput(col.Field, e.Value?.ToString())" />
                     }
                 </div>
             }
-        }
-        else if (DataProvider is not null)
+        </div>
+    }
+
+    @* Virtualized body *@
+    <div class="ms-datagrid__body relative" style="height: @BodyHeight; overflow-y: auto;">
+        @if (DataProvider is not null)
         {
             <Virtualize ItemsProvider="@LoadServerRowsAsync"
                         ItemSize="@RowHeight"
+                        OverscanCount="@OverscanCount"
                         Context="row"
                         @ref="_virtualizeRef">
                 <ItemContent>
-                    <div class="ms-datagrid__row grid border-b border-border/50 hover:bg-muted/30 transition-colors"
+                    <div class="@RowClass(row) grid border-b border-border/50 transition-colors"
                          role="row"
                          tabindex="0"
-                         style="grid-template-columns: @_columnTemplate">
+                         style="grid-template-columns: @_columnTemplate; min-height: @(RowHeight)px"
+                         @onclick="() => HandleRowClick(row)"
+                         @onkeydown="e => OnRowKeyDown(e, row)">
                         @foreach (var col in _columns)
                         {
                             <div class="px-4 py-3 text-sm text-foreground truncate" role="gridcell">
@@ -100,22 +120,52 @@
                     </div>
                 </ItemContent>
                 <Placeholder>
-                    <div class="grid animate-pulse px-4 py-3 border-b border-border/50"
-                         style="grid-template-columns: @_columnTemplate; height: @(RowHeight)px">
+                    <div class="grid animate-pulse border-b border-border/50"
+                         style="grid-template-columns: @_columnTemplate; height: @(RowHeight)px; align-items: center; padding: 0 1rem;">
                         @foreach (var _ in _columns)
                         {
-                            <div class="h-4 rounded bg-muted my-auto"></div>
+                            <div class="h-4 rounded bg-muted mx-1"></div>
                         }
                     </div>
                 </Placeholder>
             </Virtualize>
+
+            @* Empty state overlay (Virtualize renders nothing when total=0) *@
+            @if (_hasData && _totalCount == 0 && !_isLoading)
+            {
+                <div class="flex flex-col items-center justify-center py-16 text-muted-foreground select-none" role="status" aria-live="polite">
+                    <svg class="h-10 w-10 mb-3 opacity-25" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                              d="M3 10h18M3 14h18M7 4h10M7 20h10" />
+                    </svg>
+                    <p class="text-sm font-medium">No results found</p>
+                    @if (!string.IsNullOrEmpty(_state.SearchTerm) || _filterInputs.Any(f => !string.IsNullOrEmpty(f.Value)))
+                    {
+                        <p class="text-xs mt-1 opacity-70">Try adjusting your search or filters</p>
+                    }
+                </div>
+            }
+        }
+        else
+        {
+            <div class="flex items-center justify-center py-16 text-muted-foreground text-sm select-none">
+                No data provider configured.
+            </div>
         }
     </div>
 
-    @* Footer / pager *@
+    @* Footer *@
     <div class="ms-datagrid__footer flex items-center justify-between border-t border-border px-4 py-2 text-sm text-muted-foreground">
-        <span>@_totalCount total rows</span>
-        <span class="text-xs">@(DataProvider is null ? "No data provider" : "")</span>
+        <span>
+            @if (_hasData)
+            {
+                @($"{_totalCount:N0} {(_totalCount == 1 ? "row" : "rows")}")
+            }
+        </span>
+        @if (SelectedItem is not null)
+        {
+            <span class="text-xs">1 row selected</span>
+        }
     </div>
 </div>
 
@@ -125,9 +175,14 @@
     [Parameter] public string? AriaLabel { get; set; }
     [Parameter] public string BodyHeight { get; set; } = "480px";
     [Parameter] public float RowHeight { get; set; } = 52f;
+    [Parameter] public int OverscanCount { get; set; } = 10;
     [Parameter] public EventCallback<byte[]> OnExported { get; set; }
+    [Parameter] public TItem? SelectedItem { get; set; }
+    [Parameter] public EventCallback<TItem?> SelectedItemChanged { get; set; }
+    [Parameter] public EventCallback<TItem> OnRowClick { get; set; }
 
     private readonly List<MsDataGridColumn<TItem>> _columns = [];
+    private readonly Dictionary<string, string> _filterInputs = [];
     private GridState _state = GridState.Default;
     private int _totalCount;
     private bool _isLoading;
@@ -141,7 +196,10 @@
     internal void RegisterColumn(MsDataGridColumn<TItem> col)
     {
         if (!_columns.Contains(col))
+        {
             _columns.Add(col);
+            StateHasChanged();
+        }
     }
 
     private SortDirection? GetSortState(string field)
@@ -157,17 +215,55 @@
     private static string HeaderCellClass(MsDataGridColumn<TItem> col)
         => col.Sortable ? "cursor-pointer select-none hover:bg-muted/60 flex items-center" : "flex items-center";
 
+    private string RowClass(TItem row)
+    {
+        var isSelected = SelectedItem is not null && EqualityComparer<TItem>.Default.Equals(row, SelectedItem);
+        var clickable = OnRowClick.HasDelegate || SelectedItemChanged.HasDelegate;
+        return isSelected
+            ? $"ms-datagrid__row--selected bg-primary/10 hover:bg-primary/15{(clickable ? " cursor-pointer" : "")}"
+            : $"ms-datagrid__row hover:bg-muted/30{(clickable ? " cursor-pointer" : "")}";
+    }
+
     private void OnSortClicked(MsDataGridColumn<TItem> col)
     {
         if (!col.Sortable) return;
         _state = _state.ToggleSort(col.Field);
-        _virtualizeRef?.RefreshDataAsync();
+        _ = _virtualizeRef?.RefreshDataAsync();
     }
 
     private void OnSearchInput(ChangeEventArgs e)
     {
         _state = _state.WithSearch(e.Value?.ToString());
-        _virtualizeRef?.RefreshDataAsync();
+        _ = _virtualizeRef?.RefreshDataAsync();
+    }
+
+    private void OnFilterInput(string field, string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            _filterInputs.Remove(field);
+        else
+            _filterInputs[field] = value;
+
+        var descriptors = _filterInputs
+            .Select(kvp => new FilterDescriptor(kvp.Key, FilterOperator.Contains, kvp.Value))
+            .ToList();
+
+        _state = _state.WithFilters(descriptors);
+        _ = _virtualizeRef?.RefreshDataAsync();
+    }
+
+    private async Task HandleRowClick(TItem row)
+    {
+        SelectedItem = row;
+        await SelectedItemChanged.InvokeAsync(row);
+        await OnRowClick.InvokeAsync(row);
+        StateHasChanged();
+    }
+
+    private void OnRowKeyDown(KeyboardEventArgs e, TItem row)
+    {
+        if (e.Key is "Enter" or " ")
+            _ = HandleRowClick(row);
     }
 
     private async ValueTask<ItemsProviderResult<TItem>> LoadServerRowsAsync(ItemsProviderRequest request)
@@ -177,17 +273,26 @@
         _isLoading = true;
         StateHasChanged();
 
-        var result = await DataProvider.GetDataAsync(new GridRequest(
-            new Models.PageDescriptor(request.StartIndex, request.Count),
-            _state.Sort,
-            _state.Filters), request.CancellationToken);
+        try
+        {
+            var result = await DataProvider.GetDataAsync(new GridRequest(
+                new PageDescriptor(request.StartIndex, request.Count),
+                _state.Sort,
+                _state.Filters,
+                _state.SearchTerm), request.CancellationToken);
 
-        _totalCount = result.TotalCount;
-        _hasData = true;
-        _isLoading = false;
-        StateHasChanged();
+            _totalCount = result.TotalCount;
+            _hasData = true;
+            _isLoading = false;
+            StateHasChanged();
 
-        return new(result.Items, result.TotalCount);
+            return new(result.Items, result.TotalCount);
+        }
+        catch (OperationCanceledException)
+        {
+            _isLoading = false;
+            return new([], _totalCount);
+        }
     }
 
     private async Task ExportToExcel()
@@ -195,11 +300,12 @@
         if (DataProvider is null) return;
 
         var result = await DataProvider.GetDataAsync(new GridRequest(
-            new Models.PageDescriptor(0, int.MaxValue),
+            new PageDescriptor(0, int.MaxValue),
             _state.Sort,
-            _state.Filters));
+            _state.Filters,
+            _state.SearchTerm));
 
-        var colDefs = _columns.Select(c => new Services.ColumnDefinition(
+        var colDefs = _columns.Select(c => new ColumnDefinition(
             c.Title,
             item => c.GetValue((TItem)item!)));
 

@@ -51,8 +51,8 @@
     private bool _sidebarOpen;
 
     private string SidebarClass =>
-        $"sidebar fixed left-0 top-14 bottom-0 z-30 w-60 border-r bg-background overflow-y-auto " +
-        $"{(_sidebarOpen ? "open" : "")} hidden md:block";
+        "sidebar fixed left-0 top-14 bottom-0 z-30 w-60 border-r bg-background overflow-y-auto " +
+        (_sidebarOpen ? "block" : "hidden md:block");
 
     private void ToggleSidebar() => _sidebarOpen = !_sidebarOpen;
     private void CloseSidebar() => _sidebarOpen = false;

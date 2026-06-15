@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\MyStackBlazor\MyStackBlazor.csproj" />
+    <ProjectReference Include="..\..\src\MyStackBlazor.DataGrid\MyStackBlazor.DataGrid.csproj" />
   </ItemGroup>
 
 </Project>

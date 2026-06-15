@@ -1,0 +1,531 @@
+@typeparam TItem
+@namespace MyStackBlazor.Components.PivotGrid
+@using System.Globalization
+
+<div class="flex flex-col bg-background text-foreground border rounded-lg overflow-hidden @Class"
+     @attributes="AdditionalAttributes">
+
+    <!-- ══════════════════════════════════════
+         TOOLBAR
+    ══════════════════════════════════════ -->
+    <div class="flex flex-wrap items-center gap-2 border-b bg-muted/40 px-3 py-2.5">
+
+        @if (ShowSearchBar)
+        {
+            <!-- Global search -->
+            <div class="relative flex-1 min-w-[180px] max-w-xs">
+                <svg class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8" stroke-width="2"/>
+                    <path stroke-width="2" stroke-linecap="round" d="M21 21l-4.35-4.35"/>
+                </svg>
+                <input type="text"
+                       class="h-8 w-full rounded-md border border-input bg-background pl-8 pr-8 text-sm
+                              placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring transition-shadow"
+                       placeholder="Search all columns…"
+                       value="@_globalSearch"
+                       @oninput="OnGlobalSearch" />
+                @if (!string.IsNullOrEmpty(_globalSearch))
+                {
+                    <button type="button"
+                            class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            @onclick="@(() => { _globalSearch = ""; _page = 1; })">
+                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <line x1="18" y1="6" x2="6" y2="18" stroke-width="2" stroke-linecap="round"/>
+                            <line x1="6" y1="6" x2="18" y2="18" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                }
+            </div>
+        }
+
+        <!-- Active column filter chips -->
+        @foreach (var kvp in _colFilters.Where(f => !string.IsNullOrWhiteSpace(f.Value)))
+        {
+            var capturedKey = kvp.Key;
+            var colTitle = Columns.FirstOrDefault(c => c.Key == capturedKey)?.Title ?? capturedKey;
+            <span class="inline-flex items-center gap-1 rounded-full bg-accent text-accent-foreground px-2.5 py-0.5 text-xs font-medium">
+                <span class="opacity-60">@colTitle:</span> @kvp.Value
+                <button type="button"
+                        class="ml-0.5 rounded-full hover:opacity-70 transition-opacity"
+                        @onclick="@(() => SetColumnFilter(capturedKey, ""))">
+                    <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <line x1="18" y1="6" x2="6" y2="18" stroke-width="2.5" stroke-linecap="round"/>
+                        <line x1="6" y1="6" x2="18" y2="18" stroke-width="2.5" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </span>
+        }
+
+        <div class="flex-1"></div>
+
+        <!-- Clear all filters -->
+        @if (HasActiveFilters)
+        {
+            <button type="button"
+                    class="rounded-md border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                    @onclick="ClearFilters">
+                Clear filters
+            </button>
+        }
+
+        <!-- Row count badge -->
+        <span class="whitespace-nowrap rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
+            @FilteredCount of @Items.Count rows
+        </span>
+
+        @if (ShowColumnToggle)
+        {
+            <!-- Column visibility dropdown -->
+            <div class="relative">
+                <button type="button"
+                        class="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium hover:bg-accent transition-colors"
+                        @onclick="@(() => _showColMenu = !_showColMenu)">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                              d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+                    </svg>
+                    Columns
+                    @if (_hiddenCols.Count > 0)
+                    {
+                        <span class="rounded-full bg-primary text-primary-foreground px-1.5 leading-5 text-[10px]">@_hiddenCols.Count</span>
+                    }
+                </button>
+                @if (_showColMenu)
+                {
+                    <div class="fixed inset-0 z-40" @onclick="@(() => _showColMenu = false)"></div>
+                    <div class="absolute right-0 top-full z-50 mt-1 w-52 rounded-lg border bg-background shadow-xl p-1">
+                        <p class="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Show / hide columns</p>
+                        @foreach (var col in Columns)
+                        {
+                            var capturedKey = col.Key;
+                            var isVisible = !_hiddenCols.Contains(col.Key);
+                            <label class="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors">
+                                <input type="checkbox"
+                                       class="h-3.5 w-3.5 rounded accent-primary"
+                                       checked="@isVisible"
+                                       @onchange="@(_ => ToggleColumn(capturedKey))" />
+                                @col.Title
+                            </label>
+                        }
+                        <div class="border-t mt-1 pt-1 px-2 flex gap-2">
+                            <button type="button" class="text-xs text-muted-foreground hover:text-foreground" @onclick="ShowAllColumns">Show all</button>
+                            <span class="text-muted-foreground/40">|</span>
+                            <button type="button" class="text-xs text-muted-foreground hover:text-foreground" @onclick="HideAllColumns">Hide all</button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <!-- ══════════════════════════════════════
+         TABLE
+    ══════════════════════════════════════ -->
+    <div class="flex-1 overflow-auto min-h-0">
+        <table class="w-full text-sm border-collapse">
+
+            <!-- Sticky header -->
+            <thead class="sticky top-0 z-20">
+
+                <!-- Column name row -->
+                <tr class="border-b bg-muted/70 backdrop-blur-sm">
+                    @if (ShowRowNumbers)
+                    {
+                        <th class="w-10 border-r px-2 py-2.5 text-center text-[11px] font-semibold text-muted-foreground select-none">#</th>
+                    }
+                    @foreach (var col in VisibleColumns)
+                    {
+                        var capturedKey = col.Key;
+                        var isSortedAsc  = _sortKey == col.Key && _sortAsc;
+                        var isSortedDesc = _sortKey == col.Key && !_sortAsc;
+                        var isSorted     = _sortKey == col.Key;
+                        <th class="border-r last:border-r-0 px-0 py-0 text-xs font-semibold text-foreground"
+                            style="@(col.Width is not null ? $"width:{col.Width};" : "min-width:90px;")">
+                            <div class="flex items-center gap-1 px-3 py-2.5 whitespace-nowrap
+                                        @(col.Sortable ? "cursor-pointer select-none group hover:text-primary" : "select-none")
+                                        @(col.Align == "right" ? "flex-row-reverse" : col.Align == "center" ? "justify-center" : "")"
+                                 @onclick="@(() => { if (col.Sortable) SortBy(capturedKey); })">
+                                <span class="@(isSorted ? "text-primary" : "")">@col.Title</span>
+                                @if (col.Sortable)
+                                {
+                                    @if (isSortedAsc)
+                                    {
+                                        <svg class="h-3.5 w-3.5 flex-shrink-0 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/>
+                                        </svg>
+                                    }
+                                    else if (isSortedDesc)
+                                    {
+                                        <svg class="h-3.5 w-3.5 flex-shrink-0 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                                        </svg>
+                                    }
+                                    else
+                                    {
+                                        <svg class="h-3.5 w-3.5 flex-shrink-0 opacity-0 group-hover:opacity-30 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/>
+                                        </svg>
+                                    }
+                                }
+                            </div>
+                        </th>
+                    }
+                </tr>
+
+                <!-- Per-column filter row -->
+                <tr class="border-b bg-background">
+                    @if (ShowRowNumbers)
+                    {
+                        <th class="w-10 border-r px-2 py-1.5"></th>
+                    }
+                    @foreach (var col in VisibleColumns)
+                    {
+                        var capturedKey = col.Key;
+                        var filterVal   = _colFilters.GetValueOrDefault(col.Key, "");
+                        <th class="border-r last:border-r-0 px-2 py-1.5">
+                            @if (col.Filterable)
+                            {
+                                <div class="relative">
+                                    <input type="text"
+                                           class="h-6 w-full rounded border border-input bg-muted/30 px-2 pr-6 text-xs
+                                                  placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring focus:bg-background transition-colors"
+                                           placeholder="@col.Title…"
+                                           value="@filterVal"
+                                           @oninput="@(e => SetColumnFilter(capturedKey, e.Value?.ToString() ?? ""))" />
+                                    @if (!string.IsNullOrEmpty(filterVal))
+                                    {
+                                        <button type="button"
+                                                class="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                                @onclick="@(() => SetColumnFilter(capturedKey, ""))">
+                                            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <line x1="18" y1="6" x2="6" y2="18" stroke-width="2" stroke-linecap="round"/>
+                                                <line x1="6" y1="6" x2="18" y2="18" stroke-width="2" stroke-linecap="round"/>
+                                            </svg>
+                                        </button>
+                                    }
+                                </div>
+                            }
+                        </th>
+                    }
+                </tr>
+            </thead>
+
+            <tbody>
+                @{
+                    var rows       = PagedData.ToList();
+                    var startIndex = (_page - 1) * _pageSize;
+                }
+                @if (rows.Count == 0)
+                {
+                    <tr>
+                        <td colspan="@(VisibleColumns.Count() + (ShowRowNumbers ? 1 : 0))"
+                            class="py-20 text-center text-sm text-muted-foreground">
+                            <div class="flex flex-col items-center gap-3">
+                                <svg class="h-12 w-12 opacity-15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                                          d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span>@(EmptyMessage ?? "No records found")</span>
+                                @if (HasActiveFilters)
+                                {
+                                    <button type="button" class="text-xs text-primary hover:underline" @onclick="ClearFilters">Clear filters</button>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @for (int i = 0; i < rows.Count; i++)
+                    {
+                        var row       = rows[i];
+                        var rowNum    = startIndex + i + 1;
+                        var isAlt     = AlternateRowColor && i % 2 == 1;
+                        var isSelected = EqualityComparer<TItem>.Default.Equals(row, _selectedRow);
+                        var capturedRow = row;
+
+                        <tr class="border-b transition-colors cursor-pointer @GetRowClass(isSelected, isAlt)"
+                            @onclick="@(async () => await HandleRowClick(capturedRow))">
+
+                            @if (ShowRowNumbers)
+                            {
+                                <td class="border-r w-10 px-2 py-2 text-center text-[11px] text-muted-foreground select-none">@rowNum</td>
+                            }
+
+                            @foreach (var col in VisibleColumns)
+                            {
+                                var capturedCol = col;
+                                var value       = col.ValueSelector(row);
+                                var cellClass   = col.CellClass?.Invoke(row);
+                                var cellStyle   = col.CellStyle?.Invoke(row);
+
+                                <td class="border-r last:border-r-0 px-3 py-2
+                                           @(col.Align == "right" ? "text-right" : col.Align == "center" ? "text-center" : "")
+                                           @cellClass"
+                                    style="@cellStyle"
+                                    @onclick:stopPropagation="true"
+                                    @onclick="@(async () => await HandleCellClick(capturedCol, capturedRow, value))">
+                                    @if (col.Template is not null)
+                                    {
+                                        @col.Template(row)
+                                    }
+                                    else
+                                    {
+                                        @FormatValue(value, col)
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         PAGINATION FOOTER
+    ══════════════════════════════════════ -->
+    @if (ShowPagination)
+    {
+        var total = FilteredCount;
+        var tp    = TotalPages;
+        var from  = total == 0 ? 0 : (_page - 1) * _pageSize + 1;
+        var to    = Math.Min(_page * _pageSize, total);
+
+        <div class="flex flex-wrap items-center justify-between gap-3 border-t bg-muted/20 px-3 py-2">
+            <!-- Info -->
+            <span class="text-xs text-muted-foreground whitespace-nowrap">
+                @if (total == 0) { <text>No results</text> }
+                else { <text>Showing @from – @to of @total rows</text> }
+            </span>
+
+            <div class="flex items-center gap-1.5">
+                <!-- Page size -->
+                <select class="rounded border border-input bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring mr-2"
+                        value="@_pageSize"
+                        @onchange="OnPageSizeChange">
+                    <option value="10">10 / page</option>
+                    <option value="15">15 / page</option>
+                    <option value="25">25 / page</option>
+                    <option value="50">50 / page</option>
+                    <option value="100">100 / page</option>
+                </select>
+                <!-- First -->
+                <button type="button" disabled="@(_page <= 1)" @onclick="@(() => SetPage(1))"
+                        class="@NavBtnCls(_page <= 1)">«</button>
+                <!-- Prev -->
+                <button type="button" disabled="@(_page <= 1)" @onclick="@(() => SetPage(_page - 1))"
+                        class="@NavBtnCls(_page <= 1)">‹</button>
+                <!-- Page numbers -->
+                @for (int p = StartPage; p <= EndPage; p++)
+                {
+                    var pp = p;
+                    <button type="button" @onclick="@(() => SetPage(pp))"
+                            class="min-w-[28px] rounded-md px-2 py-1 text-xs font-medium transition-colors
+                                   @(_page == pp ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-accent")">
+                        @pp
+                    </button>
+                }
+                <!-- Next -->
+                <button type="button" disabled="@(_page >= tp)" @onclick="@(() => SetPage(_page + 1))"
+                        class="@NavBtnCls(_page >= tp)">›</button>
+                <!-- Last -->
+                <button type="button" disabled="@(_page >= tp)" @onclick="@(() => SetPage(tp))"
+                        class="@NavBtnCls(_page >= tp)">»</button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    // ── Parameters ─────────────────────────────────────────────────────────────
+    [Parameter] public List<TItem> Items { get; set; } = [];
+    [Parameter] public List<PivotColumn<TItem>> Columns { get; set; } = [];
+    [Parameter] public bool ShowSearchBar { get; set; } = true;
+    [Parameter] public bool ShowRowNumbers { get; set; } = true;
+    [Parameter] public bool AlternateRowColor { get; set; } = true;
+    [Parameter] public string? AltRowClass { get; set; }
+    [Parameter] public string? SelectedRowClass { get; set; }
+    [Parameter] public bool ShowColumnToggle { get; set; } = true;
+    [Parameter] public bool ShowPagination { get; set; } = true;
+    [Parameter] public int PageSize { get; set; } = 15;
+    [Parameter] public string? EmptyMessage { get; set; }
+    [Parameter] public EventCallback<TItem> OnRowClick { get; set; }
+    [Parameter] public EventCallback<CellClickArgs<TItem>> OnCellClick { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    // ── Internal state ──────────────────────────────────────────────────────────
+    private string _globalSearch = "";
+    private readonly Dictionary<string, string> _colFilters = new();
+    private string? _sortKey;
+    private bool _sortAsc = true;
+    private readonly HashSet<string> _hiddenCols = new();
+    private bool _showColMenu;
+    private int _page = 1;
+    private int _pageSize;
+    private TItem? _selectedRow;
+
+    // ── Lifecycle ───────────────────────────────────────────────────────────────
+    protected override void OnInitialized()
+    {
+        _pageSize = PageSize;
+        foreach (var col in Columns.Where(c => c.Hidden))
+            _hiddenCols.Add(col.Key);
+    }
+
+    // ── Computed ────────────────────────────────────────────────────────────────
+    private IEnumerable<PivotColumn<TItem>> VisibleColumns
+        => Columns.Where(c => !_hiddenCols.Contains(c.Key));
+
+    private IEnumerable<TItem> FilteredData
+    {
+        get
+        {
+            IEnumerable<TItem> data = Items;
+
+            // Global search across all visible columns
+            if (!string.IsNullOrWhiteSpace(_globalSearch))
+            {
+                var q = _globalSearch.ToLowerInvariant();
+                data = data.Where(row =>
+                    VisibleColumns.Any(c =>
+                        c.ValueSelector(row)?.ToString()?.ToLowerInvariant().Contains(q) == true));
+            }
+
+            // Per-column filters
+            foreach (var (key, val) in _colFilters.Where(f => !string.IsNullOrWhiteSpace(f.Value)))
+            {
+                var col = Columns.FirstOrDefault(c => c.Key == key);
+                if (col is null) continue;
+                var q = val.ToLowerInvariant();
+                data = data.Where(row =>
+                    col.ValueSelector(row)?.ToString()?.ToLowerInvariant().Contains(q) == true);
+            }
+
+            // Sort
+            if (_sortKey is not null)
+            {
+                var sortCol = Columns.FirstOrDefault(c => c.Key == _sortKey);
+                if (sortCol is not null)
+                {
+                    data = _sortAsc
+                        ? data.OrderBy(r => sortCol.ValueSelector(r))
+                        : data.OrderByDescending(r => sortCol.ValueSelector(r));
+                }
+            }
+
+            return data;
+        }
+    }
+
+    private int FilteredCount => FilteredData.Count();
+    private int TotalPages    => Math.Max(1, (int)Math.Ceiling(FilteredCount / (double)_pageSize));
+    private IEnumerable<TItem> PagedData => FilteredData.Skip((_page - 1) * _pageSize).Take(_pageSize);
+    private bool HasActiveFilters =>
+        !string.IsNullOrWhiteSpace(_globalSearch) ||
+        _colFilters.Values.Any(v => !string.IsNullOrWhiteSpace(v));
+
+    private int StartPage => Math.Max(1, Math.Min(_page - 2, Math.Max(1, TotalPages - 4)));
+    private int EndPage   => Math.Min(TotalPages, StartPage + 4);
+
+    // ── Handlers ────────────────────────────────────────────────────────────────
+    private void OnGlobalSearch(ChangeEventArgs e)
+    {
+        _globalSearch = e.Value?.ToString() ?? "";
+        _page = 1;
+    }
+
+    private void SortBy(string key)
+    {
+        if (_sortKey == key)
+        {
+            if (_sortAsc) _sortAsc = false;
+            else { _sortKey = null; _sortAsc = true; }
+        }
+        else { _sortKey = key; _sortAsc = true; }
+        _page = 1;
+    }
+
+    private void SetColumnFilter(string key, string val)
+    {
+        if (string.IsNullOrEmpty(val)) _colFilters.Remove(key);
+        else _colFilters[key] = val;
+        _page = 1;
+    }
+
+    private void ToggleColumn(string key)
+    {
+        if (_hiddenCols.Contains(key)) _hiddenCols.Remove(key);
+        else _hiddenCols.Add(key);
+    }
+
+    private void ShowAllColumns() => _hiddenCols.Clear();
+    private void HideAllColumns()
+    {
+        foreach (var col in Columns) _hiddenCols.Add(col.Key);
+    }
+
+    private void ClearFilters()
+    {
+        _globalSearch = "";
+        _colFilters.Clear();
+        _page = 1;
+    }
+
+    private void SetPage(int p) => _page = Math.Clamp(p, 1, TotalPages);
+
+    private void OnPageSizeChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var ps))
+        {
+            _pageSize = ps;
+            _page = 1;
+        }
+    }
+
+    private async Task HandleRowClick(TItem row)
+    {
+        _selectedRow = row;
+        if (OnRowClick.HasDelegate) await OnRowClick.InvokeAsync(row);
+    }
+
+    private async Task HandleCellClick(PivotColumn<TItem> col, TItem row, object? value)
+    {
+        _selectedRow = row;
+        if (OnCellClick.HasDelegate)
+        {
+            await OnCellClick.InvokeAsync(new CellClickArgs<TItem>
+            {
+                ColumnKey   = col.Key,
+                ColumnTitle = col.Title,
+                Row         = row,
+                Value       = value,
+            });
+        }
+    }
+
+    // ── Style helpers ───────────────────────────────────────────────────────────
+    private string GetRowClass(bool isSelected, bool isAlt) =>
+        isSelected
+            ? (SelectedRowClass ?? "bg-primary/10 text-foreground ring-1 ring-inset ring-primary/30")
+            : isAlt
+                ? (AltRowClass ?? "bg-muted/30")
+                : "hover:bg-accent/20";
+
+    private static string NavBtnCls(bool disabled) =>
+        disabled
+            ? "rounded-md px-2 py-1 text-xs text-muted-foreground/30 cursor-not-allowed"
+            : "rounded-md px-2 py-1 text-xs hover:bg-accent cursor-pointer transition-colors";
+
+    private static string FormatValue(object? value, PivotColumn<TItem> col)
+    {
+        if (value is null) return "";
+        if (!string.IsNullOrEmpty(col.Format) && value is IFormattable fmt)
+            return fmt.ToString(col.Format, CultureInfo.CurrentCulture);
+        if (col.Type == PivotColumnType.Boolean)
+            return value is true ? "Yes" : "No";
+        return value.ToString() ?? "";
+    }
+}

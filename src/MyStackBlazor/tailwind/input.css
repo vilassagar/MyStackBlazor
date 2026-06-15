@@ -1,34 +1,44 @@
 @import "tailwindcss";
 
+/* Scan library and demo project Razor/HTML files for class names        */
+/* Paths are relative to this file: tailwind/input.css                   */
+/* ../    → src/MyStackBlazor/                                            */
+/* ../../ → src/                                                          */
+/* ../../../ → repo root  (where samples/ lives)                          */
+@source "../**/*.razor";
+@source "../**/*.html";
+@source "../../../samples/**/*.razor";
+@source "../../../samples/**/*.html";
+
 /* ------------------------------------------------------------------ */
 /*  Dark mode: activated by .dark class on any ancestor element         */
 /* ------------------------------------------------------------------ */
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ------------------------------------------------------------------ */
-/*  Design tokens — light (default)                                     */
+/*  Design tokens — light (default)  blue-tinted light shades          */
 /* ------------------------------------------------------------------ */
 @theme {
   /* Colors */
-  --color-background:           hsl(0 0% 100%);
+  --color-background:           hsl(213 30% 98%);
   --color-foreground:           hsl(222.2 84% 4.9%);
-  --color-card:                 hsl(0 0% 100%);
+  --color-card:                 hsl(213 50% 98.5%);
   --color-card-foreground:      hsl(222.2 84% 4.9%);
   --color-popover:              hsl(0 0% 100%);
   --color-popover-foreground:   hsl(222.2 84% 4.9%);
-  --color-primary:              hsl(222.2 47.4% 11.2%);
-  --color-primary-foreground:   hsl(210 40% 98%);
-  --color-secondary:            hsl(210 40% 96.1%);
-  --color-secondary-foreground: hsl(222.2 47.4% 11.2%);
-  --color-muted:                hsl(210 40% 96.1%);
-  --color-muted-foreground:     hsl(215.4 16.3% 46.9%);
-  --color-accent:               hsl(210 40% 96.1%);
-  --color-accent-foreground:    hsl(222.2 47.4% 11.2%);
+  --color-primary:              hsl(221 83% 53%);
+  --color-primary-foreground:   hsl(0 0% 100%);
+  --color-secondary:            hsl(214 60% 93%);
+  --color-secondary-foreground: hsl(221 70% 30%);
+  --color-muted:                hsl(214 40% 94%);
+  --color-muted-foreground:     hsl(215 20% 46%);
+  --color-accent:               hsl(214 100% 91%);
+  --color-accent-foreground:    hsl(224 76% 35%);
   --color-destructive:          hsl(0 84.2% 60.2%);
-  --color-destructive-foreground: hsl(210 40% 98%);
-  --color-border:               hsl(214.3 31.8% 91.4%);
-  --color-input:                hsl(214.3 31.8% 91.4%);
-  --color-ring:                 hsl(222.2 84% 4.9%);
+  --color-destructive-foreground: hsl(0 0% 100%);
+  --color-border:               hsl(214 32% 88%);
+  --color-input:                hsl(214 32% 88%);
+  --color-ring:                 hsl(221 83% 53%);
 
   /* Border radius */
   --radius-lg: 0.5rem;
@@ -80,28 +90,28 @@
 }
 
 /* ------------------------------------------------------------------ */
-/*  Dark theme token overrides                                           */
+/*  Dark theme token overrides  — deep navy + vivid-blue accents        */
 /* ------------------------------------------------------------------ */
 .dark {
   --color-background:           hsl(222.2 84% 4.9%);
   --color-foreground:           hsl(210 40% 98%);
-  --color-card:                 hsl(222.2 84% 4.9%);
+  --color-card:                 hsl(222 75% 7.5%);
   --color-card-foreground:      hsl(210 40% 98%);
-  --color-popover:              hsl(222.2 84% 4.9%);
+  --color-popover:              hsl(222 75% 7.5%);
   --color-popover-foreground:   hsl(210 40% 98%);
-  --color-primary:              hsl(210 40% 98%);
-  --color-primary-foreground:   hsl(222.2 47.4% 11.2%);
-  --color-secondary:            hsl(217.2 32.6% 17.5%);
+  --color-primary:              hsl(213 90% 68%);
+  --color-primary-foreground:   hsl(222.2 84% 8%);
+  --color-secondary:            hsl(217 35% 18%);
   --color-secondary-foreground: hsl(210 40% 98%);
-  --color-muted:                hsl(217.2 32.6% 17.5%);
-  --color-muted-foreground:     hsl(215 20.2% 65.1%);
-  --color-accent:               hsl(217.2 32.6% 17.5%);
-  --color-accent-foreground:    hsl(210 40% 98%);
+  --color-muted:                hsl(217 35% 18%);
+  --color-muted-foreground:     hsl(215 20% 65%);
+  --color-accent:               hsl(221 60% 28%);
+  --color-accent-foreground:    hsl(213 90% 88%);
   --color-destructive:          hsl(0 62.8% 30.6%);
   --color-destructive-foreground: hsl(210 40% 98%);
-  --color-border:               hsl(217.2 32.6% 17.5%);
-  --color-input:                hsl(217.2 32.6% 17.5%);
-  --color-ring:                 hsl(212.7 26.8% 83.9%);
+  --color-border:               hsl(217 35% 17%);
+  --color-input:                hsl(217 35% 17%);
+  --color-ring:                 hsl(213 90% 68%);
 }
 
 /* ------------------------------------------------------------------ */

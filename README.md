@@ -12,6 +12,8 @@
 
 **166 components** · **Blazor WASM / Server / MAUI Hybrid** · **Light · Dark · System theme** · **Zero external JS deps**
 
+**[Live Demo →](https://vilassagar.github.io/MyStackBlazor/)**
+
 </div>
 
 ---
@@ -166,7 +168,7 @@ dotnet add package MyStackBlazor
 Or add via the NuGet Package Manager:
 
 ```xml
-<PackageReference Include="MyStackBlazor" Version="1.0.1" />
+<PackageReference Include="MyStackBlazor" Version="1.0.2" />
 ```
 
 ---

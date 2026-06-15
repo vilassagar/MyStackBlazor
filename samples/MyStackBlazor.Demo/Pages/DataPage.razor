@@ -101,6 +101,48 @@
     }
 </DemoSection>
 
+<!-- MsDataGrid: infinite-scroll virtualized server-side grid -->
+<DemoSection Title="MsDataGrid"
+             Description="Infinite-scroll, server-side data grid. Virtualized rows via &lt;Virtualize&gt; — only visible rows are rendered. Supports sortable/filterable columns, global search, row selection, and Excel export."
+             Code="@_gridCode">
+    <div class="w-full">
+        <MsDataGrid TItem="Product"
+                    DataProvider="_productProvider"
+                    AriaLabel="Products data grid"
+                    BodyHeight="460px"
+                    OverscanCount="8"
+                    SelectedItem="_selectedProduct"
+                    SelectedItemChanged="p => _selectedProduct = p"
+                    OnExported="HandleExport">
+            <MsDataGridColumn Field="Id" Title="ID" Width="72px" Sortable="true" />
+            <MsDataGridColumn Field="Name" Title="Product Name" Sortable="true" Filterable="true" />
+            <MsDataGridColumn Field="Category" Title="Category" Width="160px" Sortable="true" Filterable="true" />
+            <MsDataGridColumn Field="Price" Title="Price" Width="110px" Sortable="true">
+                <CellTemplate Context="p">
+                    <span class="font-mono tabular-nums">@p.Price.ToString("C")</span>
+                </CellTemplate>
+            </MsDataGridColumn>
+            <MsDataGridColumn Field="InStock" Title="Stock" Width="100px" Sortable="true">
+                <CellTemplate Context="p">
+                    <Badge Variant="@(p.InStock ? "default" : "secondary")">
+                        @(p.InStock ? "In Stock" : "Out")
+                    </Badge>
+                </CellTemplate>
+            </MsDataGridColumn>
+        </MsDataGrid>
+        @if (_selectedProduct is not null)
+        {
+            <p class="mt-2 text-sm text-muted-foreground">
+                Selected: <strong>@_selectedProduct.Name</strong> — @_selectedProduct.Category
+            </p>
+        }
+        @if (_exportMessage is not null)
+        {
+            <p class="mt-1 text-xs text-muted-foreground">@_exportMessage</p>
+        }
+    </div>
+</DemoSection>
+
 <!-- MsVirtualList -->
 <DemoSection Title="MsVirtualList"
              Description="Blazor Virtualize wrapper for large flat lists. Renders only visible rows."
@@ -188,6 +230,79 @@
 
     private TreeNode? _selectedNode;
 
+    // ── MsDataGrid demo ──────────────────────────────────────────────────────
+
+    record Product(int Id, string Name, string Category, decimal Price, bool InStock);
+
+    private readonly MockProductProvider _productProvider = new();
+    private Product? _selectedProduct;
+    private string? _exportMessage;
+
+    private void HandleExport(byte[] bytes)
+        => _exportMessage = $"Export ready — {bytes.Length:N0} bytes ({_productProvider.TotalCount:N0} rows)";
+
+    sealed class MockProductProvider : IGridDataProvider<Product>
+    {
+        private static readonly string[] Categories = ["Electronics", "Clothing", "Books", "Sports", "Home & Garden"];
+
+        private static readonly Product[] All = Enumerable.Range(1, 5_000).Select(i => new Product(
+            Id: i,
+            Name: $"Product {i:0000}",
+            Category: Categories[i % Categories.Length],
+            Price: Math.Round(10m + (i * 37m % 490m), 2),
+            InStock: i % 3 != 0
+        )).ToArray();
+
+        public int TotalCount => All.Length;
+
+        public async ValueTask<GridDataResult<Product>> GetDataAsync(GridRequest request, CancellationToken ct = default)
+        {
+            await Task.Delay(60, ct);
+
+            var query = All.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(request.SearchTerm))
+            {
+                var term = request.SearchTerm;
+                query = query.Where(p =>
+                    p.Name.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                    p.Category.Contains(term, StringComparison.OrdinalIgnoreCase));
+            }
+
+            foreach (var f in request.Filters)
+            {
+                if (f.Value is null || string.IsNullOrWhiteSpace(f.Value.ToString())) continue;
+                var val = f.Value.ToString()!;
+                query = f.Field switch
+                {
+                    nameof(Product.Name)     => query.Where(p => p.Name.Contains(val, StringComparison.OrdinalIgnoreCase)),
+                    nameof(Product.Category) => query.Where(p => p.Category.Contains(val, StringComparison.OrdinalIgnoreCase)),
+                    _                        => query
+                };
+            }
+
+            foreach (var s in request.Sort)
+            {
+                Func<Product, object?> key = s.Field switch
+                {
+                    nameof(Product.Id)       => p => (object)p.Id,
+                    nameof(Product.Name)     => p => p.Name,
+                    nameof(Product.Category) => p => p.Category,
+                    nameof(Product.Price)    => p => p.Price,
+                    nameof(Product.InStock)  => p => p.InStock,
+                    _                        => p => (object)p.Id
+                };
+                query = s.Direction == SortDirection.Ascending
+                    ? query.OrderBy(key)
+                    : query.OrderByDescending(key);
+            }
+
+            var list = query.ToList();
+            var page = list.Skip(request.Page.StartIndex).Take(request.Page.Count).ToList();
+            return new(page, list.Count);
+        }
+    }
+
     // ── VirtualList data ─────────────────────────────────────────────────────
 
     private readonly List<string> _virtualItems =
@@ -196,6 +311,41 @@
                   .ToList();
 
     // ── Code snippets ────────────────────────────────────────────────────────
+
+    private const string _gridCode = """
+        // Implement IGridDataProvider<T> to supply data from any source
+        class ProductProvider : IGridDataProvider<Product>
+        {
+            public async ValueTask<GridDataResult<Product>> GetDataAsync(GridRequest request, CancellationToken ct = default)
+            {
+                // request.Page.StartIndex / Count — the visible window
+                // request.Sort, request.Filters, request.SearchTerm — current state
+                var result = await _db.Products
+                    .Where(p => p.Name.Contains(request.SearchTerm ?? ""))
+                    .Skip(request.Page.StartIndex)
+                    .Take(request.Page.Count)
+                    .ToListAsync(ct);
+                return new(result, totalCount);
+            }
+        }
+
+        <MsDataGrid TItem="Product"
+                    DataProvider="_provider"
+                    BodyHeight="480px"
+                    SelectedItem="_selected"
+                    SelectedItemChanged="p => _selected = p"
+                    OnExported="bytes => DownloadFile(bytes)">
+            <MsDataGridColumn Field="Id"       Title="ID"       Width="80px" />
+            <MsDataGridColumn Field="Name"     Title="Name"     Filterable="true" Sortable="true" />
+            <MsDataGridColumn Field="Category" Title="Category" Filterable="true" Sortable="true" />
+            <MsDataGridColumn Field="Price"    Title="Price"    Sortable="true" />
+            <MsDataGridColumn Field="InStock"  Title="Stock">
+                <CellTemplate Context="p">
+                    <Badge Variant="@(p.InStock ? "default" : "secondary")">@(p.InStock ? "In Stock" : "Out")</Badge>
+                </CellTemplate>
+            </MsDataGridColumn>
+        </MsDataGrid>
+        """;
 
     private const string _tableCode = """
         <Table>

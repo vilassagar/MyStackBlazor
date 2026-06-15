@@ -98,8 +98,214 @@
     </div>
 </DemoSection>
 
+<!-- GridLayout -->
+<DemoSection Title="Grid Layout"
+             Description="CSS Grid wrapper. Set Columns and Gap (Tailwind spacing units)."
+             Code="@_gridCode">
+    <GridLayout Columns="3" Gap="4" Class="w-full">
+        @foreach (var i in Enumerable.Range(1, 6))
+        {
+            <div class="rounded-lg border bg-muted/40 p-4 text-center text-sm font-medium">Item @i</div>
+        }
+    </GridLayout>
+</DemoSection>
+
+<!-- StackLayout -->
+<DemoSection Title="Stack Layout"
+             Description="Flexbox wrapper with configurable Orientation, Gap, Align, and Justify."
+             Code="@_stackCode">
+    <div class="w-full space-y-4">
+        <div>
+            <p class="text-xs text-muted-foreground mb-2">Horizontal (default)</p>
+            <StackLayout Gap="3">
+                <Badge>Blazor</Badge>
+                <Badge Variant="secondary">.NET 10</Badge>
+                <Badge Variant="outline">Tailwind</Badge>
+            </StackLayout>
+        </div>
+        <div>
+            <p class="text-xs text-muted-foreground mb-2">Vertical, center-aligned</p>
+            <StackLayout Orientation="vertical" Align="center" Gap="2">
+                <Button Size="sm" Variant="default">Primary</Button>
+                <Button Size="sm" Variant="outline">Secondary</Button>
+                <Button Size="sm" Variant="ghost">Ghost</Button>
+            </StackLayout>
+        </div>
+    </div>
+</DemoSection>
+
+<!-- ScrollArea -->
+<DemoSection Title="Scroll Area"
+             Description="Constrained scrollable container with styled scrollbars."
+             Code="@_scrollCode">
+    <div class="flex gap-4 flex-wrap">
+        <ScrollArea MaxHeight="200px" Class="w-60 rounded-md border p-3">
+            @foreach (var i in Enumerable.Range(1, 20))
+            {
+                <p class="text-sm py-1 border-b border-border/40 last:border-0">Row @i — scrollable content</p>
+            }
+        </ScrollArea>
+        <ScrollArea MaxHeight="200px" MaxWidth="220px" Class="rounded-md border p-3">
+            <p class="text-sm whitespace-nowrap">This is a very long line that requires horizontal scrolling to see in its entirety.</p>
+            @foreach (var i in Enumerable.Range(1, 8))
+            {
+                <p class="text-sm py-1">Row @i</p>
+            }
+        </ScrollArea>
+    </div>
+</DemoSection>
+
+<!-- AspectRatio -->
+<DemoSection Title="Aspect Ratio"
+             Description="Maintains a fixed width-to-height ratio. Default is 16/9."
+             Code="@_aspectCode">
+    <div class="flex flex-wrap gap-4">
+        <div class="w-64">
+            <p class="text-xs text-muted-foreground mb-1">16:9 (default)</p>
+            <AspectRatio>
+                <div class="h-full w-full rounded-lg bg-muted flex items-center justify-center text-sm text-muted-foreground">16 / 9</div>
+            </AspectRatio>
+        </div>
+        <div class="w-40">
+            <p class="text-xs text-muted-foreground mb-1">1:1 (square)</p>
+            <AspectRatio Ratio="1">
+                <div class="h-full w-full rounded-lg bg-primary/10 flex items-center justify-center text-sm text-muted-foreground">1 / 1</div>
+            </AspectRatio>
+        </div>
+        <div class="w-48">
+            <p class="text-xs text-muted-foreground mb-1">4:3</p>
+            <AspectRatio Ratio="@(4.0/3)">
+                <div class="h-full w-full rounded-lg bg-secondary/50 flex items-center justify-center text-sm text-muted-foreground">4 / 3</div>
+            </AspectRatio>
+        </div>
+    </div>
+</DemoSection>
+
+<!-- ChunkProgressBar -->
+<DemoSection Title="Chunk Progress Bar"
+             Description="Progress bar segmented into discrete chunks. Set Chunks to control segments."
+             Code="@_chunkCode">
+    <div class="w-full max-w-sm space-y-4">
+        <div>
+            <p class="text-sm font-medium mb-1">Step progress (@_chunkValue / 5)</p>
+            <ChunkProgressBar Value="@_chunkValue" Max="5" Chunks="5" />
+        </div>
+        <div>
+            <p class="text-sm font-medium mb-1">Level progress (@_levelValue%)</p>
+            <ChunkProgressBar Value="@_levelValue" Max="100" Chunks="10" />
+        </div>
+        <div class="flex gap-2">
+            <Button Size="sm" Variant="outline" OnClick="@(() => _chunkValue = Math.Max(0, _chunkValue - 1))">Back</Button>
+            <Button Size="sm" OnClick="@(() => _chunkValue = Math.Min(5, _chunkValue + 1))">Next</Button>
+            <Button Size="sm" Variant="outline" OnClick="@(() => _levelValue = Math.Min(100, _levelValue + 10))">+10%</Button>
+        </div>
+    </div>
+</DemoSection>
+
+<!-- AnimationContainer -->
+<DemoSection Title="Animation Container"
+             Description="Wraps content in enter/exit CSS animation classes. Toggle Visible to see transitions."
+             Code="@_animCode">
+    <div class="space-y-3">
+        <Switch @bind-Checked="_animVisible" Label="Show content" />
+        <AnimationContainer Visible="_animVisible">
+            <Card Class="w-full max-w-sm">
+                <CardContent Class="pt-4">
+                    <p class="text-sm">This card fades in and out using CSS animations.</p>
+                </CardContent>
+            </Card>
+        </AnimationContainer>
+    </div>
+</DemoSection>
+
+<!-- PanelBar -->
+<DemoSection Title="Panel Bar"
+             Description="Expandable panel items with smooth grid-row animation. Similar to Accordion but with icon support."
+             Code="@_panelCode">
+    <div class="w-full max-w-lg">
+        <PanelBar>
+            <PanelBarItem Title="Getting Started">
+                <p class="text-sm text-muted-foreground">Install MyStackBlazor via NuGet and add the ThemeProvider to your layout.</p>
+            </PanelBarItem>
+            <PanelBarItem Title="Components">
+                <p class="text-sm text-muted-foreground">Over 100 components across Common, Form, Layout, Navigation, and Data categories.</p>
+            </PanelBarItem>
+            <PanelBarItem Title="Theming">
+                <p class="text-sm text-muted-foreground">Built on Tailwind CSS v4 design tokens. Switch between light and dark mode with ThemeToggle.</p>
+            </PanelBarItem>
+        </PanelBar>
+    </div>
+</DemoSection>
+
+<!-- Splitter -->
+<DemoSection Title="Splitter"
+             Description="Divides content into resizable panes. Horizontal=true for side-by-side."
+             Code="@_splitterCode">
+    <div class="w-full space-y-4">
+        <div>
+            <p class="text-xs text-muted-foreground mb-1">Horizontal (side-by-side)</p>
+            <Splitter Horizontal Height="180px" Class="w-full rounded-lg border overflow-hidden">
+                <SplitterPane>
+                    <div class="h-full p-4 text-sm text-muted-foreground">Left panel content</div>
+                </SplitterPane>
+                <SplitterPane>
+                    <div class="h-full p-4 text-sm text-muted-foreground">Right panel content</div>
+                </SplitterPane>
+            </Splitter>
+        </div>
+        <div>
+            <p class="text-xs text-muted-foreground mb-1">Vertical (stacked)</p>
+            <Splitter Horizontal="false" Height="220px" Class="w-full rounded-lg border overflow-hidden">
+                <SplitterPane>
+                    <div class="h-full p-4 text-sm text-muted-foreground">Top panel</div>
+                </SplitterPane>
+                <SplitterPane>
+                    <div class="h-full p-4 text-sm text-muted-foreground">Bottom panel</div>
+                </SplitterPane>
+            </Splitter>
+        </div>
+    </div>
+</DemoSection>
+
+<!-- Carousel -->
+<DemoSection Title="Carousel"
+             Description="Auto-cycling or manual slide carousel. ShowArrows and ShowDots are on by default."
+             Code="@_carouselCode">
+    <div class="w-full max-w-lg">
+        <Carousel Loop ShowArrows ShowDots>
+            <CarouselSlide>
+                <div class="h-48 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <div class="text-center">
+                        <p class="text-lg font-semibold">Slide 1</p>
+                        <p class="text-sm text-muted-foreground">Blazor component library</p>
+                    </div>
+                </div>
+            </CarouselSlide>
+            <CarouselSlide>
+                <div class="h-48 rounded-lg bg-secondary/30 flex items-center justify-center">
+                    <div class="text-center">
+                        <p class="text-lg font-semibold">Slide 2</p>
+                        <p class="text-sm text-muted-foreground">100+ components</p>
+                    </div>
+                </div>
+            </CarouselSlide>
+            <CarouselSlide>
+                <div class="h-48 rounded-lg bg-muted flex items-center justify-center">
+                    <div class="text-center">
+                        <p class="text-lg font-semibold">Slide 3</p>
+                        <p class="text-sm text-muted-foreground">Tailwind CSS v4</p>
+                    </div>
+                </div>
+            </CarouselSlide>
+        </Carousel>
+    </div>
+</DemoSection>
+
 @code {
     private string? _activeTab = "overview";
+    private double _chunkValue = 2;
+    private double _levelValue = 40;
+    private bool _animVisible = true;
 
     private const string _cardCode = """
         <Card>
@@ -141,5 +347,80 @@
     private const string _separatorCode = """
         <Separator Class="my-2" />
         <Separator Orientation="vertical" Class="h-4" />
+        """;
+
+    private const string _gridCode = """
+        <GridLayout Columns="3" Gap="4">
+            <div class="rounded-lg border p-4">Item 1</div>
+            <div class="rounded-lg border p-4">Item 2</div>
+            <div class="rounded-lg border p-4">Item 3</div>
+        </GridLayout>
+        """;
+
+    private const string _stackCode = """
+        <StackLayout Gap="3">
+            <Badge>Blazor</Badge>
+            <Badge Variant="secondary">.NET 10</Badge>
+        </StackLayout>
+        <StackLayout Orientation="vertical" Align="center" Gap="2">
+            <Button>Primary</Button>
+            <Button Variant="outline">Secondary</Button>
+        </StackLayout>
+        """;
+
+    private const string _scrollCode = """
+        <ScrollArea MaxHeight="200px" Class="w-60 rounded-md border p-3">
+            @foreach (var i in Enumerable.Range(1, 20))
+            {
+                <p class="text-sm py-1">Row @i</p>
+            }
+        </ScrollArea>
+        """;
+
+    private const string _aspectCode = """
+        <div class="w-64">
+            <AspectRatio>                      <!-- 16:9 -->
+                <img src="..." class="object-cover" />
+            </AspectRatio>
+        </div>
+        <div class="w-40">
+            <AspectRatio Ratio="1">            <!-- 1:1 square -->
+                <img src="..." class="object-cover" />
+            </AspectRatio>
+        </div>
+        """;
+
+    private const string _chunkCode = """
+        <ChunkProgressBar Value="3" Max="5" Chunks="5" />     <!-- 3 of 5 steps -->
+        <ChunkProgressBar Value="60" Max="100" Chunks="10" /> <!-- 60 % in 10 segments -->
+        """;
+
+    private const string _animCode = """
+        <AnimationContainer Visible="_show">
+            <Card>...</Card>
+        </AnimationContainer>
+        """;
+
+    private const string _panelCode = """
+        <PanelBar>
+            <PanelBarItem Title="Getting Started">…</PanelBarItem>
+            <PanelBarItem Title="Components">…</PanelBarItem>
+            <PanelBarItem Title="Theming">…</PanelBarItem>
+        </PanelBar>
+        """;
+
+    private const string _splitterCode = """
+        <Splitter Horizontal Height="180px">
+            <SplitterPane><div class="p-4">Left</div></SplitterPane>
+            <SplitterPane><div class="p-4">Right</div></SplitterPane>
+        </Splitter>
+        """;
+
+    private const string _carouselCode = """
+        <Carousel Loop ShowArrows ShowDots>
+            <CarouselSlide><div class="h-48">Slide 1</div></CarouselSlide>
+            <CarouselSlide><div class="h-48">Slide 2</div></CarouselSlide>
+            <CarouselSlide><div class="h-48">Slide 3</div></CarouselSlide>
+        </Carousel>
         """;
 }
