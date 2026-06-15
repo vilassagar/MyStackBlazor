@@ -1,0 +1,38 @@
+@namespace MyStackBlazor.Components.Layout
+
+<div style="@PanelStyle" class="overflow-hidden @Class" @attributes="AdditionalAttributes">
+    @ChildContent
+</div>
+
+@code {
+    [CascadingParameter] public ResizablePanelGroup? Group { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public double DefaultSize { get; set; } = 50;
+    [Parameter] public double MinSize { get; set; } = 10;
+    [Parameter] public double MaxSize { get; set; } = 90;
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private int _index = -1;
+
+    protected override void OnInitialized()
+    {
+        if (Group is not null)
+            _index = Group.RegisterPanel(this, DefaultSize);
+    }
+
+    private string PanelStyle
+    {
+        get
+        {
+            var size = (_index >= 0 && Group is not null && _index < Group.PanelSizes.Count)
+                ? Group.PanelSizes[_index]
+                : DefaultSize;
+            return Group?.IsHorizontal == false
+                ? $"flex: 0 0 {size.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}%; min-height: 0;"
+                : $"flex: 0 0 {size.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}%; min-width: 0;";
+        }
+    }
+
+    internal void Refresh() => StateHasChanged();
+}

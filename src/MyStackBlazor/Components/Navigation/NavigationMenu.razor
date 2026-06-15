@@ -1,8 +1,9 @@
-@namespace MyStackBlazor.Components.Data
+@namespace MyStackBlazor.Components.Navigation
 
-<h5 class="@($"mb-1 font-medium leading-snug tracking-tight {Class}".Trim())" @attributes="AdditionalAttributes">
+<nav class="relative z-10 flex max-w-max flex-1 items-center justify-center @Class"
+     @attributes="AdditionalAttributes">
     @ChildContent
-</h5>
+</nav>
 
 @code {
     [Parameter] public RenderFragment? ChildContent { get; set; }

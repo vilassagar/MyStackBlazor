@@ -205,6 +205,77 @@
     </div>
 </DemoSection>
 
+<!-- Toggle Group -->
+<DemoSection Title="Toggle Group"
+             Description="A set of toggle buttons where one (or multiple) can be active at a time. Use Size for sm / md / lg."
+             Code="@_toggleGroupCode">
+    <div class="space-y-6">
+        <div>
+            <p class="text-sm font-medium mb-2">Single select — text alignment (sm)</p>
+            <ToggleGroup Size="sm" @bind-Value="_align">
+                <ToggleGroupItem Value="left">Left</ToggleGroupItem>
+                <ToggleGroupItem Value="center">Center</ToggleGroupItem>
+                <ToggleGroupItem Value="right">Right</ToggleGroupItem>
+            </ToggleGroup>
+            @if (!string.IsNullOrEmpty(_align))
+            {
+                <p class="mt-1 text-xs text-muted-foreground">Alignment: <strong>@_align</strong></p>
+            }
+        </div>
+        <div>
+            <p class="text-sm font-medium mb-2">Multi-select — formatting (md)</p>
+            <ToggleGroup Type="multiple" @bind-SelectedValues="_formatting">
+                <ToggleGroupItem Value="bold">Bold</ToggleGroupItem>
+                <ToggleGroupItem Value="italic">Italic</ToggleGroupItem>
+                <ToggleGroupItem Value="underline">Underline</ToggleGroupItem>
+            </ToggleGroup>
+        </div>
+        <div>
+            <p class="text-sm font-medium mb-2">View mode (lg)</p>
+            <ToggleGroup Size="lg" @bind-Value="_view">
+                <ToggleGroupItem Value="grid">Grid</ToggleGroupItem>
+                <ToggleGroupItem Value="list">List</ToggleGroupItem>
+            </ToggleGroup>
+        </div>
+    </div>
+</DemoSection>
+
+<!-- Navigation Menu -->
+<DemoSection Title="Navigation Menu"
+             Description="Horizontal navigation with click-to-open dropdown content. Use NavigationMenuTrigger for dropdown items and NavigationMenuLink for plain links."
+             Code="@_navMenuCode">
+    <div class="w-full overflow-visible">
+        <NavigationMenu>
+            <NavigationMenuList>
+                <NavigationMenuItem>
+                    <NavigationMenuTrigger Size="sm">Getting started</NavigationMenuTrigger>
+                    <NavigationMenuContent>
+                        <div class="grid gap-1 p-2 w-48">
+                            <NavigationMenuLink Href="#" Size="sm">Introduction</NavigationMenuLink>
+                            <NavigationMenuLink Href="#" Size="sm">Installation</NavigationMenuLink>
+                            <NavigationMenuLink Href="#" Size="sm">Quick start</NavigationMenuLink>
+                        </div>
+                    </NavigationMenuContent>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                    <NavigationMenuTrigger Size="sm">Components</NavigationMenuTrigger>
+                    <NavigationMenuContent>
+                        <div class="grid gap-1 p-2 w-48">
+                            <NavigationMenuLink Href="#" Size="sm">Button</NavigationMenuLink>
+                            <NavigationMenuLink Href="#" Size="sm">Input</NavigationMenuLink>
+                            <NavigationMenuLink Href="#" Size="sm">Card</NavigationMenuLink>
+                            <NavigationMenuLink Href="#" Size="sm" Active>Dialog</NavigationMenuLink>
+                        </div>
+                    </NavigationMenuContent>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                    <NavigationMenuLink Href="#" Size="sm">Docs</NavigationMenuLink>
+                </NavigationMenuItem>
+            </NavigationMenuList>
+        </NavigationMenu>
+    </div>
+</DemoSection>
+
 @code {
     private string? _wizPlan = "pro";
 
@@ -288,5 +359,41 @@
                 <p>Click Finish to subscribe.</p>
             </WizardStep>
         </Wizard>
+        """;
+
+    private string? _align;
+    private IList<string>? _formatting;
+    private string? _view = "grid";
+
+    private const string _toggleGroupCode = """
+        <!-- Single select -->
+        <ToggleGroup @bind-Value="_align">
+            <ToggleGroupItem Value="left">Left</ToggleGroupItem>
+            <ToggleGroupItem Value="center">Center</ToggleGroupItem>
+            <ToggleGroupItem Value="right">Right</ToggleGroupItem>
+        </ToggleGroup>
+
+        <!-- Multi select -->
+        <ToggleGroup Type="multiple" @bind-SelectedValues="_formatting">
+            <ToggleGroupItem Value="bold">Bold</ToggleGroupItem>
+            <ToggleGroupItem Value="italic">Italic</ToggleGroupItem>
+        </ToggleGroup>
+        """;
+
+    private const string _navMenuCode = """
+        <NavigationMenu>
+            <NavigationMenuList>
+                <NavigationMenuItem>
+                    <NavigationMenuTrigger>Getting started</NavigationMenuTrigger>
+                    <NavigationMenuContent>
+                        <NavigationMenuLink Href="#">Introduction</NavigationMenuLink>
+                        <NavigationMenuLink Href="#">Installation</NavigationMenuLink>
+                    </NavigationMenuContent>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                    <NavigationMenuLink Href="#">Docs</NavigationMenuLink>
+                </NavigationMenuItem>
+            </NavigationMenuList>
+        </NavigationMenu>
         """;
 }

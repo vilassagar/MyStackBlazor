@@ -273,6 +273,60 @@
     </div>
 </DemoSection>
 
+<!-- Command -->
+<DemoSection Title="Command"
+             Description="Searchable command palette. Type to filter items. Use CommandGroup to organise, CommandItem for actions, CommandEmpty as the no-results fallback."
+             Code="@_commandCode">
+    <div class="flex flex-wrap gap-8 items-start">
+        <div>
+            <p class="text-xs text-muted-foreground mb-2 font-medium">Small</p>
+            <Command Size="sm">
+                <CommandInput Placeholder="Search..." />
+                <CommandList>
+                    <CommandGroup Heading="Files">
+                        <CommandItem Value="readme" Label="README">README.md</CommandItem>
+                        <CommandItem Value="index" Label="Index">index.html</CommandItem>
+                    </CommandGroup>
+                    <CommandEmpty />
+                </CommandList>
+            </Command>
+        </div>
+        <div>
+            <p class="text-xs text-muted-foreground mb-2 font-medium">Medium (default)</p>
+            <Command>
+                <CommandInput Placeholder="Type a command or search..." />
+                <CommandList>
+                    <CommandGroup Heading="Suggestions">
+                        <CommandItem Value="calendar" Label="Calendar" Shortcut="⌘C">Calendar</CommandItem>
+                        <CommandItem Value="search" Label="Search Emoji" Shortcut="⌘E">Search Emoji</CommandItem>
+                        <CommandItem Value="calculator" Label="Calculator" Shortcut="⌘R">Calculator</CommandItem>
+                    </CommandGroup>
+                    <CommandGroup Heading="Settings">
+                        <CommandItem Value="profile" Label="Profile" Shortcut="⌘P">Profile</CommandItem>
+                        <CommandItem Value="billing" Label="Billing" Shortcut="⌘B">Billing</CommandItem>
+                        <CommandItem Value="settings" Label="Settings" Shortcut="⌘S">Settings</CommandItem>
+                    </CommandGroup>
+                    <CommandEmpty />
+                </CommandList>
+            </Command>
+        </div>
+        <div>
+            <p class="text-xs text-muted-foreground mb-2 font-medium">Large</p>
+            <Command Size="lg">
+                <CommandInput Placeholder="Type a command or search..." />
+                <CommandList>
+                    <CommandGroup Heading="Actions">
+                        <CommandItem Value="new-project" Label="New Project">New Project</CommandItem>
+                        <CommandItem Value="open-repo" Label="Open Repository">Open Repository</CommandItem>
+                        <CommandItem Value="deploy" Label="Deploy to production" Disabled>Deploy to production</CommandItem>
+                    </CommandGroup>
+                    <CommandEmpty>No commands matched your search.</CommandEmpty>
+                </CommandList>
+            </Command>
+        </div>
+    </div>
+</DemoSection>
+
 @code {
     private bool _sheetRight;
     private bool _sheetLeft;
@@ -354,5 +408,18 @@
                 </div>
             </Content>
         </Popup>
+        """;
+
+    private const string _commandCode = """
+        <Command>
+            <CommandInput Placeholder="Type a command or search..." />
+            <CommandList>
+                <CommandGroup Heading="Suggestions">
+                    <CommandItem Value="calendar" Label="Calendar" Shortcut="⌘C">Calendar</CommandItem>
+                    <CommandItem Value="search"   Label="Search"   Shortcut="⌘E">Search Emoji</CommandItem>
+                </CommandGroup>
+                <CommandEmpty />
+            </CommandList>
+        </Command>
         """;
 }

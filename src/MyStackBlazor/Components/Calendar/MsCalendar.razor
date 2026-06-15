@@ -201,10 +201,7 @@
                 </div>
             }
 
-            <!-- ════════════════════════════════════
-                 WEEK VIEW
-            ════════════════════════════════════ -->
-            else if (_view == CalendarViewMode.Week)
+            @if (_view == CalendarViewMode.Week)
             {
                 <div style="min-width: 560px;">
                     <!-- Sticky header -->
@@ -308,10 +305,7 @@
                 </div>
             }
 
-            <!-- ════════════════════════════════════
-                 DAY VIEW
-            ════════════════════════════════════ -->
-            else
+            @if (_view == CalendarViewMode.Day)
             {
                 <div style="min-width: 280px;">
                     <!-- Header -->

@@ -1,6 +1,6 @@
 @namespace MyStackBlazor.Components.Form
 
-<div class="flex items-center space-x-2">
+<div class="flex items-center space-x-3">
     <button type="button"
             role="radio"
             id="@Id"
@@ -15,7 +15,9 @@
     </button>
     @if (Label is not null)
     {
-        <label for="@Id" class="text-sm font-medium leading-none cursor-pointer" @onclick="Select">@Label</label>
+        <label for="@Id"
+               class="text-sm font-medium leading-snug cursor-pointer select-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+               @onclick="Select">@Label</label>
     }
 </div>
 
@@ -30,8 +32,8 @@
     private bool IsSelected => Group?.Value == Value;
 
     private string ComputedClass =>
-        $"aspect-square h-4 w-4 rounded-full border border-primary ring-offset-background " +
-        $"focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
+        $"peer aspect-square h-4 w-4 rounded-full border border-primary bg-background " +
+        $"ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
         $"disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center {Class}".Trim();
 
     private async Task Select()

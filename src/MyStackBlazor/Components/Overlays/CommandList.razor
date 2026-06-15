@@ -1,8 +1,8 @@
-@namespace MyStackBlazor.Components.Data
+@namespace MyStackBlazor.Components.Overlays
 
-<h5 class="@($"mb-1 font-medium leading-snug tracking-tight {Class}".Trim())" @attributes="AdditionalAttributes">
+<div class="max-h-[300px] overflow-y-auto overflow-x-hidden @Class" @attributes="AdditionalAttributes">
     @ChildContent
-</h5>
+</div>
 
 @code {
     [Parameter] public RenderFragment? ChildContent { get; set; }

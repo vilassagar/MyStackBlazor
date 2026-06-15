@@ -36,8 +36,8 @@
   --color-accent-foreground:    hsl(224 76% 35%);
   --color-destructive:          hsl(0 84.2% 60.2%);
   --color-destructive-foreground: hsl(0 0% 100%);
-  --color-border:               hsl(214 32% 88%);
-  --color-input:                hsl(214 32% 88%);
+  --color-border:               hsl(220 13% 75%);
+  --color-input:                hsl(220 13% 75%);
   --color-ring:                 hsl(221 83% 53%);
 
   /* Border radius */
@@ -109,8 +109,8 @@
   --color-accent-foreground:    hsl(213 90% 88%);
   --color-destructive:          hsl(0 62.8% 30.6%);
   --color-destructive-foreground: hsl(210 40% 98%);
-  --color-border:               hsl(217 35% 17%);
-  --color-input:                hsl(217 35% 17%);
+  --color-border:               hsl(220 13% 28%);
+  --color-input:                hsl(220 13% 28%);
   --color-ring:                 hsl(213 90% 68%);
 }
 

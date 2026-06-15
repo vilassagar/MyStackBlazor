@@ -301,6 +301,64 @@
     </div>
 </DemoSection>
 
+<!-- Resizable -->
+<DemoSection Title="Resizable"
+             Description="Drag the handle between panels to resize. Use Direction for horizontal (default) or vertical splits."
+             Code="@_resizableCode">
+    <div class="w-full space-y-6">
+        <div>
+            <p class="text-sm font-medium mb-2">Horizontal split (sm panels)</p>
+            <div class="h-32">
+                <ResizablePanelGroup Direction="horizontal">
+                    <ResizablePanel DefaultSize="30" MinSize="10" MaxSize="70">
+                        <div class="h-full flex items-center justify-center bg-muted/40 text-sm text-muted-foreground">
+                            Left (30%)
+                        </div>
+                    </ResizablePanel>
+                    <ResizableHandle />
+                    <ResizablePanel DefaultSize="70" MinSize="30" MaxSize="90">
+                        <div class="h-full flex items-center justify-center text-sm text-muted-foreground">
+                            Right (70%)
+                        </div>
+                    </ResizablePanel>
+                </ResizablePanelGroup>
+            </div>
+        </div>
+        <div>
+            <p class="text-sm font-medium mb-2">Three-pane horizontal</p>
+            <div class="h-40">
+                <ResizablePanelGroup Direction="horizontal">
+                    <ResizablePanel DefaultSize="25" MinSize="10" MaxSize="60">
+                        <div class="h-full flex items-center justify-center bg-muted/40 text-sm text-muted-foreground">Sidebar</div>
+                    </ResizablePanel>
+                    <ResizableHandle />
+                    <ResizablePanel DefaultSize="50" MinSize="20" MaxSize="80">
+                        <div class="h-full flex items-center justify-center text-sm text-muted-foreground">Content</div>
+                    </ResizablePanel>
+                    <ResizableHandle />
+                    <ResizablePanel DefaultSize="25" MinSize="10" MaxSize="60">
+                        <div class="h-full flex items-center justify-center bg-muted/40 text-sm text-muted-foreground">Details</div>
+                    </ResizablePanel>
+                </ResizablePanelGroup>
+            </div>
+        </div>
+        <div>
+            <p class="text-sm font-medium mb-2">Vertical split</p>
+            <div class="h-48">
+                <ResizablePanelGroup Direction="vertical">
+                    <ResizablePanel DefaultSize="40" MinSize="15" MaxSize="85">
+                        <div class="h-full flex items-center justify-center bg-muted/40 text-sm text-muted-foreground">Top</div>
+                    </ResizablePanel>
+                    <ResizableHandle />
+                    <ResizablePanel DefaultSize="60" MinSize="15" MaxSize="85">
+                        <div class="h-full flex items-center justify-center text-sm text-muted-foreground">Bottom</div>
+                    </ResizablePanel>
+                </ResizablePanelGroup>
+            </div>
+        </div>
+    </div>
+</DemoSection>
+
 @code {
     private string? _activeTab = "overview";
     private double _chunkValue = 2;
@@ -422,5 +480,19 @@
             <CarouselSlide><div class="h-48">Slide 2</div></CarouselSlide>
             <CarouselSlide><div class="h-48">Slide 3</div></CarouselSlide>
         </Carousel>
+        """;
+
+    private const string _resizableCode = """
+        <div class="h-32">
+            <ResizablePanelGroup Direction="horizontal">
+                <ResizablePanel DefaultSize="30" MinSize="10" MaxSize="70">
+                    <div class="h-full flex items-center justify-center">Left</div>
+                </ResizablePanel>
+                <ResizableHandle />
+                <ResizablePanel DefaultSize="70" MinSize="30" MaxSize="90">
+                    <div class="h-full flex items-center justify-center">Right</div>
+                </ResizablePanel>
+            </ResizablePanelGroup>
+        </div>
         """;
 }

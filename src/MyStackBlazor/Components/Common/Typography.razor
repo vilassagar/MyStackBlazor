@@ -18,7 +18,7 @@
         <p class="@($"text-lg font-semibold {Class}".Trim())" @attributes="AdditionalAttributes">@ChildContent</p>
         break;
     case "small":
-        <small class="@($"text-sm font-medium leading-none {Class}".Trim())" @attributes="AdditionalAttributes">@ChildContent</small>
+        <small class="@($"text-sm font-medium leading-snug {Class}".Trim())" @attributes="AdditionalAttributes">@ChildContent</small>
         break;
     case "muted":
         <p class="@($"text-sm text-muted-foreground {Class}".Trim())" @attributes="AdditionalAttributes">@ChildContent</p>

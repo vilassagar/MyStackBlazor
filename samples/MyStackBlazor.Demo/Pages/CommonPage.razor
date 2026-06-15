@@ -185,6 +185,103 @@
     </div>
 </DemoSection>
 
+<!-- Kbd -->
+<DemoSection Title="Kbd"
+             Description="Displays keyboard shortcuts using the semantic &lt;kbd&gt; element. Use Size for sm / md / lg."
+             Code="@_kbdCode">
+    <div class="flex flex-wrap items-center gap-4">
+        <div class="space-y-2">
+            <p class="text-xs text-muted-foreground font-medium">Small</p>
+            <div class="flex gap-1">
+                <Kbd Size="sm">⌘</Kbd>
+                <Kbd Size="sm">K</Kbd>
+            </div>
+        </div>
+        <div class="space-y-2">
+            <p class="text-xs text-muted-foreground font-medium">Medium</p>
+            <div class="flex gap-1">
+                <Kbd>Ctrl</Kbd>
+                <Kbd>Shift</Kbd>
+                <Kbd>P</Kbd>
+            </div>
+        </div>
+        <div class="space-y-2">
+            <p class="text-xs text-muted-foreground font-medium">Large</p>
+            <div class="flex gap-1">
+                <Kbd Size="lg">Alt</Kbd>
+                <Kbd Size="lg">F4</Kbd>
+            </div>
+        </div>
+    </div>
+</DemoSection>
+
+<!-- Empty -->
+<DemoSection Title="Empty"
+             Description="Empty-state placeholder with icon, title, description, and optional action. Use Size for sm / md / lg."
+             Code="@_emptyCode">
+    <div class="w-full grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="rounded-lg border border-border">
+            <Empty Size="sm" Title="Nothing here" Description="No items found." />
+        </div>
+        <div class="rounded-lg border border-border">
+            <Empty Title="No results found"
+                   Description="Try adjusting your search or filters.">
+                <Action>
+                    <Button Size="sm" Variant="outline">Reset filters</Button>
+                </Action>
+            </Empty>
+        </div>
+        <div class="rounded-lg border border-border">
+            <Empty Size="lg" Title="No data yet" Description="Start by creating your first record." />
+        </div>
+    </div>
+</DemoSection>
+
+<!-- Direction -->
+<DemoSection Title="Direction"
+             Description="Sets the text direction (LTR/RTL) on a container. Useful for internationalization."
+             Code="@_dirCode">
+    <div class="w-full space-y-4">
+        <div class="rounded-lg border border-border p-4">
+            <p class="text-xs text-muted-foreground mb-2 font-medium">LTR (default)</p>
+            <Direction Dir="ltr">
+                <p class="text-sm">Left-to-right text layout. English, French, Spanish etc.</p>
+            </Direction>
+        </div>
+        <div class="rounded-lg border border-border p-4">
+            <p class="text-xs text-muted-foreground mb-2 font-medium">RTL</p>
+            <Direction Dir="rtl">
+                <p class="text-sm">مرحبًا بالعالم — Right-to-left text layout for Arabic, Hebrew etc.</p>
+            </Direction>
+        </div>
+    </div>
+</DemoSection>
+
+<!-- Item -->
+<DemoSection Title="Item"
+             Description="Generic styled list or menu item with optional icon and keyboard shortcut. Use Size for sm / md / lg."
+             Code="@_itemCode">
+    <div class="w-full max-w-sm space-y-4">
+        <div class="rounded-md border border-border p-1 space-y-0.5">
+            <p class="px-3 py-1 text-xs text-muted-foreground font-medium">Small items</p>
+            <Item Size="sm" Shortcut="⌘N">New File</Item>
+            <Item Size="sm" Shortcut="⌘O">Open...</Item>
+            <Item Size="sm" Disabled>Save As (disabled)</Item>
+        </div>
+        <div class="rounded-md border border-border p-1 space-y-0.5">
+            <p class="px-3 py-1.5 text-xs text-muted-foreground font-medium">Medium items (default)</p>
+            <Item Selected>Selected item</Item>
+            <Item Shortcut="⌘X">Cut</Item>
+            <Item Shortcut="⌘C">Copy</Item>
+        </div>
+        <div class="rounded-md border border-border p-1 space-y-0.5">
+            <p class="px-4 py-2 text-xs text-muted-foreground font-medium">Large items</p>
+            <Item Size="lg">Dashboard</Item>
+            <Item Size="lg">Settings</Item>
+        </div>
+    </div>
+</DemoSection>
+
 @code {
     private bool _loading;
     private List<string> _tags = ["Blazor", ".NET", "Tailwind"];
@@ -284,5 +381,29 @@
     private const string _toggleCode = """
         <ToggleButton @bind-IsPressed="_bold">Bold</ToggleButton>
         <ToggleButton @bind-IsPressed="_italic">Italic</ToggleButton>
+        """;
+
+    private const string _kbdCode = """
+        <Kbd Size="sm">⌘</Kbd>
+        <Kbd>Ctrl</Kbd>
+        <Kbd Size="lg">Alt</Kbd>
+        """;
+
+    private const string _emptyCode = """
+        <Empty Title="No results found" Description="Try adjusting your search.">
+            <Action><Button Size="sm" Variant="outline">Reset</Button></Action>
+        </Empty>
+        """;
+
+    private const string _dirCode = """
+        <Direction Dir="ltr">Left-to-right content</Direction>
+        <Direction Dir="rtl">محتوى من اليمين إلى اليسار</Direction>
+        """;
+
+    private const string _itemCode = """
+        <Item Shortcut="⌘N">New File</Item>
+        <Item Selected>Selected item</Item>
+        <Item Disabled>Disabled item</Item>
+        <Item Size="lg">Large item</Item>
         """;
 }

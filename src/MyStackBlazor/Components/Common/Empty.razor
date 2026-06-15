@@ -1,0 +1,65 @@
+@namespace MyStackBlazor.Components.Common
+
+<div class="@ContainerClass">
+    <div class="@IconWrapperClass">
+        @if (Icon is not null)
+        {
+            @Icon
+        }
+        else
+        {
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 0 0-1.883 2.542l.857 6a2.25 2.25 0 0 0 2.227 1.932H19.05a2.25 2.25 0 0 0 2.227-1.932l.857-6a2.25 2.25 0 0 0-1.883-2.542m-16.5 0V6A2.25 2.25 0 0 1 6 3.75h3.879a1.5 1.5 0 0 1 1.06.44l2.122 2.12a1.5 1.5 0 0 0 1.06.44H18A2.25 2.25 0 0 1 20.25 9v.776" />
+            </svg>
+        }
+    </div>
+    @if (!string.IsNullOrEmpty(Title))
+    {
+        <h3 class="@TitleClass">@Title</h3>
+    }
+    @if (!string.IsNullOrEmpty(Description))
+    {
+        <p class="@DescClass">@Description</p>
+    }
+    @if (Action is not null)
+    {
+        <div class="mt-4">@Action</div>
+    }
+</div>
+
+@code {
+    [Parameter] public RenderFragment? Icon { get; set; }
+    [Parameter] public string Title { get; set; } = "No results found";
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public RenderFragment? Action { get; set; }
+    [Parameter] public string Size { get; set; } = "md";
+    [Parameter] public string? Class { get; set; }
+
+    private string ContainerClass => Size switch
+    {
+        "sm" => $"flex flex-col items-center justify-center text-center py-6 px-4 {Class}".Trim(),
+        "lg" => $"flex flex-col items-center justify-center text-center py-20 px-8 {Class}".Trim(),
+        _    => $"flex flex-col items-center justify-center text-center py-12 px-6 {Class}".Trim(),
+    };
+
+    private string IconWrapperClass => Size switch
+    {
+        "sm" => "mb-2 text-muted-foreground opacity-40 [&_svg]:h-8 [&_svg]:w-8",
+        "lg" => "mb-6 text-muted-foreground opacity-40 [&_svg]:h-20 [&_svg]:w-20",
+        _    => "mb-4 text-muted-foreground opacity-40 [&_svg]:h-12 [&_svg]:w-12",
+    };
+
+    private string TitleClass => Size switch
+    {
+        "sm" => "text-sm font-semibold text-foreground",
+        "lg" => "text-2xl font-bold text-foreground mt-2",
+        _    => "text-lg font-semibold text-foreground mt-1",
+    };
+
+    private string DescClass => Size switch
+    {
+        "sm" => "mt-1 text-xs text-muted-foreground max-w-xs",
+        "lg" => "mt-3 text-base text-muted-foreground max-w-md",
+        _    => "mt-2 text-sm text-muted-foreground max-w-sm",
+    };
+}

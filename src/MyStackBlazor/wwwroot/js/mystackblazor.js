@@ -235,6 +235,15 @@ window.MyStackBlazor = {
     },
 
     // ----------------------------------------------------------------
+    //  Resizable panels — measure container dimension
+    // ----------------------------------------------------------------
+    getElementDimension(el, dimension) {
+        if (!el) return 800;
+        const rect = el.getBoundingClientRect();
+        return dimension === 'height' ? rect.height : rect.width;
+    },
+
+    // ----------------------------------------------------------------
     //  File dropzone — bridges drag-drop onto <InputFile>
     // ----------------------------------------------------------------
     setupDropzone(dropzoneId, inputId) {

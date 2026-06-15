@@ -1,0 +1,47 @@
+@namespace MyStackBlazor.Components.Navigation
+
+<CascadingValue Value="this">
+    <div role="group"
+         class="@ComputedClass"
+         @attributes="AdditionalAttributes">
+        @ChildContent
+    </div>
+</CascadingValue>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public string Type { get; set; } = "single";
+    [Parameter] public IList<string>? SelectedValues { get; set; }
+    [Parameter] public EventCallback<IList<string>?> SelectedValuesChanged { get; set; }
+    [Parameter] public string Size { get; set; } = "md";
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string ComputedClass =>
+        $"inline-flex items-center rounded-md border border-border bg-muted p-1 gap-1 {Class}".Trim();
+
+    public bool IsSelected(string? value) =>
+        Type == "multiple"
+            ? SelectedValues?.Contains(value ?? "") ?? false
+            : Value == value;
+
+    public async Task SelectValue(string? value)
+    {
+        if (Type == "multiple")
+        {
+            var list = SelectedValues?.ToList() ?? new List<string>();
+            if (list.Contains(value ?? "")) list.Remove(value ?? "");
+            else list.Add(value ?? "");
+            SelectedValues = list;
+            await SelectedValuesChanged.InvokeAsync(SelectedValues);
+        }
+        else
+        {
+            Value = Value == value ? null : value;
+            await ValueChanged.InvokeAsync(Value);
+        }
+        StateHasChanged();
+    }
+}

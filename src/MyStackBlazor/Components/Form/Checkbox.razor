@@ -1,6 +1,6 @@
 @namespace MyStackBlazor.Components.Form
 
-<div class="flex items-center space-x-2">
+<div class="flex items-center space-x-3">
     <button type="button"
             role="checkbox"
             id="@Id"
@@ -18,7 +18,7 @@
     </button>
     @if (Label is not null)
     {
-        <label for="@Id" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer" @onclick="Toggle">
+        <label for="@Id" class="text-sm font-medium leading-snug peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer select-none" @onclick="Toggle">
             @Label
         </label>
     }
@@ -34,7 +34,7 @@
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
 
     private string ComputedClass =>
-        $"peer h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background " +
+        $"peer h-4 w-4 shrink-0 rounded-sm border border-input ring-offset-background " +
         $"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
         $"disabled:cursor-not-allowed disabled:opacity-50 " +
         $"{(Checked ? "bg-primary text-primary-foreground flex items-center justify-center" : "bg-background")} {Class}".Trim();

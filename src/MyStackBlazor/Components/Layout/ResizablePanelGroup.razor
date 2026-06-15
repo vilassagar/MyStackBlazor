@@ -1,0 +1,89 @@
+@namespace MyStackBlazor.Components.Layout
+@inject IJSRuntime JS
+
+<CascadingValue Value="this">
+    <div @ref="_containerRef"
+         class="@GroupClass"
+         style="user-select: @(_draggingHandle >= 0 ? "none" : "auto")"
+         @onmousemove="OnMouseMove"
+         @onmouseup="StopDrag"
+         @onmouseleave="StopDrag"
+         @attributes="AdditionalAttributes">
+        @ChildContent
+    </div>
+</CascadingValue>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string Direction { get; set; } = "horizontal";
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    internal List<ResizablePanel> Panels { get; } = new();
+    internal List<double> PanelSizes { get; } = new();
+
+    private ElementReference _containerRef;
+    private double _containerPx = 800;
+    private int _draggingHandle = -1;
+
+    internal bool IsHorizontal => Direction == "horizontal";
+
+    private string GroupClass =>
+        $"flex {(IsHorizontal ? "flex-row" : "flex-col")} h-full w-full overflow-hidden rounded-md border border-border {Class}".Trim();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await RefreshContainerSize();
+    }
+
+    internal int RegisterPanel(ResizablePanel panel, double defaultSize)
+    {
+        Panels.Add(panel);
+        PanelSizes.Add(defaultSize);
+        return Panels.Count - 1;
+    }
+
+    internal int GetNextHandleIndex() => Panels.Count - 1;
+
+    internal async Task StartDrag(int handleIndex)
+    {
+        await RefreshContainerSize();
+        _draggingHandle = handleIndex;
+    }
+
+    private async Task RefreshContainerSize()
+    {
+        try
+        {
+            _containerPx = IsHorizontal
+                ? await JS.InvokeAsync<double>("MyStackBlazor.getElementDimension", _containerRef, "width")
+                : await JS.InvokeAsync<double>("MyStackBlazor.getElementDimension", _containerRef, "height");
+            if (_containerPx <= 0) _containerPx = 800;
+        }
+        catch { _containerPx = 800; }
+    }
+
+    private void OnMouseMove(MouseEventArgs e)
+    {
+        if (_draggingHandle < 0 || Panels.Count < 2) return;
+        var delta = IsHorizontal ? e.MovementX : e.MovementY;
+        if (delta == 0) return;
+
+        var leftIdx  = _draggingHandle;
+        var rightIdx = _draggingHandle + 1;
+        if (leftIdx >= PanelSizes.Count || rightIdx >= PanelSizes.Count) return;
+
+        var percentDelta = delta * 100.0 / _containerPx;
+        var newLeft  = Math.Clamp(PanelSizes[leftIdx]  + percentDelta, Panels[leftIdx].MinSize,  Panels[leftIdx].MaxSize);
+        var actual   = newLeft - PanelSizes[leftIdx];
+        var newRight = Math.Clamp(PanelSizes[rightIdx] - actual,        Panels[rightIdx].MinSize, Panels[rightIdx].MaxSize);
+
+        PanelSizes[leftIdx]  = newLeft;
+        PanelSizes[rightIdx] = newRight;
+
+        foreach (var p in Panels) p.Refresh();
+    }
+
+    private void StopDrag(MouseEventArgs e) => _draggingHandle = -1;
+}

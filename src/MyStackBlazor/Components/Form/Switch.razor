@@ -1,6 +1,6 @@
 @namespace MyStackBlazor.Components.Form
 
-<div class="flex items-center space-x-2">
+<div class="flex items-center space-x-3">
     <button type="button"
             role="switch"
             id="@Id"
@@ -13,7 +13,7 @@
     </button>
     @if (Label is not null)
     {
-        <label for="@Id" class="text-sm font-medium leading-none cursor-pointer" @onclick="Toggle">@Label</label>
+        <label for="@Id" class="text-sm font-medium leading-snug cursor-pointer select-none" @onclick="Toggle">@Label</label>
     }
 </div>
 
@@ -27,14 +27,14 @@
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
 
     private string ComputedClass =>
-        $"peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 " +
+        $"peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center overflow-hidden rounded-full border-2 " +
         $"transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
         $"focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 " +
-        $"{(Checked ? "bg-primary border-transparent" : "bg-input border-border")} {Class}".Trim();
+        $"{(Checked ? "bg-primary border-transparent" : "bg-primary/15 border-primary/30")} {Class}".Trim();
 
     private string ThumbClass =>
-        $"pointer-events-none block h-5 w-5 rounded-full bg-white shadow-md ring-0 transition-transform " +
-        $"{(Checked ? "translate-x-5" : "translate-x-0")}";
+        $"pointer-events-none block h-5 w-5 shrink-0 rounded-full bg-white shadow-md ring-0 " +
+        $"{(Checked ? "ml-5" : "ml-0")}";
 
     private async Task Toggle()
     {

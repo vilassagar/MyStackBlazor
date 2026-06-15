@@ -1,0 +1,29 @@
+@namespace MyStackBlazor.Components.Overlays
+
+<CascadingValue Value="this">
+    <div class="@ComputedClass" @attributes="AdditionalAttributes">
+        @ChildContent
+    </div>
+</CascadingValue>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string Size { get; set; } = "md";
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    internal string Search { get; private set; } = "";
+
+    internal void SetSearch(string value)
+    {
+        Search = value;
+        StateHasChanged();
+    }
+
+    private string ComputedClass => Size switch
+    {
+        "sm" => $"flex flex-col overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md w-64 max-h-64 {Class}".Trim(),
+        "lg" => $"flex flex-col overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md w-[640px] max-h-[640px] {Class}".Trim(),
+        _    => $"flex flex-col overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md w-[480px] max-h-[480px] {Class}".Trim(),
+    };
+}

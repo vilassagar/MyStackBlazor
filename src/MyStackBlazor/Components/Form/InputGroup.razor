@@ -1,0 +1,49 @@
+@namespace MyStackBlazor.Components.Form
+
+<div class="flex w-full @Class">
+    @if (Prefix is not null)
+    {
+        <span class="@PrefixClass">@Prefix</span>
+    }
+    <div class="@InputWrapperClass">
+        @ChildContent
+    </div>
+    @if (Suffix is not null)
+    {
+        <span class="@SuffixClass">@Suffix</span>
+    }
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Prefix { get; set; }
+    [Parameter] public RenderFragment? Suffix { get; set; }
+    [Parameter] public string Size { get; set; } = "md";
+    [Parameter] public string? Class { get; set; }
+
+    private bool HasPrefix => Prefix is not null;
+    private bool HasSuffix => Suffix is not null;
+
+    private string AddonSizeClass => Size switch
+    {
+        "sm" => "h-8 px-2 text-xs",
+        "lg" => "h-12 px-4 text-base",
+        _    => "h-10 px-3 text-sm",
+    };
+
+    private string PrefixClass =>
+        $"inline-flex items-center shrink-0 rounded-l-md border border-r-0 border-input bg-muted text-muted-foreground font-medium select-none {AddonSizeClass}";
+
+    private string SuffixClass =>
+        $"inline-flex items-center shrink-0 rounded-r-md border border-l-0 border-input bg-muted text-muted-foreground font-medium select-none {AddonSizeClass}";
+
+    private string InputWrapperClass
+    {
+        get
+        {
+            var roundLeft  = HasPrefix ? "[&_input]:rounded-l-none [&_select]:rounded-l-none" : "";
+            var roundRight = HasSuffix ? "[&_input]:rounded-r-none [&_select]:rounded-r-none" : "";
+            return $"flex-1 min-w-0 {roundLeft} {roundRight}".Trim();
+        }
+    }
+}

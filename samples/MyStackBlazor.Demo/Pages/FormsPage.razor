@@ -77,16 +77,27 @@
 
 <!-- Radio Group -->
 <DemoSection Title="Radio Group" Code="@_radioCode">
-    <div class="w-full max-w-sm">
-        <RadioGroup @bind-Value="_plan">
-            <RadioGroupItem Value="free" Label="Free — $0/month" Id="plan-free" />
-            <RadioGroupItem Value="pro" Label="Pro — $9/month" Id="plan-pro" />
-            <RadioGroupItem Value="enterprise" Label="Enterprise — Contact us" Id="plan-enterprise" />
-        </RadioGroup>
-        @if (!string.IsNullOrEmpty(_plan))
-        {
-            <p class="text-sm text-muted-foreground mt-3">Selected plan: <strong>@_plan</strong></p>
-        }
+    <div class="w-full max-w-sm space-y-6">
+        <div>
+            <p class="text-sm font-medium mb-2">Select a plan</p>
+            <RadioGroup @bind-Value="_plan">
+                <RadioGroupItem Value="free"       Label="Free — $0/month"         Id="plan-free" />
+                <RadioGroupItem Value="pro"        Label="Pro — $9/month"          Id="plan-pro" />
+                <RadioGroupItem Value="enterprise" Label="Enterprise — Contact us" Id="plan-enterprise" />
+            </RadioGroup>
+            @if (!string.IsNullOrEmpty(_plan))
+            {
+                <p class="text-sm text-muted-foreground mt-3">Selected: <strong>@_plan</strong></p>
+            }
+        </div>
+        <div>
+            <p class="text-sm font-medium mb-2">Disabled options</p>
+            <RadioGroup Value="free">
+                <RadioGroupItem Value="free"    Label="Available option"  Id="dis-free" />
+                <RadioGroupItem Value="locked"  Label="Locked option"     Id="dis-locked"  Disabled />
+                <RadioGroupItem Value="locked2" Label="Another locked"    Id="dis-locked2" Disabled />
+            </RadioGroup>
+        </div>
     </div>
 </DemoSection>
 
@@ -215,6 +226,63 @@
     </div>
 </DemoSection>
 
+<!-- InputGroup -->
+<DemoSection Title="Input Group"
+             Description="Wraps an Input with a text prefix, suffix, or both. Size matches the inner input."
+             Code="@_inputGroupCode">
+    <div class="w-full max-w-sm space-y-3">
+        <div>
+            <p class="text-xs text-muted-foreground mb-1">Small — URL prefix</p>
+            <InputGroup Size="sm">
+                <Prefix><span>https://</span></Prefix>
+                <ChildContent><Input Placeholder="example.com" /></ChildContent>
+            </InputGroup>
+        </div>
+        <div>
+            <p class="text-xs text-muted-foreground mb-1">Medium — currency prefix + suffix</p>
+            <InputGroup>
+                <Prefix><span>$</span></Prefix>
+                <ChildContent><Input Placeholder="0.00" Type="number" /></ChildContent>
+                <Suffix><span>USD</span></Suffix>
+            </InputGroup>
+        </div>
+        <div>
+            <p class="text-xs text-muted-foreground mb-1">Large — email suffix</p>
+            <InputGroup Size="lg">
+                <ChildContent><Input Placeholder="username" /></ChildContent>
+                <Suffix><span>@@example.com</span></Suffix>
+            </InputGroup>
+        </div>
+    </div>
+</DemoSection>
+
+<!-- NativeSelect -->
+<DemoSection Title="Native Select"
+             Description="Native HTML &lt;select&gt; with consistent Tailwind styling. Use Size for sm / md / lg."
+             Code="@_nativeSelectCode">
+    <div class="w-full max-w-sm space-y-3">
+        <NativeSelect Size="sm" Placeholder="Small — pick a colour" @bind-Value="_nativeColor">
+            <option value="red">Red</option>
+            <option value="green">Green</option>
+            <option value="blue">Blue</option>
+        </NativeSelect>
+        <NativeSelect Placeholder="Medium — pick a framework" @bind-Value="_nativeFramework">
+            <option value="blazor">Blazor</option>
+            <option value="react">React</option>
+            <option value="vue">Vue</option>
+        </NativeSelect>
+        <NativeSelect Size="lg" Placeholder="Large — pick a country" @bind-Value="_nativeCountry">
+            <option value="us">United States</option>
+            <option value="uk">United Kingdom</option>
+            <option value="au">Australia</option>
+        </NativeSelect>
+        @if (!string.IsNullOrEmpty(_nativeFramework))
+        {
+            <p class="text-sm text-muted-foreground">Framework: <strong>@_nativeFramework</strong></p>
+        }
+    </div>
+</DemoSection>
+
 <!-- ColorPalette -->
 <DemoSection Title="Color Palette"
              Description="Click a swatch to select a color. ShowHex displays the selected hex value."
@@ -247,6 +315,9 @@
     private IList<string>? _selectedFrameworks;
     private string? _brandColor = "#3b82f6";
     private string? _accentColor = "#8b5cf6";
+    private string? _nativeColor;
+    private string? _nativeFramework;
+    private string? _nativeCountry;
     private readonly List<string> _frameworks = ["Blazor WASM", "Blazor Server", "MAUI Blazor", "Blazor United", ".NET 10"];
 
     private void ValidateEmail()
@@ -337,5 +408,20 @@
         <ColorPalette Label="Accent"
                       Colors="@(new[] { "#ef4444","#3b82f6","#22c55e","#8b5cf6" })"
                       @bind-Value="_accent" ShowHex />
+        """;
+
+    private const string _inputGroupCode = """
+        <InputGroup>
+            <Prefix><span>$</span></Prefix>
+            <Input Placeholder="0.00" Type="number" />
+            <Suffix><span>USD</span></Suffix>
+        </InputGroup>
+        """;
+
+    private const string _nativeSelectCode = """
+        <NativeSelect Placeholder="Pick a framework" @bind-Value="_framework">
+            <option value="blazor">Blazor</option>
+            <option value="react">React</option>
+        </NativeSelect>
         """;
 }

@@ -1,0 +1,41 @@
+@namespace MyStackBlazor.Components.Navigation
+
+<button type="button"
+        class="@ComputedClass"
+        aria-expanded="@((Item?.IsOpen ?? false).ToString().ToLower())"
+        @onclick="Toggle"
+        @attributes="AdditionalAttributes">
+    @ChildContent
+    <svg xmlns="http://www.w3.org/2000/svg"
+         class="@ChevronClass"
+         viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+    </svg>
+</button>
+
+@code {
+    [CascadingParameter] public NavigationMenuItem? Item { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string Size { get; set; } = "md";
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string ComputedClass
+    {
+        get
+        {
+            var sizeClass = Size switch
+            {
+                "sm" => "h-8 px-3 text-xs gap-1",
+                "lg" => "h-12 px-5 text-base gap-2",
+                _    => "h-10 px-4 text-sm gap-1.5",
+            };
+            return $"group inline-flex items-center justify-center rounded-md font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 {sizeClass} {Class}".Trim();
+        }
+    }
+
+    private string ChevronClass =>
+        $"h-3 w-3 shrink-0 transition-transform duration-200 {(Item?.IsOpen ?? false ? "rotate-180" : "")}";
+
+    private void Toggle() => Item?.Toggle();
+}

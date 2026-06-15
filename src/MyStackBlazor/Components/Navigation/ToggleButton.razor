@@ -1,7 +1,7 @@
 @namespace MyStackBlazor.Components.Navigation
 
 <button type="button"
-        class="inline-flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 @(IsPressed ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent") @Class"
+        class="inline-flex items-center justify-center gap-2 rounded-md border border-input px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 @(IsPressed ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent") @Class"
         aria-pressed="@IsPressed.ToString().ToLower()"
         @onclick="Toggle"
         @attributes="AdditionalAttributes">

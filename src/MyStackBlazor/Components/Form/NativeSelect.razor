@@ -1,0 +1,46 @@
+@namespace MyStackBlazor.Components.Form
+
+<select id="@Id"
+        disabled="@Disabled"
+        class="@ComputedClass"
+        value="@Value"
+        @onchange="OnChanged"
+        @attributes="AdditionalAttributes">
+    @if (!string.IsNullOrEmpty(Placeholder))
+    {
+        <option value="" disabled>@Placeholder</option>
+    }
+    @ChildContent
+</select>
+
+@code {
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string Size { get; set; } = "md";
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string ComputedClass
+    {
+        get
+        {
+            var sizeClass = Size switch
+            {
+                "sm" => "h-8 px-2 py-1 text-xs",
+                "lg" => "h-12 px-4 py-3 text-base",
+                _    => "h-10 px-3 py-2 text-sm",
+            };
+            return $"flex w-full rounded-md border border-input bg-background {sizeClass} ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 {Class}".Trim();
+        }
+    }
+
+    private async Task OnChanged(ChangeEventArgs e)
+    {
+        Value = e.Value?.ToString();
+        await ValueChanged.InvokeAsync(Value);
+    }
+}
