@@ -32,7 +32,8 @@
     private bool IsSelected => Group?.Value == Value;
 
     private string ComputedClass =>
-        $"peer aspect-square h-4 w-4 rounded-full border border-primary bg-background " +
+        $"peer aspect-square h-4 w-4 rounded-full border-2 bg-background " +
+        $"{(IsSelected ? "border-primary" : "border-gray-400")} " +
         $"ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
         $"disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center {Class}".Trim();
 

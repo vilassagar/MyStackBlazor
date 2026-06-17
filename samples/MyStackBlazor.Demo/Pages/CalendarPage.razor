@@ -4,24 +4,35 @@
 
 <h1 class="text-3xl font-bold mb-1">Calendar</h1>
 <p class="text-muted-foreground mb-6">
-    Full-featured personal calendar with Month, Week, and Day views. Click any day to add an event,
-    click an event to view or edit details.
+    Full-featured calendar: Day, Week, Month, Year, Agenda, and Timeline views.
+    Individual vs Department focus, people/calendar checkboxes, category filter, search, and recurring events.
 </p>
 
 <!-- Feature chips -->
 <div class="mb-6 flex flex-wrap gap-2">
-    @foreach (var f in new[] { "Month / Week / Day views", "Drag-click to add", "Edit & delete events", "Multi-day spanning events", "All-day events", "9 event colors", "Mini calendar sidebar", "Current-time indicator" })
+    @foreach (var f in new[]
+    {
+        "Day / Week / Month / Year / Agenda / Timeline views",
+        "Individual & Department focus modes",
+        "People/calendar checkboxes", "Category sidebar filter", "Live search",
+        "Recurring events (Daily/Weekly/Monthly/Yearly)",
+        "Multi-day spanning events", "All-day events",
+        "Click to add", "Edit & delete",
+        "Assignee calendar field", "Current-time indicator"
+    })
     {
         <span class="rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground">@f</span>
     }
 </div>
 
 <!-- Calendar component -->
-<div class="h-[780px] rounded-xl border overflow-hidden shadow-sm">
+<div class="h-[860px] rounded-xl border overflow-hidden shadow-sm">
     <MsCalendar Events="_events"
+                People="_people"
                 ShowMiniCalendar="true"
                 AllowAdd="true"
                 DefaultView="CalendarViewMode.Month"
+                DefaultFocus="FocusMode.Department"
                 OnEventAdd="HandleAdd"
                 OnEventEdit="HandleEdit"
                 OnEventDelete="HandleDelete" />
@@ -42,182 +53,164 @@
 }
 
 <!-- Code snippet -->
-<DemoSection Title="Usage" Description="Basic setup — pass a list of CalendarEvent objects and handle callbacks." Code="@_code" Class="mt-8">
-    <p class="text-sm text-muted-foreground">See the source of CalendarPage.razor for a full working example with sample events.</p>
+<DemoSection Title="Usage" Description="Pass People list for multi-calendar support. Use FocusMode to switch between Individual and Department views." Code="@_code" Class="mt-8">
+    <p class="text-sm text-muted-foreground">See CalendarPage.razor for the full working example.</p>
 </DemoSection>
 
 @code {
-    private static readonly DateTime _today = DateTime.Today;
-    private static readonly DateTime _monday = ThisMonday(DateTime.Today);
-    private static readonly DateTime _nextSat = NextSaturday(DateTime.Today);
-    private static readonly DateTime _nextMonth1 = FirstOfNextMonth(DateTime.Today);
+    // ── People (team calendars) ────────────────────────────────────────────
+    private readonly CalendarPerson _alice  = new() { Id = "alice",  Name = "Alice Chen",    Color = "blue"   };
+    private readonly CalendarPerson _bob    = new() { Id = "bob",    Name = "Sam Rivera",    Color = "green"  };
+    private readonly CalendarPerson _carol  = new() { Id = "carol",  Name = "Taylor Blake",  Color = "orange" };
+    private readonly CalendarPerson _dave   = new() { Id = "dave",   Name = "Casey Wright",  Color = "purple" };
+    private readonly CalendarPerson _eve    = new() { Id = "eve",    Name = "Jayce Li",      Color = "yellow" };
 
-    private List<CalendarEvent> _events = [];
-    private readonly List<string> _log = [];
+    private List<CalendarPerson> _people = [];
+    private List<CalendarEvent> _events  = [];
+    private readonly List<string> _log   = [];
+
+    private static readonly DateTime _today      = DateTime.Today;
+    private static readonly DateTime _monday     = ThisMonday(DateTime.Today);
+    private static readonly DateTime _nextSat    = NextSaturday(DateTime.Today);
+    private static readonly DateTime _nextMonth1 = FirstOfNextMonth(DateTime.Today);
 
     protected override void OnInitialized()
     {
-        // ── Work events ────────────────────────────────────────
-        AddEvent("Team Standup",
-            _monday.AddHours(9).AddMinutes(30),
-            _monday.AddHours(9).AddMinutes(45),
-            color: "blue", category: "Work", location: "Google Meet");
+        _people = [_alice, _bob, _carol, _dave, _eve];
 
-        AddEvent("Team Standup",
-            _monday.AddDays(1).AddHours(9).AddMinutes(30),
-            _monday.AddDays(1).AddHours(9).AddMinutes(45),
-            color: "blue", category: "Work", location: "Google Meet");
+        // ── My Calendar (no PersonId) ──────────────────────────────────────
+        AddEvent("Daily Stand-up",
+            _monday.AddHours(9).AddMinutes(30), _monday.AddHours(9).AddMinutes(45),
+            color: "blue", category: "Work", location: "Google Meet",
+            recurrenceType: RecurrenceType.Weekly, recurrenceInterval: 1,
+            recurrenceEndDate: _today.AddMonths(3));
 
-        AddEvent("Team Standup",
-            _monday.AddDays(2).AddHours(9).AddMinutes(30),
-            _monday.AddDays(2).AddHours(9).AddMinutes(45),
-            color: "blue", category: "Work", location: "Google Meet");
+        AddEvent("Manager 1:1",
+            new DateTime(_today.Year, _today.Month, 15).AddHours(14),
+            new DateTime(_today.Year, _today.Month, 15).AddHours(15),
+            color: "purple", category: "Work",
+            description: "Monthly check-in.",
+            recurrenceType: RecurrenceType.Monthly, recurrenceInterval: 1,
+            recurrenceEndDate: _today.AddYears(1));
 
-        AddEvent("Team Standup",
-            _monday.AddDays(3).AddHours(9).AddMinutes(30),
-            _monday.AddDays(3).AddHours(9).AddMinutes(45),
-            color: "blue", category: "Work", location: "Google Meet");
-
-        AddEvent("Team Standup",
-            _monday.AddDays(4).AddHours(9).AddMinutes(30),
-            _monday.AddDays(4).AddHours(9).AddMinutes(45),
-            color: "blue", category: "Work", location: "Google Meet");
+        AddEvent("Gym Session",
+            _today.Date.AddHours(7), _today.Date.AddHours(8).AddMinutes(30),
+            color: "teal", category: "Health", location: "FitLife Gym",
+            recurrenceType: RecurrenceType.Daily, recurrenceInterval: 2,
+            recurrenceEndDate: _today.AddMonths(3));
 
         AddEvent("Sprint Planning",
-            _monday.AddHours(10),
-            _monday.AddHours(12),
+            _monday.AddHours(10), _monday.AddHours(12),
             color: "indigo", category: "Work",
             description: "Q3 sprint kick-off. Bring your backlog items.");
 
-        AddEvent("Design Review",
-            _monday.AddDays(2).AddHours(14),
-            _monday.AddDays(2).AddHours(15).AddMinutes(30),
-            color: "purple", category: "Work",
-            location: "Conference Room B",
-            description: "Review updated component designs for v1.1 release.");
-
-        AddEvent("Weekly Retrospective",
-            _monday.AddDays(4).AddHours(16),
-            _monday.AddDays(4).AddHours(17),
-            color: "indigo", category: "Work", location: "Google Meet");
-
-        AddEvent("Client Presentation",
-            _monday.AddDays(3).AddHours(11),
-            _monday.AddDays(3).AddHours(12).AddMinutes(30),
-            color: "red", category: "Work",
-            location: "Client HQ, Floor 7",
-            description: "Final demo of MyStackBlazor to the Acme Corp team.");
-
-        // ── Project deadline (multi-day) ───────────────────────
-        AddEvent("Project Alpha Deadline",
-            _monday.AddDays(4).Date,
-            _monday.AddDays(6).Date,
-            allDay: true, color: "red", category: "Work",
-            description: "All deliverables must be submitted by EOD Friday.");
-
-        // ── Personal / health ──────────────────────────────────
-        AddEvent("Doctor's Appointment",
-            _today.AddDays(2).Date.AddHours(15),
-            _today.AddDays(2).Date.AddHours(16),
-            color: "green", category: "Health",
-            location: "City Medical Centre",
-            description: "Annual health check-up. Fasting from midnight.");
-
-        AddEvent("Dentist",
-            _today.AddDays(9).Date.AddHours(10),
-            _today.AddDays(9).Date.AddHours(11),
-            color: "green", category: "Health",
-            location: "SmileCare Clinic");
-
-        AddEvent("Gym Session",
-            _today.Date.AddHours(7),
-            _today.Date.AddHours(8).AddMinutes(30),
-            color: "teal", category: "Health", location: "FitLife Gym");
-
-        AddEvent("Gym Session",
-            _today.AddDays(2).Date.AddHours(7),
-            _today.AddDays(2).Date.AddHours(8).AddMinutes(30),
-            color: "teal", category: "Health", location: "FitLife Gym");
-
-        AddEvent("Gym Session",
-            _today.AddDays(4).Date.AddHours(7),
-            _today.AddDays(4).Date.AddHours(8).AddMinutes(30),
-            color: "teal", category: "Health", location: "FitLife Gym");
-
-        // ── Social ─────────────────────────────────────────────
-        AddEvent("Lunch with Priya",
-            _monday.AddDays(1).AddHours(12).AddMinutes(30),
-            _monday.AddDays(1).AddHours(13).AddMinutes(30),
-            color: "orange", category: "Social",
-            location: "The Courtyard Cafe");
-
-        AddEvent("Team Dinner",
-            _monday.AddDays(4).AddHours(19),
-            _monday.AddDays(4).AddHours(21).AddMinutes(30),
-            color: "orange", category: "Social",
-            location: "Spice Garden Restaurant",
-            description: "End-of-sprint celebration dinner. Partners welcome!");
-
-        // ── Family ─────────────────────────────────────────────
         AddEvent("Mom's Birthday",
-            _today.AddDays(5).Date,
-            _today.AddDays(5).Date,
+            _today.AddDays(5).Date, _today.AddDays(5).Date,
             allDay: true, color: "pink", category: "Family",
-            description: "Order cake from Bakery Town. Book restaurant by Thursday.");
+            description: "Order cake from Bakery Town.");
 
-        AddEvent("Family Video Call",
-            _today.AddDays(6).Date.AddHours(18),
-            _today.AddDays(6).Date.AddHours(19),
-            color: "pink", category: "Family");
-
-        // ── Weekend trip (multi-day all-day) ───────────────────
         AddEvent("Weekend Getaway — Coorg",
-            _nextSat,
-            _nextSat.AddDays(1),
+            _nextSat, _nextSat.AddDays(1),
             allDay: true, color: "purple", category: "Personal",
-            description: "2-day trip to Coorg. Hotel: Rainforest Retreat. Check-in at 2 PM.");
+            description: "2-day trip. Hotel: Rainforest Retreat.");
 
-        // ── Reminders ──────────────────────────────────────────
         AddEvent("Pay Rent",
-            _nextMonth1,
-            _nextMonth1,
+            _nextMonth1, _nextMonth1,
             allDay: true, color: "yellow", category: "Reminder",
-            description: "Transfer ₹25,000 to landlord before 5 PM.");
+            description: "Transfer ₹25,000 to landlord before 5 PM.",
+            recurrenceType: RecurrenceType.Monthly, recurrenceInterval: 1);
 
-        AddEvent("Submit Tax Returns",
-            _today.AddDays(12).Date,
-            _today.AddDays(12).Date,
-            allDay: true, color: "yellow", category: "Reminder");
+        // ── Alice's events ─────────────────────────────────────────────────
+        AddEvent("Annual Engineering Kickoff",
+            _monday.AddDays(13).Date, _monday.AddDays(15).Date,
+            allDay: true, color: "blue", category: "Work",
+            personId: _alice.Id, description: "3-day company-wide kick-off.");
 
-        // ── Conference / learning ──────────────────────────────
-        AddEvent(".NET Conf — Live Stream",
-            _today.AddDays(7).Date.AddHours(9),
-            _today.AddDays(7).Date.AddHours(17),
-            color: "indigo", category: "Work",
-            location: "Online (YouTube / Twitch)",
-            description: "Microsoft .NET annual conference. Sessions on Blazor, MAUI, and AI integration.");
+        AddEvent("Design System Summit",
+            _monday.AddDays(3).AddHours(10), _monday.AddDays(3).AddHours(16),
+            color: "blue", category: "Work", location: "HQ — Boardroom",
+            personId: _alice.Id, description: "Review component library updates.");
 
-        // ── Holiday ────────────────────────────────────────────
-        AddEvent("Public Holiday",
-            _today.AddDays(-1).Date,
-            _today.AddDays(-1).Date,
-            allDay: true, color: "green", category: "Holiday");
+        AddEvent("Alice: Code Review",
+            _monday.AddDays(1).AddHours(14), _monday.AddDays(1).AddHours(15),
+            color: "blue", category: "Work",
+            personId: _alice.Id,
+            recurrenceType: RecurrenceType.Weekly, recurrenceInterval: 1,
+            recurrenceEndDate: _today.AddMonths(2));
+
+        // ── Sam's events ───────────────────────────────────────────────────
+        AddEvent("Holiday",
+            _monday.AddDays(1).Date, _monday.AddDays(1).Date,
+            allDay: true, color: "green", category: "Holiday",
+            personId: _bob.Id);
+
+        AddEvent("Packaging Workshop",
+            _monday.AddDays(5).AddHours(11), _monday.AddDays(5).AddHours(13),
+            color: "green", category: "Work", location: "Lab 3",
+            personId: _bob.Id);
+
+        // ── Taylor's events ────────────────────────────────────────────────
+        AddEvent("Release Stabilization",
+            _monday.AddDays(6).Date, _monday.AddDays(9).Date,
+            allDay: true, color: "orange", category: "Work",
+            personId: _carol.Id, description: "Code freeze and regression testing.");
+
+        AddEvent("Interaction Policy Review",
+            _monday.AddDays(19).AddHours(13), _monday.AddDays(19).AddHours(15),
+            color: "orange", category: "Work",
+            personId: _carol.Id);
+
+        AddEvent("Obstruction Planning",
+            _monday.AddDays(2).Date, _monday.AddDays(2).Date,
+            allDay: true, color: "orange", category: "Work",
+            personId: _carol.Id);
+
+        // ── Casey's events ─────────────────────────────────────────────────
+        AddEvent("Experience Planning",
+            _monday.AddDays(10).AddHours(9), _monday.AddDays(10).AddHours(11),
+            color: "purple", category: "Work",
+            personId: _dave.Id);
+
+        AddEvent("Obstruction Review",
+            _monday.AddDays(14).Date, _monday.AddDays(14).Date,
+            allDay: true, color: "purple", category: "Work",
+            personId: _dave.Id);
+
+        // ── Jayce's events ─────────────────────────────────────────────────
+        AddEvent("Project Exploration",
+            _monday.AddDays(1).AddHours(9), _monday.AddDays(1).AddHours(11),
+            color: "yellow", category: "Work",
+            personId: _eve.Id);
+
+        AddEvent(".NET Conf Live Stream",
+            _today.AddDays(7).Date.AddHours(9), _today.AddDays(7).Date.AddHours(17),
+            color: "yellow", category: "Work",
+            location: "Online (YouTube)", personId: _eve.Id,
+            description: "Microsoft .NET annual conference.");
     }
 
     private void AddEvent(string title, DateTime start, DateTime end,
         bool allDay = false, string color = "blue",
-        string? category = null, string? location = null, string? description = null)
+        string? category = null, string? location = null, string? description = null,
+        string? personId = null,
+        RecurrenceType recurrenceType = RecurrenceType.None,
+        int recurrenceInterval = 1,
+        DateTime? recurrenceEndDate = null)
     {
         _events.Add(new CalendarEvent
         {
-            Title       = title,
-            Start       = start,
-            End         = end,
-            AllDay      = allDay,
-            Color       = color,
-            Category    = category,
-            Location    = location,
-            Description = description,
+            Title              = title,
+            Start              = start,
+            End                = end,
+            AllDay             = allDay,
+            Color              = color,
+            Category           = category,
+            Location           = location,
+            Description        = description,
+            PersonId           = personId,
+            RecurrenceType     = recurrenceType,
+            RecurrenceInterval = recurrenceInterval,
+            RecurrenceEndDate  = recurrenceEndDate,
         });
     }
 
@@ -231,52 +224,48 @@
         => _log.Add($"Deleted \"{e.Title}\"");
 
     private static DateTime ThisMonday(DateTime d)
-    {
-        var diff = ((int)d.DayOfWeek + 6) % 7;
-        return d.AddDays(-diff).Date;
-    }
+        => d.AddDays(-(((int)d.DayOfWeek + 6) % 7)).Date;
 
     private static DateTime NextSaturday(DateTime d)
     {
-        var daysUntil = ((int)DayOfWeek.Saturday - (int)d.DayOfWeek + 7) % 7;
-        return d.AddDays(daysUntil == 0 ? 7 : daysUntil).Date;
+        var n = ((int)DayOfWeek.Saturday - (int)d.DayOfWeek + 7) % 7;
+        return d.AddDays(n == 0 ? 7 : n).Date;
     }
 
     private static DateTime FirstOfNextMonth(DateTime d)
         => new DateTime(d.Year, d.Month, 1).AddMonths(1);
 
     private const string _code = """
-        <!-- Basic usage -->
-        <div class="h-[700px] rounded-xl border overflow-hidden">
-            <MsCalendar Events="_myEvents"
+        <!-- Multi-calendar with people + focus modes -->
+        <div class="h-[800px] rounded-xl border overflow-hidden">
+            <MsCalendar Events="_events"
+                        People="_people"
                         ShowMiniCalendar="true"
                         AllowAdd="true"
                         DefaultView="CalendarViewMode.Month"
-                        OnEventAdd="e => _myEvents.Add(e)"
+                        DefaultFocus="FocusMode.Department"
+                        OnEventAdd="HandleAdd"
                         OnEventEdit="HandleEdit"
-                        OnEventDelete="e => _myEvents.Remove(e)" />
+                        OnEventDelete="HandleDelete" />
         </div>
 
         @code {
-            private List<CalendarEvent> _myEvents =
+            private List<CalendarPerson> _people =
             [
-                new CalendarEvent
-                {
-                    Title    = "Team Standup",
-                    Start    = DateTime.Today.AddHours(9).AddMinutes(30),
-                    End      = DateTime.Today.AddHours(9).AddMinutes(45),
-                    Color    = "blue",
-                    Category = "Work",
-                    Location = "Google Meet",
-                },
-                new CalendarEvent
-                {
-                    Title  = "Weekend Trip",
-                    Start  = DateTime.Today.AddDays(5),
-                    End    = DateTime.Today.AddDays(7),
-                    AllDay = true,
-                    Color  = "purple",
-                },
+                new() { Id = "alice", Name = "Alice Chen",   Color = "blue"   },
+                new() { Id = "bob",   Name = "Sam Rivera",   Color = "green"  },
+                new() { Id = "carol", Name = "Taylor Blake", Color = "orange" },
+            ];
+
+            private List<CalendarEvent> _events =
+            [
+                // My own event (no PersonId)
+                new() { Title = "Team Standup", Start = DateTime.Today.AddHours(9), End = DateTime.Today.AddHours(9).AddMinutes(30), Color = "blue", Category = "Work" },
+                // Alice's event
+                new() { Title = "Design Review", Start = DateTime.Today.AddHours(14), End = DateTime.Today.AddHours(15), Color = "blue", PersonId = "alice" },
+                // Recurring (weekly)
+                new() { Title = "Weekly Retrospective", Start = DateTime.Today.AddHours(16), End = DateTime.Today.AddHours(17), Color = "indigo",
+                        RecurrenceType = RecurrenceType.Weekly, RecurrenceInterval = 1, RecurrenceEndDate = DateTime.Today.AddMonths(3) },
             ];
         }
         """;

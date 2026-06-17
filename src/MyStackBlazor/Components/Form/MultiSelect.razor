@@ -2,86 +2,408 @@
 @typeparam TItem
 
 <div class="relative @Class" @attributes="AdditionalAttributes">
-    <div class="flex min-h-9 cursor-text flex-wrap gap-1 rounded-md border border-input bg-background px-2 py-1 text-sm transition-colors @(_open ? "ring-1 ring-ring" : "")"
-         @onclick="Open">
-        @foreach (var item in _selected)
-        {
-            var current = item;
-            <span class="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
-                @(ItemLabel?.Invoke(current) ?? current?.ToString())
+
+    <!-- ── Trigger ──────────────────────────────────────────────── -->
+    <div class="@TriggerCls"
+         tabindex="@(Disabled ? "-1" : "0")"
+         @onclick="ToggleOpen"
+         @onkeydown="OnTriggerKeyDown"
+         role="combobox"
+         aria-expanded="@_open"
+         aria-haspopup="listbox">
+
+        <!-- Tag pills or placeholder -->
+        <div class="flex flex-1 flex-wrap items-center gap-1 min-w-0">
+            @if (_selected.Count == 0)
+            {
+                <span class="text-sm text-muted-foreground select-none">@Placeholder</span>
+            }
+            else
+            {
+                var visible = MaxVisibleTags > 0 && _selected.Count > MaxVisibleTags
+                              ? _selected.Take(MaxVisibleTags).ToList()
+                              : _selected;
+
+                @foreach (var item in visible)
+                {
+                    var capturedItem = item;
+                    var lbl = GetLabel(capturedItem);
+                    <span class="inline-flex max-w-[140px] shrink-0 items-center gap-1 rounded-full bg-primary/10 pl-2.5 pr-1 py-0.5 text-xs font-medium text-primary ring-1 ring-primary/20">
+                        <span class="truncate">@lbl</span>
+                        @if (!Disabled)
+                        {
+                            <button type="button"
+                                    class="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full hover:bg-primary/20 transition-colors"
+                                    aria-label="Remove @lbl"
+                                    @onclick="@(() => RemoveItem(capturedItem))"
+                                    @onclick:stopPropagation="true">
+                                <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
+                                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
+                            </button>
+                        }
+                    </span>
+                }
+
+                @if (MaxVisibleTags > 0 && _selected.Count > MaxVisibleTags)
+                {
+                    <span class="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                        +@(_selected.Count - MaxVisibleTags) more
+                    </span>
+                }
+            }
+        </div>
+
+        <!-- Right icons: clear + chevron -->
+        <div class="ml-1 flex shrink-0 items-center gap-1">
+            @if (_selected.Count > 0 && !Disabled)
+            {
                 <button type="button"
-                        class="ml-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full opacity-60 hover:opacity-100"
-                        @onclick="() => RemoveItem(current)"
+                        class="flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                        aria-label="Clear all"
+                        @onclick="ClearAll"
                         @onclick:stopPropagation="true">
-                    <svg class="h-2.5 w-2.5" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                     </svg>
                 </button>
-            </span>
-        }
-        <input type="text"
-               placeholder="@(_selected.Count == 0 ? Placeholder : "")"
-               class="flex-1 min-w-[80px] bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-               @bind="_search"
-               @bind:event="oninput" />
+            }
+            <svg class="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150 @(_open ? "rotate-180" : "")"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+        </div>
     </div>
 
+    <!-- ── Dropdown panel ────────────────────────────────────────── -->
     @if (_open)
     {
-        <div class="fixed inset-0 z-40" @onclick="Close"></div>
-        <div class="absolute left-0 top-full z-50 mt-1 w-full rounded-md border bg-popover shadow-md animate-fade-in">
-            <div class="max-h-48 overflow-y-auto p-1">
-                @foreach (var item in FilteredOptions)
+        <div class="fixed inset-0 z-40" @onclick="Close" aria-hidden="true"></div>
+
+        <div class="absolute left-0 top-full z-50 mt-1 w-full min-w-[220px] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg"
+             role="listbox"
+             aria-multiselectable="true">
+
+            <!-- Search input -->
+            <div class="flex items-center gap-2 border-b px-3 py-2">
+                <svg class="h-4 w-4 shrink-0 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+                </svg>
+                <input @ref="_searchRef"
+                       type="text"
+                       class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                       placeholder="@SearchPlaceholder"
+                       autocomplete="off"
+                       @bind="_search"
+                       @bind:event="oninput"
+                       @onkeydown="OnSearchKeyDown"
+                       aria-label="Search options" />
+                @if (!string.IsNullOrEmpty(_search))
                 {
-                    var current = item;
-                    var isSelected = _selected.Contains(current);
-                    <div class="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
-                         @onclick="() => ToggleItem(current)"
-                         @onclick:stopPropagation="true">
-                        <svg class="h-4 w-4 text-primary @(isSelected ? "opacity-100" : "opacity-0")" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <polyline points="20 6 9 17 4 12"></polyline>
+                    <button type="button"
+                            class="text-muted-foreground hover:text-foreground transition-colors"
+                            @onclick="@(() => _search = "")"
+                            @onclick:stopPropagation="true">
+                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                         </svg>
-                        @(ItemLabel?.Invoke(current) ?? current?.ToString())
-                    </div>
-                }
-                @if (!FilteredOptions.Any())
-                {
-                    <p class="px-2 py-3 text-center text-sm text-muted-foreground">No options found.</p>
+                    </button>
                 }
             </div>
+
+            <!-- Select All row -->
+            @if (ShowSelectAll && !HasGroups)
+            {
+                var allFiltered    = FilteredOptions.ToList();
+                var allAreSelected = allFiltered.Any() && allFiltered.All(IsSelected);
+                var someSelected   = allFiltered.Any(IsSelected) && !allAreSelected;
+
+                <button type="button"
+                        class="flex w-full items-center gap-2.5 border-b px-3 py-2 text-sm text-left hover:bg-accent transition-colors"
+                        @onclick="ToggleSelectAll"
+                        @onclick:stopPropagation="true">
+                    <span class="flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 transition-colors
+                                 @(allAreSelected ? "border-primary bg-primary" : someSelected ? "border-primary bg-primary/30" : "border-muted-foreground/40")">
+                        @if (allAreSelected)
+                        {
+                            <svg class="h-2.5 w-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                        }
+                        else if (someSelected)
+                        {
+                            <svg class="h-2.5 w-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        }
+                    </span>
+                    <span class="font-medium">Select All</span>
+                    @if (ShowCount)
+                    {
+                        <span class="ml-auto text-xs text-muted-foreground">@_selected.Count / @allFiltered.Count</span>
+                    }
+                </button>
+            }
+
+            <!-- Options list -->
+            <div class="max-h-56 overflow-y-auto overscroll-contain p-1" role="group">
+                @if (!FilteredOptions.Any())
+                {
+                    <div class="flex flex-col items-center gap-1 py-6 text-sm text-muted-foreground">
+                        <svg class="h-8 w-8 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+                        </svg>
+                        <span>No results for "@_search"</span>
+                    </div>
+                }
+                else
+                {
+                    var flatList = FilteredOptions.ToList();
+
+                    @if (HasGroups)
+                    {
+                        var groups = flatList
+                            .GroupBy(o => ItemGroup?.Invoke(o) ?? "")
+                            .OrderBy(g => g.Key);
+
+                        @foreach (var group in groups)
+                        {
+                            if (!string.IsNullOrEmpty(group.Key))
+                            {
+                                <!-- Group header with optional select-all for the group -->
+                                var gItems       = group.ToList();
+                                var gAllSelected = gItems.All(IsSelected);
+                                var gSomeSelected = gItems.Any(IsSelected) && !gAllSelected;
+                                <div class="flex items-center gap-2 px-2 pt-2 pb-0.5">
+                                    @if (ShowSelectAll)
+                                    {
+                                        <button type="button"
+                                                class="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border-2 transition-colors
+                                                       @(gAllSelected ? "border-primary bg-primary" : gSomeSelected ? "border-primary bg-primary/30" : "border-muted-foreground/30")"
+                                                @onclick="@(() => ToggleGroupAll(gItems))"
+                                                @onclick:stopPropagation="true">
+                                            @if (gAllSelected)
+                                            {
+                                                <svg class="h-2 w-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                            }
+                                            else if (gSomeSelected)
+                                            {
+                                                <svg class="h-2 w-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3.5"><line x1="4" y1="12" x2="20" y2="12"/></svg>
+                                            }
+                                        </button>
+                                    }
+                                    <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">@group.Key</span>
+                                </div>
+                            }
+
+                            @foreach (var item in group)
+                            {
+                                var capturedItem  = item;
+                                var isSelected    = IsSelected(capturedItem);
+                                var isDisabled    = IsItemDisabled(capturedItem) || (MaxSelection > 0 && !isSelected && _selected.Count >= MaxSelection);
+                                var focusedIdx    = flatList.IndexOf(capturedItem);
+                                var isFocused     = _focusedIdx == focusedIdx;
+                                var lbl           = GetLabel(capturedItem);
+                                var desc          = ItemDescription?.Invoke(capturedItem);
+
+                                <div class="flex cursor-pointer items-start gap-2.5 rounded px-2 py-2 text-sm transition-colors
+                                            @(isFocused ? "bg-accent" : "hover:bg-accent")
+                                            @(isDisabled ? "pointer-events-none opacity-40" : "")"
+                                     role="option"
+                                     aria-selected="@isSelected.ToString().ToLowerInvariant()"
+                                     aria-disabled="@isDisabled.ToString().ToLowerInvariant()"
+                                     @onclick="@(() => ToggleItem(capturedItem))"
+                                     @onclick:stopPropagation="true"
+                                     @onmouseenter="@(() => _focusedIdx = focusedIdx)">
+                                    <span class="mt-px flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 transition-colors
+                                                 @(isSelected ? "border-primary bg-primary" : "border-muted-foreground/40 bg-background")">
+                                        @if (isSelected)
+                                        {
+                                            <svg class="h-2.5 w-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                        }
+                                    </span>
+                                    <div class="min-w-0 flex-1">
+                                        @if (ItemTemplate is not null)
+                                        {
+                                            @ItemTemplate(capturedItem)
+                                        }
+                                        else
+                                        {
+                                            <span class="font-medium leading-tight">@lbl</span>
+                                            @if (!string.IsNullOrEmpty(desc))
+                                            {
+                                                <span class="mt-0.5 block truncate text-xs text-muted-foreground">@desc</span>
+                                            }
+                                        }
+                                    </div>
+                                    @if (isSelected)
+                                    {
+                                        <svg class="ml-auto h-3.5 w-3.5 shrink-0 self-center text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                    }
+                                </div>
+                            }
+                        }
+                    }
+                    else
+                    {
+                        @for (int i = 0; i < flatList.Count; i++)
+                        {
+                            var capturedItem  = flatList[i];
+                            var capturedIdx   = i;
+                            var isSelected    = IsSelected(capturedItem);
+                            var isDisabled    = IsItemDisabled(capturedItem) || (MaxSelection > 0 && !isSelected && _selected.Count >= MaxSelection);
+                            var isFocused     = _focusedIdx == capturedIdx;
+                            var lbl           = GetLabel(capturedItem);
+                            var desc          = ItemDescription?.Invoke(capturedItem);
+
+                            <div class="flex cursor-pointer items-start gap-2.5 rounded px-2 py-2 text-sm transition-colors
+                                        @(isFocused ? "bg-accent" : "hover:bg-accent")
+                                        @(isDisabled ? "pointer-events-none opacity-40" : "")"
+                                 role="option"
+                                 aria-selected="@isSelected.ToString().ToLowerInvariant()"
+                                 @onclick="@(() => ToggleItem(capturedItem))"
+                                 @onclick:stopPropagation="true"
+                                 @onmouseenter="@(() => _focusedIdx = capturedIdx)">
+                                <span class="mt-px flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 transition-colors
+                                             @(isSelected ? "border-primary bg-primary" : "border-muted-foreground/40 bg-background")">
+                                    @if (isSelected)
+                                    {
+                                        <svg class="h-2.5 w-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                    }
+                                </span>
+                                <div class="min-w-0 flex-1">
+                                    @if (ItemTemplate is not null)
+                                    {
+                                        @ItemTemplate(capturedItem)
+                                    }
+                                    else
+                                    {
+                                        <span class="font-medium leading-tight">@lbl</span>
+                                        @if (!string.IsNullOrEmpty(desc))
+                                        {
+                                            <span class="mt-0.5 block truncate text-xs text-muted-foreground">@desc</span>
+                                        }
+                                    }
+                                </div>
+                                @if (isSelected)
+                                {
+                                    <svg class="ml-auto h-3.5 w-3.5 shrink-0 self-center text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                }
+                            </div>
+                        }
+                    }
+                }
+            </div>
+
+            <!-- Footer -->
+            @if (_selected.Count > 0)
+            {
+                <div class="flex items-center justify-between border-t px-3 py-2">
+                    <span class="text-xs text-muted-foreground">
+                        @_selected.Count @(_selected.Count == 1 ? "item" : "items") selected
+                        @if (MaxSelection > 0) { <text> (max @MaxSelection)</text> }
+                    </span>
+                    <button type="button"
+                            class="text-xs font-medium text-destructive hover:underline transition-colors"
+                            @onclick="ClearAll"
+                            @onclick:stopPropagation="true">
+                        Clear all
+                    </button>
+                </div>
+            }
         </div>
     }
 </div>
 
 @code {
+    // ── Parameters ───────────────────────────────────────────────────────────
     [Parameter] public IEnumerable<TItem>? Options { get; set; }
     [Parameter] public IList<TItem> SelectedItems { get; set; } = new List<TItem>();
     [Parameter] public EventCallback<IList<TItem>> SelectedItemsChanged { get; set; }
     [Parameter] public Func<TItem, string?>? ItemLabel { get; set; }
-    [Parameter] public string? Placeholder { get; set; } = "Select…";
+    [Parameter] public Func<TItem, string?>? ItemDescription { get; set; }
+    [Parameter] public Func<TItem, string?>? ItemGroup { get; set; }
+    [Parameter] public Func<TItem, bool>? ItemDisabled { get; set; }
+    [Parameter] public RenderFragment<TItem>? ItemTemplate { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Select options…";
+    [Parameter] public string SearchPlaceholder { get; set; } = "Search…";
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public int MaxSelection { get; set; } = 0;
+    [Parameter] public int MaxVisibleTags { get; set; } = 3;
+    [Parameter] public bool ShowSelectAll { get; set; } = true;
+    [Parameter] public bool ShowCount { get; set; } = true;
     [Parameter] public string? Class { get; set; }
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
 
+    // ── Internal state ───────────────────────────────────────────────────────
     private bool _open;
     private string _search = "";
+    private int _focusedIdx = -1;
+    private ElementReference _searchRef;
 
     private List<TItem> _selected => SelectedItems?.ToList() ?? [];
+
+    private bool HasGroups => ItemGroup is not null;
+
+    private string TriggerCls =>
+        "flex min-h-10 w-full cursor-pointer items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm ring-offset-background transition-all " +
+        (_open ? "border-ring ring-2 ring-ring ring-offset-2 " : "hover:border-ring/50 ") +
+        (Disabled ? "pointer-events-none cursor-not-allowed opacity-50 " : "");
 
     private IEnumerable<TItem> FilteredOptions =>
         (Options ?? []).Where(o =>
             string.IsNullOrWhiteSpace(_search) ||
-            (ItemLabel?.Invoke(o) ?? o?.ToString() ?? "")
-                .Contains(_search, StringComparison.OrdinalIgnoreCase));
+            GetLabel(o).Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+            (ItemDescription?.Invoke(o) ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase)
+        );
 
-    private void Open()  => _open = true;
-    private void Close() { _open = false; _search = ""; }
+    private string GetLabel(TItem item) =>
+        ItemLabel?.Invoke(item) ?? item?.ToString() ?? "";
 
+    private bool IsSelected(TItem item) =>
+        _selected.Contains(item);
+
+    private bool IsItemDisabled(TItem item) =>
+        ItemDisabled?.Invoke(item) ?? false;
+
+    // ── Lifecycle ────────────────────────────────────────────────────────────
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_open && !firstRender)
+        {
+            try { await _searchRef.FocusAsync(); } catch { }
+        }
+    }
+
+    // ── Open / close ─────────────────────────────────────────────────────────
+    private void ToggleOpen()
+    {
+        if (Disabled) return;
+        _open = !_open;
+        if (_open) { _search = ""; _focusedIdx = -1; }
+    }
+
+    private void Close()
+    {
+        _open = false;
+        _search = "";
+        _focusedIdx = -1;
+    }
+
+    // ── Selection ────────────────────────────────────────────────────────────
     private async Task ToggleItem(TItem item)
     {
+        if (IsItemDisabled(item)) return;
         var list = _selected;
-        if (list.Contains(item)) list.Remove(item);
-        else list.Add(item);
+        if (list.Contains(item))
+        {
+            list.Remove(item);
+        }
+        else
+        {
+            if (MaxSelection > 0 && list.Count >= MaxSelection) return;
+            list.Add(item);
+        }
         await SelectedItemsChanged.InvokeAsync(list);
     }
 
@@ -90,5 +412,98 @@
         var list = _selected;
         list.Remove(item);
         await SelectedItemsChanged.InvokeAsync(list);
+    }
+
+    private async Task ClearAll()
+    {
+        await SelectedItemsChanged.InvokeAsync(new List<TItem>());
+    }
+
+    private async Task ToggleSelectAll()
+    {
+        var filtered = FilteredOptions.ToList();
+        var allSelected = filtered.All(IsSelected);
+        if (allSelected)
+        {
+            // Deselect all filtered
+            var list = _selected.Where(s => !filtered.Contains(s)).ToList();
+            await SelectedItemsChanged.InvokeAsync(list);
+        }
+        else
+        {
+            // Select all filtered (respecting MaxSelection)
+            var list = _selected.ToList();
+            foreach (var item in filtered.Where(f => !list.Contains(f) && !IsItemDisabled(f)))
+            {
+                if (MaxSelection > 0 && list.Count >= MaxSelection) break;
+                list.Add(item);
+            }
+            await SelectedItemsChanged.InvokeAsync(list);
+        }
+    }
+
+    private async Task ToggleGroupAll(List<TItem> groupItems)
+    {
+        var allSelected = groupItems.All(IsSelected);
+        if (allSelected)
+        {
+            var list = _selected.Where(s => !groupItems.Contains(s)).ToList();
+            await SelectedItemsChanged.InvokeAsync(list);
+        }
+        else
+        {
+            var list = _selected.ToList();
+            foreach (var item in groupItems.Where(g => !list.Contains(g) && !IsItemDisabled(g)))
+            {
+                if (MaxSelection > 0 && list.Count >= MaxSelection) break;
+                list.Add(item);
+            }
+            await SelectedItemsChanged.InvokeAsync(list);
+        }
+    }
+
+    // ── Keyboard: trigger ────────────────────────────────────────────────────
+    private void OnTriggerKeyDown(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "Enter":
+            case " ":
+            case "ArrowDown":
+                if (!_open) { _open = true; _search = ""; _focusedIdx = 0; }
+                break;
+            case "Escape":
+                Close();
+                break;
+            case "Backspace":
+                if (!_open && _selected.Count > 0)
+                    _ = RemoveItem(_selected[^1]);
+                break;
+        }
+    }
+
+    // ── Keyboard: search input ───────────────────────────────────────────────
+    private async Task OnSearchKeyDown(KeyboardEventArgs e)
+    {
+        var flat = FilteredOptions.ToList();
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                _focusedIdx = Math.Min(_focusedIdx + 1, flat.Count - 1);
+                break;
+            case "ArrowUp":
+                _focusedIdx = Math.Max(_focusedIdx - 1, 0);
+                break;
+            case "Enter":
+                if (_focusedIdx >= 0 && _focusedIdx < flat.Count)
+                    await ToggleItem(flat[_focusedIdx]);
+                break;
+            case "Escape":
+                Close();
+                break;
+            case "Tab":
+                Close();
+                break;
+        }
     }
 }

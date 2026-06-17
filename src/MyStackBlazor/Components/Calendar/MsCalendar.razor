@@ -6,6 +6,7 @@
          TOOLBAR
     ═══════════════════════════════════════════════════ -->
     <div class="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2.5 flex-shrink-0">
+        <!-- Left: nav -->
         <div class="flex items-center gap-1">
             <button type="button"
                     class="rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors"
@@ -18,9 +19,62 @@
             <button type="button" class="rounded-md p-1.5 hover:bg-accent transition-colors" @onclick="NavigateNext" aria-label="Next">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             </button>
-            <h2 class="ml-1 min-w-[160px] text-sm font-semibold sm:text-base">@PeriodLabel</h2>
+            <h2 class="ml-1 min-w-[140px] text-sm font-semibold sm:text-base">@PeriodLabel</h2>
         </div>
-        <div class="flex items-center gap-2">
+        <!-- Right: search · focus · views · add -->
+        <div class="flex items-center gap-2 flex-wrap">
+            <!-- Search -->
+            <div class="relative">
+                <svg class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+                </svg>
+                <input type="text"
+                       class="h-8 rounded-md border bg-background pl-8 pr-8 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring w-40"
+                       placeholder="Search events…"
+                       value="@_searchQuery"
+                       @oninput="@(e => _searchQuery = e.Value?.ToString() ?? "")" />
+                @if (!string.IsNullOrEmpty(_searchQuery))
+                {
+                    <button type="button"
+                            class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            @onclick="@(() => _searchQuery = "")">
+                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                }
+            </div>
+            <!-- Individual / Department focus -->
+            <div class="flex overflow-hidden rounded-md border text-xs font-medium">
+                <button type="button"
+                        class="px-2.5 py-1.5 transition-colors @(_focusMode == FocusMode.Individual ? "bg-primary text-primary-foreground" : "hover:bg-accent")"
+                        @onclick="@(() => _focusMode = FocusMode.Individual)"
+                        title="Show my events only">Individual</button>
+                <button type="button"
+                        class="border-l px-2.5 py-1.5 transition-colors @(_focusMode == FocusMode.Department ? "bg-primary text-primary-foreground" : "hover:bg-accent")"
+                        @onclick="@(() => _focusMode = FocusMode.Department)"
+                        title="Show all team calendars">Department</button>
+            </div>
+            <!-- View switcher -->
+            <div class="flex overflow-hidden rounded-md border text-xs font-medium">
+                <button type="button"
+                        class="px-2.5 py-1.5 transition-colors @(_view == CalendarViewMode.Day ? "bg-primary text-primary-foreground" : "hover:bg-accent")"
+                        @onclick="@(() => SetView(CalendarViewMode.Day))">Day</button>
+                <button type="button"
+                        class="border-l px-2.5 py-1.5 transition-colors @(_view == CalendarViewMode.Week ? "bg-primary text-primary-foreground" : "hover:bg-accent")"
+                        @onclick="@(() => SetView(CalendarViewMode.Week))">Week</button>
+                <button type="button"
+                        class="border-l px-2.5 py-1.5 transition-colors @(_view == CalendarViewMode.Month ? "bg-primary text-primary-foreground" : "hover:bg-accent")"
+                        @onclick="@(() => SetView(CalendarViewMode.Month))">Month</button>
+                <button type="button"
+                        class="border-l px-2.5 py-1.5 transition-colors @(_view == CalendarViewMode.Year ? "bg-primary text-primary-foreground" : "hover:bg-accent")"
+                        @onclick="@(() => SetView(CalendarViewMode.Year))">Year</button>
+                <button type="button"
+                        class="border-l px-2.5 py-1.5 transition-colors @(_view == CalendarViewMode.Agenda ? "bg-primary text-primary-foreground" : "hover:bg-accent")"
+                        @onclick="@(() => SetView(CalendarViewMode.Agenda))">Agenda</button>
+                <button type="button"
+                        class="border-l px-2.5 py-1.5 transition-colors @(_view == CalendarViewMode.Timeline ? "bg-primary text-primary-foreground" : "hover:bg-accent")"
+                        @onclick="@(() => SetView(CalendarViewMode.Timeline))">Timeline</button>
+            </div>
+            <!-- Add button -->
             @if (AllowAdd)
             {
                 <button type="button"
@@ -31,17 +85,6 @@
                     <span class="sm:hidden">Add</span>
                 </button>
             }
-            <div class="flex overflow-hidden rounded-md border text-xs font-medium">
-                <button type="button"
-                        class="px-3 py-1.5 transition-colors @(_view == CalendarViewMode.Month ? "bg-primary text-primary-foreground" : "hover:bg-accent")"
-                        @onclick="@(() => SetView(CalendarViewMode.Month))">Month</button>
-                <button type="button"
-                        class="border-x px-3 py-1.5 transition-colors @(_view == CalendarViewMode.Week ? "bg-primary text-primary-foreground" : "hover:bg-accent")"
-                        @onclick="@(() => SetView(CalendarViewMode.Week))">Week</button>
-                <button type="button"
-                        class="px-3 py-1.5 transition-colors @(_view == CalendarViewMode.Day ? "bg-primary text-primary-foreground" : "hover:bg-accent")"
-                        @onclick="@(() => SetView(CalendarViewMode.Day))">Day</button>
-            </div>
         </div>
     </div>
 
@@ -50,10 +93,10 @@
     ═══════════════════════════════════════════════════ -->
     <div class="flex flex-1 overflow-hidden min-h-0">
 
-        <!-- ── Mini calendar sidebar ────────────────────── -->
+        <!-- ── Sidebar ────────────────────────────────── -->
         @if (ShowMiniCalendar)
         {
-            <aside class="hidden lg:flex w-52 flex-shrink-0 flex-col gap-4 border-r p-3 overflow-y-auto">
+            <aside class="hidden lg:flex w-56 flex-shrink-0 flex-col gap-4 border-r p-3 overflow-y-auto">
 
                 <!-- Mini month nav -->
                 <div>
@@ -79,7 +122,7 @@
                             {
                                 var isSel = day.Date == _currentDate.Date;
                                 var isOther = day.Month != _miniMonth.Month;
-                                var hasDot = _events.Any(e => day.Date >= e.Start.Date && day.Date <= e.End.Date);
+                                var hasDot = GetFilteredEvents(day.Date, day.Date).Any();
                                 <button type="button"
                                         class="flex flex-col items-center justify-center rounded-full py-0.5 text-[11px] transition-colors
                                                @(isSel ? "bg-primary text-primary-foreground font-semibold" :
@@ -97,16 +140,62 @@
                     }
                 </div>
 
-                <!-- Category legend -->
+                <!-- Calendars (people) -->
                 <div>
-                    <p class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Colors</p>
-                    <div class="space-y-1">
-                        @foreach (var c in _colors)
+                    <p class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Calendars</p>
+                    <!-- My Calendar -->
+                    <button type="button"
+                            class="flex w-full items-center gap-2 rounded px-1 py-1.5 text-left hover:bg-accent transition-colors"
+                            @onclick="@(() => _showMyCalendar = !_showMyCalendar)">
+                        <span class="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border-2 transition-colors"
+                              style="@(_showMyCalendar ? "background-color:#3b82f6;border-color:#3b82f6;" : "border-color:#9ca3af;")">
+                            @if (_showMyCalendar)
+                            {
+                                <svg class="h-2.5 w-2.5" fill="none" stroke="white" viewBox="0 0 24 24" stroke-width="3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            }
+                        </span>
+                        <span class="text-xs font-medium">My Calendar</span>
+                    </button>
+                    @foreach (var person in _people)
+                    {
+                        var p = person;
+                        var hex = GetColor(p.Color).Hex;
+                        <button type="button"
+                                class="flex w-full items-center gap-2 rounded px-1 py-1.5 text-left hover:bg-accent transition-colors"
+                                @onclick="@(() => p.IsVisible = !p.IsVisible)">
+                            <span class="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border-2 transition-colors"
+                                  style="@(p.IsVisible ? $"background-color:{hex};border-color:{hex};" : $"border-color:{hex};")">
+                                @if (p.IsVisible)
+                                {
+                                    <svg class="h-2.5 w-2.5" fill="none" stroke="white" viewBox="0 0 24 24" stroke-width="3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                }
+                            </span>
+                            <span class="text-xs truncate">@p.Name</span>
+                        </button>
+                    }
+                </div>
+
+                <!-- Category filter -->
+                <div>
+                    <div class="mb-2 flex items-center justify-between">
+                        <p class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Categories</p>
+                        @if (_filterCategory != null)
                         {
-                            <div class="flex items-center gap-2">
-                                <span class="h-2.5 w-2.5 rounded-full flex-shrink-0" style="background-color: @c.Hex;"></span>
-                                <span class="text-xs text-muted-foreground">@c.Label</span>
-                            </div>
+                            <button type="button" class="text-[10px] text-primary hover:underline" @onclick="@(() => _filterCategory = null)">Clear</button>
+                        }
+                    </div>
+                    <div class="space-y-0.5">
+                        @foreach (var cat in _allCategories)
+                        {
+                            var c = cat;
+                            var isActive = _filterCategory == c;
+                            <button type="button"
+                                    class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors
+                                           @(isActive ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-accent hover:text-foreground")"
+                                    @onclick="@(() => _filterCategory = isActive ? null : c)">
+                                <span class="h-2 w-2 flex-shrink-0 rounded-full @(isActive ? "bg-primary" : "bg-muted-foreground/40")"></span>
+                                @c
+                            </button>
                         }
                     </div>
                 </div>
@@ -397,6 +486,243 @@
                 </div>
             }
 
+            <!-- ════════════════════════════════════
+                 TIMELINE VIEW  (year gantt)
+            ════════════════════════════════════ -->
+            @if (_view == CalendarViewMode.Timeline)
+            {
+                var tlYear = _currentDate.Year;
+                const int DayPx = 26;
+                const int RowH  = 38;
+                <div class="flex flex-col h-full">
+                    <!-- Sticky header row: month + day numbers -->
+                    <div class="sticky top-0 z-20 flex border-b bg-background flex-shrink-0" style="min-width: calc(80px + 31 * @(DayPx)px);">
+                        <div class="w-20 flex-shrink-0 border-r py-2 px-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Month</div>
+                        <div class="flex-1 overflow-hidden">
+                            <!-- Week day legend (repeating Mo–Su headers scaled to days) -->
+                            <div class="flex">
+                                @for (int q = 1; q <= 31; q++)
+                                {
+                                    <div class="flex-shrink-0 border-r text-center text-[10px] py-1.5 text-muted-foreground font-medium" style="width: @(DayPx)px;">@q</div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Month rows -->
+                    <div class="overflow-auto flex-1" style="min-width: calc(80px + 31 * @(DayPx)px);">
+                        @for (int m = 1; m <= 12; m++)
+                        {
+                            var month     = new DateTime(tlYear, m, 1);
+                            var dim       = DateTime.DaysInMonth(tlYear, m);
+                            var monthEvts = GetFilteredEvents(month, month.AddDays(dim - 1));
+                            var isNow     = month.Month == DateTime.Today.Month && month.Year == DateTime.Today.Year;
+                            <div class="flex border-b hover:bg-accent/10 transition-colors" style="min-height: @(RowH)px;">
+                                <!-- Month label -->
+                                <div class="w-20 flex-shrink-0 flex items-center border-r px-2">
+                                    <span class="text-xs font-semibold @(isNow ? "text-primary" : "text-muted-foreground")">
+                                        @month.ToString("MMM")
+                                    </span>
+                                </div>
+                                <!-- Day grid + events -->
+                                <div class="relative flex flex-1" style="min-height: @(RowH)px;">
+                                    <!-- Day column backgrounds -->
+                                    @for (int d = 1; d <= 31; d++)
+                                    {
+                                        var isValidDay = d <= dim;
+                                        var date       = isValidDay ? month.AddDays(d - 1) : (DateTime?)null;
+                                        var isToday    = date?.Date == DateTime.Today;
+                                        var isWeekend  = date.HasValue && (date.Value.DayOfWeek == DayOfWeek.Saturday || date.Value.DayOfWeek == DayOfWeek.Sunday);
+                                        <div class="absolute top-0 bottom-0 border-r @(!isValidDay ? "bg-muted/30" : isToday ? "bg-primary/8" : isWeekend ? "bg-muted/20" : "")"
+                                             style="left: @((d - 1) * DayPx)px; width: @(DayPx)px;">
+                                        </div>
+                                    }
+                                    <!-- Today marker line -->
+                                    @if (isNow)
+                                    {
+                                        var todayCol = DateTime.Today.Day - 1;
+                                        <div class="absolute top-0 bottom-0 w-px bg-red-500 z-10 pointer-events-none"
+                                             style="left: @(todayCol * DayPx + DayPx / 2)px;"></div>
+                                    }
+                                    <!-- Events -->
+                                    @{
+                                        var rowTrack = new List<int>(); // end day per row slot
+                                    }
+                                    @foreach (var evt in monthEvts)
+                                    {
+                                        var evtStart = evt.Start.Month == m && evt.Start.Year == tlYear ? evt.Start.Day : 1;
+                                        var evtEnd   = evt.End.Month == m && evt.End.Year == tlYear ? evt.End.Day : dim;
+                                        var leftPx   = (evtStart - 1) * DayPx + 2;
+                                        var widthPx  = Math.Max((evtEnd - evtStart + 1) * DayPx - 4, DayPx - 4);
+                                        // find a free row slot
+                                        int slot = -1;
+                                        for (int i = 0; i < rowTrack.Count; i++)
+                                        {
+                                            if (rowTrack[i] < evtStart) { rowTrack[i] = evtEnd; slot = i; break; }
+                                        }
+                                        if (slot == -1) { slot = rowTrack.Count; rowTrack.Add(evtEnd); }
+                                        var topPx = 4 + slot * 22;
+                                        var capturedEvt = evt;
+                                        <div class="absolute truncate rounded px-1.5 text-[10px] font-medium text-white cursor-pointer hover:opacity-90 z-10"
+                                             style="left: @(leftPx)px; width: @(widthPx)px; top: @(topPx)px; height: 18px; line-height: 18px; @ColorBg(evt.Color)"
+                                             title="@evt.Title — @(evt.AllDay ? "All day" : $"{evt.Start:h:mm tt} – {evt.End:h:mm tt}")"
+                                             @onclick="@(() => OpenDetailModal(capturedEvt))">
+                                            @evt.Title
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- ════════════════════════════════════
+                 YEAR VIEW
+            ════════════════════════════════════ -->
+            @if (_view == CalendarViewMode.Year)
+            {
+                <div class="p-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                        @for (int m = 1; m <= 12; m++)
+                        {
+                            var month = new DateTime(_currentDate.Year, m, 1);
+                            var capturedMonth = month;
+                            var isCurrentMonth = month.Month == DateTime.Today.Month && month.Year == DateTime.Today.Year;
+                            <div class="rounded-lg border @(isCurrentMonth ? "border-primary/40 bg-primary/5" : "bg-card") p-3">
+                                <div class="mb-2 flex items-center justify-between">
+                                    <span class="text-sm font-semibold @(isCurrentMonth ? "text-primary" : "")">@month.ToString("MMMM")</span>
+                                    <button type="button"
+                                            class="rounded px-2 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                                            @onclick="@(() => { _currentDate = capturedMonth; SetView(CalendarViewMode.Month); })">
+                                        View
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-7 mb-1">
+                                    @foreach (var h in _dayAbbr)
+                                    {
+                                        <div class="text-center text-[9px] font-medium text-muted-foreground">@h</div>
+                                    }
+                                </div>
+                                @foreach (var week in GetMiniGrid(month))
+                                {
+                                    <div class="grid grid-cols-7">
+                                        @foreach (var day in week)
+                                        {
+                                            var isOther = day.Month != month.Month;
+                                            var isToday = day.Date == DateTime.Today;
+                                            var hasEvts = !isOther && GetExpandedEvents(day.Date, day.Date).Any();
+                                            var capturedDay = day;
+                                            <button type="button"
+                                                    class="relative flex flex-col items-center justify-center rounded py-0.5 text-[11px] transition-colors
+                                                           @(isOther ? "text-muted-foreground/20 pointer-events-none" :
+                                                             isToday ? "bg-primary text-primary-foreground font-semibold rounded-full" :
+                                                             "hover:bg-accent")"
+                                                    disabled="@isOther"
+                                                    @onclick="@(() => { _currentDate = capturedDay; SetView(CalendarViewMode.Day); })">
+                                                @day.Day
+                                                @if (hasEvts && !isToday)
+                                                {
+                                                    <span class="absolute bottom-0.5 h-0.5 w-0.5 rounded-full bg-primary"></span>
+                                                }
+                                            </button>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- ════════════════════════════════════
+                 AGENDA VIEW
+            ════════════════════════════════════ -->
+            @if (_view == CalendarViewMode.Agenda)
+            {
+                var agendaGroups = GetAgendaGroups();
+                <div class="overflow-y-auto h-full">
+                    @if (!agendaGroups.Any())
+                    {
+                        <div class="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
+                            <svg class="h-12 w-12 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                            <p class="text-sm font-medium">No upcoming events</p>
+                            <p class="text-xs">Next 60 days from @_currentDate.ToString("MMMM d, yyyy") are clear.</p>
+                            @if (AllowAdd)
+                            {
+                                <button type="button"
+                                        class="mt-2 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                                        @onclick="@(() => OpenAddModal(_currentDate))">
+                                    Add event
+                                </button>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="divide-y">
+                            @foreach (var group in agendaGroups)
+                            {
+                                <div class="flex gap-0 hover:bg-accent/20 transition-colors">
+                                    <!-- Date column -->
+                                    <div class="flex w-28 flex-shrink-0 flex-col items-center justify-start pt-4 pb-3 px-3 text-center">
+                                        <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">@group.Date.ToString("ddd")</span>
+                                        <span class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full text-lg font-bold
+                                                     @(group.Date == DateTime.Today ? "bg-primary text-primary-foreground" : group.Date < DateTime.Today ? "text-muted-foreground" : "text-foreground")">
+                                            @group.Date.Day
+                                        </span>
+                                        <span class="text-[10px] text-muted-foreground">@group.Date.ToString("MMM yyyy")</span>
+                                    </div>
+                                    <!-- Events column -->
+                                    <div class="flex-1 space-y-2 py-3 pr-4">
+                                        @foreach (var evt in group.Events)
+                                        {
+                                            var capturedEvt = evt;
+                                            <div class="flex items-start gap-3 rounded-lg border bg-card p-3 cursor-pointer hover:shadow-sm transition-all"
+                                                 @onclick="@(() => OpenDetailModal(capturedEvt))">
+                                                <div class="mt-1 h-3 w-1 flex-shrink-0 rounded-full" style="@ColorBg(evt.Color)"></div>
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="font-medium text-sm truncate">@evt.Title</span>
+                                                        @if (evt.IsRecurring)
+                                                        {
+                                                            <svg class="h-3 w-3 flex-shrink-0 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                                            </svg>
+                                                        }
+                                                    </div>
+                                                    <div class="mt-0.5 text-xs text-muted-foreground">
+                                                        @if (evt.AllDay)
+                                                        {
+                                                            <span>All day</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span>@evt.Start.ToString("h:mm tt") – @evt.End.ToString("h:mm tt")</span>
+                                                        }
+                                                    </div>
+                                                    @if (!string.IsNullOrEmpty(evt.Location))
+                                                    {
+                                                        <div class="mt-0.5 text-xs text-muted-foreground truncate">
+                                                            <span class="mr-1">📍</span>@evt.Location
+                                                        </div>
+                                                    }
+                                                </div>
+                                                @if (!string.IsNullOrEmpty(evt.Category))
+                                                {
+                                                    <span class="flex-shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium" style="@ColorPill(evt.Color)">@evt.Category</span>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
         </div>
     </div>
 </div>
@@ -459,6 +785,22 @@
                     <textarea class="@InputCls resize-none" rows="3" placeholder="Add description"
                               @oninput="@(e => _editingEvent.Description = e.Value?.ToString())">@_editingEvent.Description</textarea>
                 </div>
+                <!-- Calendar (person) -->
+                @if (_people.Any())
+                {
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium">Calendar</label>
+                        <select class="@InputCls"
+                                value="@(_editingEvent.PersonId ?? "")"
+                                @onchange="@(e => _editingEvent.PersonId = string.IsNullOrEmpty(e.Value?.ToString()) ? null : e.Value.ToString())">
+                            <option value="">My Calendar</option>
+                            @foreach (var p in _people)
+                            {
+                                <option value="@p.Id">@p.Name</option>
+                            }
+                        </select>
+                    </div>
+                }
                 <!-- Category -->
                 <div>
                     <label class="mb-1.5 block text-sm font-medium">Category</label>
@@ -474,6 +816,35 @@
                         <option value="Reminder">Reminder</option>
                         <option value="Holiday">Holiday</option>
                     </select>
+                </div>
+                <!-- Repeat -->
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium">Repeat</label>
+                    <select class="@InputCls"
+                            value="@_editingEvent.RecurrenceType"
+                            @onchange="@(e => _editingEvent.RecurrenceType = Enum.Parse<RecurrenceType>(e.Value?.ToString() ?? "None"))">
+                        <option value="None">Does not repeat</option>
+                        <option value="Daily">Daily</option>
+                        <option value="Weekly">Weekly</option>
+                        <option value="Monthly">Monthly</option>
+                        <option value="Yearly">Yearly</option>
+                    </select>
+                    @if (_editingEvent.RecurrenceType != RecurrenceType.None)
+                    {
+                        <div class="mt-2 flex items-center gap-2">
+                            <label class="text-xs text-muted-foreground whitespace-nowrap">Every</label>
+                            <input type="number" min="1" max="99" class="@InputCls w-20 text-xs"
+                                   value="@_editingEvent.RecurrenceInterval"
+                                   @oninput="@(e => { if (int.TryParse(e.Value?.ToString(), out var n)) _editingEvent.RecurrenceInterval = Math.Max(1, n); })" />
+                            <span class="text-xs text-muted-foreground">@(_editingEvent.RecurrenceType switch { RecurrenceType.Daily => "day(s)", RecurrenceType.Weekly => "week(s)", RecurrenceType.Monthly => "month(s)", _ => "year(s)" })</span>
+                        </div>
+                        <div class="mt-2">
+                            <label class="mb-1 block text-xs text-muted-foreground">End date (optional)</label>
+                            <input type="date" class="@InputCls text-xs"
+                                   value="@(_editingEvent.RecurrenceEndDate?.ToString("yyyy-MM-dd") ?? "")"
+                                   @oninput="@(e => { var s = e.Value?.ToString(); _editingEvent.RecurrenceEndDate = string.IsNullOrEmpty(s) ? null : DateTime.TryParse(s, out var d) ? d : null; })" />
+                        </div>
+                    }
                 </div>
                 <!-- Color picker -->
                 <div>
@@ -573,6 +944,20 @@
                         @_detailEvent.Location
                     </div>
                 }
+                <!-- Calendar owner -->
+                @{
+                    var detailPerson = _people.FirstOrDefault(p => p.Id == _detailEvent.PersonId);
+                }
+                @if (detailPerson is not null)
+                {
+                    <div class="flex items-center gap-3 text-sm text-muted-foreground">
+                        <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                        <span class="flex items-center gap-1.5">
+                            <span class="h-2.5 w-2.5 rounded-full flex-shrink-0" style="@ColorBg(detailPerson.Color)"></span>
+                            @detailPerson.Name
+                        </span>
+                    </div>
+                }
                 <!-- Description -->
                 @if (!string.IsNullOrEmpty(_detailEvent.Description))
                 {
@@ -626,6 +1011,7 @@
 @code {
     // ── Parameters ───────────────────────────────────────────────────────────
     [Parameter] public List<CalendarEvent> Events { get; set; } = [];
+    [Parameter] public List<CalendarPerson> People { get; set; } = [];
     [Parameter] public EventCallback<CalendarEvent> OnEventAdd { get; set; }
     [Parameter] public EventCallback<CalendarEvent> OnEventEdit { get; set; }
     [Parameter] public EventCallback<CalendarEvent> OnEventDelete { get; set; }
@@ -634,14 +1020,20 @@
     [Parameter] public bool ShowMiniCalendar { get; set; } = true;
     [Parameter] public bool AllowAdd { get; set; } = true;
     [Parameter] public CalendarViewMode DefaultView { get; set; } = CalendarViewMode.Month;
+    [Parameter] public FocusMode DefaultFocus { get; set; } = FocusMode.Individual;
     [Parameter] public string? Class { get; set; }
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
 
     // ── Internal state ───────────────────────────────────────────────────────
     private List<CalendarEvent> _events = [];
+    private List<CalendarPerson> _people = [];
     private DateTime _currentDate = DateTime.Today;
     private CalendarViewMode _view;
     private DateTime _miniMonth;
+    private FocusMode _focusMode;
+    private string _searchQuery = "";
+    private string? _filterCategory;
+    private bool _showMyCalendar = true;
 
     // Modal state
     private bool _showAddModal;
@@ -652,6 +1044,10 @@
     private bool _isEditing;
     private DateTime _moreDate;
     private List<CalendarEvent> _moreEvents = [];
+
+    // All unique categories derived from events
+    private static readonly string[] _allCategories =
+        ["Work", "Personal", "Family", "Health", "Social", "Reminder", "Holiday"];
 
     // ── Constants ────────────────────────────────────────────────────────────
     private const int HourPx = 64;        // pixels per hour in time grid
@@ -665,14 +1061,17 @@
     // ── Lifecycle ────────────────────────────────────────────────────────────
     protected override void OnInitialized()
     {
-        _events = [.. Events];
-        _view = DefaultView;
+        _events  = [.. Events];
+        _people  = [.. People];
+        _view    = DefaultView;
+        _focusMode = DefaultFocus;
         _miniMonth = DateTime.Today;
     }
 
     protected override void OnParametersSet()
     {
         _events = [.. Events];
+        _people = [.. People];
     }
 
     // ── Navigation ───────────────────────────────────────────────────────────
@@ -684,16 +1083,22 @@
 
     private void NavigatePrev() => _currentDate = _view switch
     {
-        CalendarViewMode.Month => _currentDate.AddMonths(-1),
-        CalendarViewMode.Week  => _currentDate.AddDays(-7),
-        _                      => _currentDate.AddDays(-1),
+        CalendarViewMode.Month    => _currentDate.AddMonths(-1),
+        CalendarViewMode.Week     => _currentDate.AddDays(-7),
+        CalendarViewMode.Year     => _currentDate.AddYears(-1),
+        CalendarViewMode.Timeline => _currentDate.AddYears(-1),
+        CalendarViewMode.Agenda   => _currentDate.AddDays(-30),
+        _                         => _currentDate.AddDays(-1),
     };
 
     private void NavigateNext() => _currentDate = _view switch
     {
-        CalendarViewMode.Month => _currentDate.AddMonths(1),
-        CalendarViewMode.Week  => _currentDate.AddDays(7),
-        _                      => _currentDate.AddDays(1),
+        CalendarViewMode.Month    => _currentDate.AddMonths(1),
+        CalendarViewMode.Week     => _currentDate.AddDays(7),
+        CalendarViewMode.Year     => _currentDate.AddYears(1),
+        CalendarViewMode.Timeline => _currentDate.AddYears(1),
+        CalendarViewMode.Agenda   => _currentDate.AddDays(30),
+        _                         => _currentDate.AddDays(1),
     };
 
     private void SetView(CalendarViewMode v) => _view = v;
@@ -709,9 +1114,12 @@
 
     private string PeriodLabel => _view switch
     {
-        CalendarViewMode.Month => _currentDate.ToString("MMMM yyyy"),
-        CalendarViewMode.Week  => WeekLabel(),
-        _                      => _currentDate.ToString("dddd, MMMM d, yyyy"),
+        CalendarViewMode.Month    => _currentDate.ToString("MMMM yyyy"),
+        CalendarViewMode.Week     => WeekLabel(),
+        CalendarViewMode.Year     => _currentDate.Year.ToString(),
+        CalendarViewMode.Timeline => _currentDate.Year.ToString(),
+        CalendarViewMode.Agenda   => $"Agenda — {_currentDate:MMM d, yyyy}",
+        _                         => _currentDate.ToString("dddd, MMMM d, yyyy"),
     };
 
     private string WeekLabel()
@@ -763,8 +1171,8 @@
         var ws = week[0].Date;
         var we = week[6].Date;
 
-        var evts = _events
-            .Where(e => (e.AllDay || e.IsMultiDay) && e.Start.Date <= we && e.End.Date >= ws)
+        var evts = GetFilteredEvents(ws, we)
+            .Where(e => e.AllDay || e.IsMultiDay)
             .OrderBy(e => e.Start)
             .ThenByDescending(e => (e.End - e.Start).TotalDays)
             .ToList();
@@ -793,8 +1201,8 @@
 
     // Only single-day timed events for month day cells
     private List<CalendarEvent> GetDayEvents(DateTime date)
-        => _events
-            .Where(e => !e.AllDay && !e.IsMultiDay && e.Start.Date == date.Date)
+        => GetFilteredEvents(date.Date, date.Date)
+            .Where(e => !e.AllDay && !e.IsMultiDay)
             .OrderBy(e => e.Start)
             .ToList();
 
@@ -822,21 +1230,21 @@
     {
         var ws = days[0].Date;
         var we = days[6].Date;
-        return _events
-            .Where(e => (e.AllDay || e.IsMultiDay) && e.Start.Date <= we && e.End.Date >= ws)
+        return GetFilteredEvents(ws, we)
+            .Where(e => e.AllDay || e.IsMultiDay)
             .OrderBy(e => e.Start)
             .ToList();
     }
 
     private List<CalendarEvent> GetAllDayEventsForDay(DateTime date)
-        => _events
-            .Where(e => (e.AllDay || e.IsMultiDay) && e.Start.Date <= date.Date && e.End.Date >= date.Date)
+        => GetFilteredEvents(date.Date, date.Date)
+            .Where(e => e.AllDay || e.IsMultiDay)
             .OrderBy(e => e.Start)
             .ToList();
 
     private List<CalendarEvent> GetTimedEventsForDay(DateTime date)
-        => _events
-            .Where(e => !e.AllDay && !e.IsMultiDay && e.Start.Date == date.Date)
+        => GetFilteredEvents(date.Date, date.Date)
+            .Where(e => !e.AllDay && !e.IsMultiDay)
             .OrderBy(e => e.Start)
             .ToList();
 
@@ -845,6 +1253,115 @@
 
     private int EventHeightPx(CalendarEvent e)
         => Math.Max((int)(e.End - e.Start).TotalMinutes, 30);
+
+    // ── Filtered + expanded events (single entry point for all views) ─────────
+    private List<CalendarEvent> GetFilteredEvents(DateTime from, DateTime to)
+    {
+        var expanded = GetExpandedEvents(from, to);
+
+        // Focus mode
+        if (_focusMode == FocusMode.Individual)
+            expanded = expanded.Where(e => string.IsNullOrEmpty(e.PersonId)).ToList();
+        else
+            expanded = expanded.Where(e => string.IsNullOrEmpty(e.PersonId)
+                                        ? _showMyCalendar
+                                        : _people.FirstOrDefault(p => p.Id == e.PersonId)?.IsVisible != false).ToList();
+
+        // Category filter
+        if (!string.IsNullOrEmpty(_filterCategory))
+            expanded = expanded.Where(e => e.Category == _filterCategory).ToList();
+
+        // Search query
+        if (!string.IsNullOrEmpty(_searchQuery))
+        {
+            var q = _searchQuery.ToLowerInvariant();
+            expanded = expanded.Where(e =>
+                e.Title.ToLowerInvariant().Contains(q) ||
+                (e.Location?.ToLowerInvariant().Contains(q) ?? false) ||
+                (e.Description?.ToLowerInvariant().Contains(q) ?? false) ||
+                (e.Category?.ToLowerInvariant().Contains(q) ?? false)
+            ).ToList();
+        }
+
+        return expanded;
+    }
+
+    // ── Recurring event expansion ─────────────────────────────────────────────
+    private List<CalendarEvent> GetExpandedEvents(DateTime from, DateTime to)
+    {
+        var result = new List<CalendarEvent>();
+        foreach (var evt in _events)
+        {
+            if (evt.RecurrenceType == RecurrenceType.None)
+            {
+                if (evt.End.Date >= from && evt.Start.Date <= to)
+                    result.Add(evt);
+                continue;
+            }
+
+            var duration = evt.End - evt.Start;
+            var occStart = evt.Start;
+            var maxEnd = evt.RecurrenceEndDate ?? to.AddDays(1);
+            var count = 0;
+            var maxCount = evt.RecurrenceCount ?? 500;
+
+            while (occStart.Date <= to && occStart.Date <= maxEnd && count < maxCount)
+            {
+                if (occStart.Date + duration >= from.Date)
+                {
+                    result.Add(new CalendarEvent
+                    {
+                        Id              = evt.Id + "_" + occStart.Ticks,
+                        Title           = evt.Title,
+                        Description     = evt.Description,
+                        Start           = occStart,
+                        End             = occStart + duration,
+                        AllDay          = evt.AllDay,
+                        Color           = evt.Color,
+                        Category        = evt.Category,
+                        Location        = evt.Location,
+                        PersonId        = evt.PersonId,
+                        RecurrenceType  = evt.RecurrenceType,
+                    });
+                }
+
+                occStart = evt.RecurrenceType switch
+                {
+                    RecurrenceType.Daily   => occStart.AddDays(evt.RecurrenceInterval),
+                    RecurrenceType.Weekly  => occStart.AddDays(7 * evt.RecurrenceInterval),
+                    RecurrenceType.Monthly => occStart.AddMonths(evt.RecurrenceInterval),
+                    RecurrenceType.Yearly  => occStart.AddYears(evt.RecurrenceInterval),
+                    _                      => to.AddDays(1), // stop
+                };
+                count++;
+            }
+        }
+        return result.OrderBy(e => e.Start).ToList();
+    }
+
+    // ── Agenda helpers ────────────────────────────────────────────────────────
+    private record AgendaGroup(DateTime Date, List<CalendarEvent> Events);
+
+    private List<AgendaGroup> GetAgendaGroups()
+    {
+        var from = _currentDate.Date;
+        var to   = from.AddDays(59);
+        var expanded = GetFilteredEvents(from, to);
+        var groups = new List<AgendaGroup>();
+
+        for (var d = from; d <= to; d = d.AddDays(1))
+        {
+            var dayEvts = expanded
+                .Where(e => d.Date >= e.Start.Date && d.Date <= e.End.Date)
+                .OrderBy(e => e.AllDay ? 0 : 1)
+                .ThenBy(e => e.Start)
+                .ToList();
+
+            if (dayEvts.Any())
+                groups.Add(new AgendaGroup(d, dayEvts));
+        }
+        return groups;
+    }
 
     // ── Color helpers (inline styles, dark-mode friendly) ────────────────────
     private record ColorDef(string Key, string Label, string Hex, string LightBg, string DarkText);
@@ -939,15 +1456,20 @@
         _showDetailModal = false;
         _editingEvent = new CalendarEvent
         {
-            Id          = _detailEvent.Id,
-            Title       = _detailEvent.Title,
-            Description = _detailEvent.Description,
-            Start       = _detailEvent.Start,
-            End         = _detailEvent.End,
-            AllDay      = _detailEvent.AllDay,
-            Color       = _detailEvent.Color,
-            Category    = _detailEvent.Category,
-            Location    = _detailEvent.Location,
+            Id                   = _detailEvent.Id,
+            Title                = _detailEvent.Title,
+            Description          = _detailEvent.Description,
+            Start                = _detailEvent.Start,
+            End                  = _detailEvent.End,
+            AllDay               = _detailEvent.AllDay,
+            Color                = _detailEvent.Color,
+            Category             = _detailEvent.Category,
+            Location             = _detailEvent.Location,
+            PersonId             = _detailEvent.PersonId,
+            RecurrenceType       = _detailEvent.RecurrenceType,
+            RecurrenceInterval   = _detailEvent.RecurrenceInterval,
+            RecurrenceEndDate    = _detailEvent.RecurrenceEndDate,
+            RecurrenceCount      = _detailEvent.RecurrenceCount,
         };
         _isEditing = true;
         _showAddModal = true;

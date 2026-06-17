@@ -191,6 +191,83 @@
     </div>
 </DemoSection>
 
+<!-- MultiSelect -->
+<DemoSection Title="Multi-Select Dropdown"
+             Description="Searchable multi-select with tag pills, Select All, grouping, descriptions, keyboard navigation, and max-selection limit."
+             Code="@_multiSelectCode">
+    <div class="w-full max-w-2xl space-y-8">
+
+        <!-- Basic -->
+        <div class="space-y-2">
+            <p class="text-sm font-semibold">Basic</p>
+            <MultiSelect TItem="string"
+                         Options="_countries"
+                         @bind-SelectedItems="_selCountries"
+                         ItemLabel="x => x"
+                         Placeholder="Select countries…" />
+            @if (_selCountries.Any())
+            {
+                <p class="text-xs text-muted-foreground">Selected: <strong>@string.Join(", ", _selCountries)</strong></p>
+            }
+        </div>
+
+        <!-- With descriptions + groups -->
+        <div class="space-y-2">
+            <p class="text-sm font-semibold">With Groups &amp; Descriptions</p>
+            <MultiSelect TItem="TechOption"
+                         Options="_techOptions"
+                         @bind-SelectedItems="_selTech"
+                         ItemLabel="x => x.Name"
+                         ItemDescription="x => x.Description"
+                         ItemGroup="x => x.Group"
+                         Placeholder="Select technologies…"
+                         SearchPlaceholder="Search tech stack…" />
+            @if (_selTech.Any())
+            {
+                <p class="text-xs text-muted-foreground">Selected: <strong>@string.Join(", ", _selTech.Select(t => t.Name))</strong></p>
+            }
+        </div>
+
+        <!-- Max selection + custom template -->
+        <div class="space-y-2">
+            <p class="text-sm font-semibold">Max 3 Selections + Custom Item Template</p>
+            <MultiSelect TItem="TeamMember"
+                         Options="_teamMembers"
+                         @bind-SelectedItems="_selMembers"
+                         ItemLabel="m => m.Name"
+                         MaxSelection="3"
+                         Placeholder="Assign up to 3 members…">
+                <ItemTemplate Context="m">
+                    <div class="flex items-center gap-2">
+                        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                              style="background-color: @m.AvatarColor;">
+                            @m.Initials
+                        </span>
+                        <div>
+                            <div class="text-sm font-medium leading-tight">@m.Name</div>
+                            <div class="text-xs text-muted-foreground">@m.Role</div>
+                        </div>
+                    </div>
+                </ItemTemplate>
+            </MultiSelect>
+            @if (_selMembers.Any())
+            {
+                <p class="text-xs text-muted-foreground">Assigned: <strong>@string.Join(", ", _selMembers.Select(m => m.Name))</strong></p>
+            }
+        </div>
+
+        <!-- Disabled state -->
+        <div class="space-y-2">
+            <p class="text-sm font-semibold">Disabled</p>
+            <MultiSelect TItem="string"
+                         Options="_countries"
+                         SelectedItems='new List<string> { "India", "Germany" }'
+                         Placeholder="Disabled multi-select"
+                         Disabled="true" />
+        </div>
+    </div>
+</DemoSection>
+
 <!-- ListBox -->
 <DemoSection Title="List Box"
              Description="Scrollable selection list. Set MultiSelect for multiple picks."
@@ -313,6 +390,53 @@
     private bool _ffDisabled;
     private string? _selectedFramework;
     private IList<string>? _selectedFrameworks;
+
+    // ── MultiSelect data ─────────────────────────────────────────────────────
+    private IList<string> _selCountries = new List<string>();
+    private IList<TechOption> _selTech = new List<TechOption>();
+    private IList<TeamMember> _selMembers = new List<TeamMember>();
+
+    private record TechOption(string Name, string Group, string Description);
+    private record TeamMember(string Name, string Role, string Initials, string AvatarColor);
+
+    private readonly List<string> _countries =
+    [
+        "Australia", "Brazil", "Canada", "China", "France",
+        "Germany", "India", "Japan", "Mexico", "Nigeria",
+        "South Korea", "Spain", "United Kingdom", "United States", "Vietnam",
+    ];
+
+    private readonly List<TechOption> _techOptions =
+    [
+        new("React",      "Frontend",  "UI library by Meta"),
+        new("Vue",        "Frontend",  "Progressive JS framework"),
+        new("Angular",    "Frontend",  "Full-featured SPA framework"),
+        new("Svelte",     "Frontend",  "Compiler-based framework"),
+        new("Blazor",     "Frontend",  ".NET web UI framework"),
+        new("Node.js",    "Backend",   "JS runtime on V8"),
+        new("ASP.NET",    "Backend",   "Cross-platform web framework"),
+        new("Django",     "Backend",   "Python web framework"),
+        new("FastAPI",    "Backend",   "Modern Python API framework"),
+        new("PostgreSQL", "Database",  "Advanced open-source RDBMS"),
+        new("MongoDB",    "Database",  "Document-oriented NoSQL DB"),
+        new("Redis",      "Database",  "In-memory data structure store"),
+        new("Docker",     "DevOps",    "Container platform"),
+        new("Kubernetes", "DevOps",    "Container orchestration"),
+        new("GitHub CI",  "DevOps",    "GitHub Actions CI/CD"),
+    ];
+
+    private readonly List<TeamMember> _teamMembers =
+    [
+        new("Alice Chen",    "Engineering Lead",    "AC", "#3b82f6"),
+        new("Bob Martinez",  "Senior Developer",    "BM", "#22c55e"),
+        new("Carol Smith",   "UX Designer",         "CS", "#a855f7"),
+        new("Dave Johnson",  "Product Manager",     "DJ", "#f97316"),
+        new("Eve Williams",  "QA Engineer",         "EW", "#ec4899"),
+        new("Frank Lee",     "DevOps Engineer",     "FL", "#14b8a6"),
+        new("Grace Park",    "Data Scientist",      "GP", "#eab308"),
+        new("Henry Brown",   "Security Engineer",   "HB", "#ef4444"),
+    ];
+
     private string? _brandColor = "#3b82f6";
     private string? _accentColor = "#8b5cf6";
     private string? _nativeColor;
@@ -393,6 +517,53 @@
         <FormField Label="Email" For="email" Required ErrorMessage="@_emailError">
             <Input Id="email" Type="email" @bind-Value="_email" />
         </FormField>
+        """;
+
+    private const string _multiSelectCode = """
+        <!-- Basic string list -->
+        <MultiSelect TItem="string"
+                     Options="_countries"
+                     @bind-SelectedItems="_selCountries"
+                     ItemLabel="x => x"
+                     Placeholder="Select countries…" />
+
+        <!-- Grouped with descriptions -->
+        <MultiSelect TItem="TechOption"
+                     Options="_techOptions"
+                     @bind-SelectedItems="_selTech"
+                     ItemLabel="x => x.Name"
+                     ItemDescription="x => x.Description"
+                     ItemGroup="x => x.Group"
+                     Placeholder="Select technologies…" />
+
+        <!-- Max 3, custom template -->
+        <MultiSelect TItem="TeamMember"
+                     Options="_teamMembers"
+                     @bind-SelectedItems="_selMembers"
+                     ItemLabel="m => m.Name"
+                     MaxSelection="3"
+                     Placeholder="Assign up to 3 members…">
+            <ItemTemplate Context="m">
+                <div class="flex items-center gap-2">
+                    <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                          style="background-color: @m.AvatarColor;">@m.Initials</span>
+                    <div>
+                        <div class="text-sm font-medium">@m.Name</div>
+                        <div class="text-xs text-muted-foreground">@m.Role</div>
+                    </div>
+                </div>
+            </ItemTemplate>
+        </MultiSelect>
+
+        @code {
+            // data models
+            record TechOption(string Name, string Group, string Description);
+            record TeamMember(string Name, string Role, string Initials, string AvatarColor);
+
+            IList<string>     _selCountries = [];
+            IList<TechOption> _selTech      = [];
+            IList<TeamMember> _selMembers   = [];
+        }
         """;
 
     private const string _listboxCode = """
