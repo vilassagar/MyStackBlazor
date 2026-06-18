@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.1] - 2026-06-18
+
+### Bug Fixes
+
+1. Fix form component border visibility in light and dark themes — changed all form input borders from `border` (1 px) to `border-2` (2 px) across `Input`, `Textarea`, `Checkbox`, `Combobox`, `AutoComplete`, `Select`, `ListBox`, `DatePicker`, `DateRangePicker`, `DateTimePicker`, `TimePicker`, `NumericInput`, `InputOtp`, `MaskedTextBox`, `MultiColumnComboBox`, `DropDownTree`, `FloatingLabel`, and `ColorPicker`.
+
+### New
+
+2. Add `ControlShowcase` template — a single-page component that demos every form and common component in one view.
+3. Add new Heroicons to `Icons.cs` — expanded bundled SVG icon set.
+
+---
+
 ## [1.2.0] - 2026-06-17
 
 ### New Components

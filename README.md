@@ -169,7 +169,7 @@ dotnet add package MyStackBlazor
 Or add via the NuGet Package Manager:
 
 ```xml
-<PackageReference Include="MyStackBlazor" Version="1.2.0" />
+<PackageReference Include="MyStackBlazor" Version="1.2.1" />
 ```
 
 ---
