@@ -1,7 +1,8 @@
 # MyStackBlazor — Component Reference
 
 > **Stack:** Blazor (.NET 10) · Tailwind CSS v4 · No external JS dependencies  
-> **Legend:** ✅ Available · 🆕 Recently added · ❌ Not implemented · ⚠️ Partial / equivalent exists
+> **Version:** 1.2.0  
+> **Legend:** ✅ Available · 🆕 Added in v1.2.0 · ❌ Not implemented · ⚠️ Partial / equivalent exists
 
 ---
 
@@ -12,7 +13,9 @@
 - [Form / Editors](#form--editors)
 - [Layout](#layout)
 - [Data Display](#data-display)
+- [Charts](#charts)
 - [Overlays](#overlays)
+- [Enterprise Packages](#enterprise-packages)
 - [Missing — Requires External Library](#missing--requires-external-library)
 
 ---
@@ -83,7 +86,7 @@
 | ✅ | **InputOtp** | `Components/Form/InputOtp.razor` | One-time-password digit boxes |
 | 🆕 | **ListBox** | `Components/Form/ListBox.razor` | Scrollable list, single / multi-select |
 | 🆕 | **MaskedTextBox** | `Components/Form/MaskedTextBox.razor` | Pattern mask (`0`=digit, `a`=letter, `*`=any) |
-| 🆕 | **MultiSelect** | `Components/Form/MultiSelect.razor` | Tag-style multi-value selector with search |
+| ✅ | **MultiSelect** | `Components/Form/MultiSelect.razor` | Generic `TItem` multi-select: tag pills, search, grouping, Select All, `MaxSelection`, custom `ItemTemplate`, keyboard nav (↑↓ Enter Backspace Esc) |
 | ✅ | **NumericInput** | `Components/Form/NumericInput.razor` | Number input with step/min/max (NumericTextBox equivalent) |
 | ✅ | **RadioGroup** | `Components/Form/RadioGroup.razor` | Radio button group with `RadioGroupItem` |
 | 🆕 | **RangeSlider** | `Components/Form/RangeSlider.razor` | Dual-handle slider for value ranges |
@@ -121,11 +124,17 @@
 | Status | Component | File | Notes |
 |--------|-----------|------|-------|
 | ✅ | **Alert** | `Components/Data/Alert.razor` | With `AlertTitle` and `AlertDescription` |
-| ✅ | **DataTable** | `Components/Data/DataTable.razor` | Sort · global search · **column filters** · pagination · **infinite scroll** · virtualize |
-| 🆕 | **ListView** | `Components/Data/ListView.razor` | Scrollable typed item list with selection |
+| ✅ | **AdvancedTable** | `Components/Data/AdvancedTable.razor` | Extended table with column-level filtering, grouping, custom cell renderers |
+| 🆕 | **Calendar (MsCalendar)** | `Components/Calendar/MsCalendar.razor` | 6 views (Day/Week/Month/Year/Agenda/Timeline), recurring events, multi-person calendars, Individual/Department focus, category sidebar, live search |
+| ✅ | **DataTable** | `Components/Data/DataTable.razor` | Sort · global search · column filters · pagination · infinite scroll · virtualize · row selection |
+| ✅ | **FileManager** | `Components/Data/FileManager.razor` | Tree sidebar + grid/list view, breadcrumb nav, search, rename/delete callbacks |
+| ✅ | **ListView** | `Components/Data/ListView.razor` | Scrollable typed item list with custom `ItemTemplate` and virtualization |
+| ✅ | **PivotGrid** | `Components/Data/PivotGrid.razor` | Cross-tab matrix with row/column totals and custom aggregate function (sum/avg/count/min/max) |
 | ✅ | **Progress** | `Components/Data/Progress.razor` | Linear progress bar |
 | ✅ | **Table** | `Components/Data/Table.razor` | Semantic HTML table primitives |
-| ✅ | **TreeView** | `Components/Data/TreeView.razor` | Recursive collapsible tree (TreeList equivalent) |
+| ✅ | **TreeList** | `Components/Data/TreeList.razor` | Hierarchical data table with expand/collapse rows and `aria-treegrid` semantics |
+| ✅ | **TreeView** | `Components/Data/TreeView.razor` | Recursive collapsible tree with `TreeViewNode` |
+| ✅ | **VirtualList** | `Components/Data/MsVirtualList.razor` | Virtualized list powered by Blazor's `Virtualize` component |
 
 ---
 
@@ -141,6 +150,24 @@
 | 🆕 | **PieChart** | `Components/Charts/PieChart.razor` | Pie or donut; percentage labels; center label; hover tooltip |
 
 **Shared models** (`Components/Charts/ChartModels.cs`): `ChartSeries`, `ChartSegment`, `GaugeThreshold`
+
+---
+
+## Enterprise Packages
+
+Installed separately — see [Modular Packages](#modular-packages) in README.
+
+| Status | Component / Service | Package | Notes |
+|--------|---------------------|---------|-------|
+| ✅ | **MsDataGrid** | `MyStackBlazor.DataGrid` | Virtualized enterprise grid, server-side sort/filter/search, Excel export (ClosedXML) |
+| ✅ | **MsDataGridColumn** | `MyStackBlazor.DataGrid` | Non-rendering column definition child component |
+| ✅ | **GridExporter** | `MyStackBlazor.DataGrid` | `ExportToExcel()` → `byte[]` download |
+| ✅ | **MsStore / MsStoreConsumer** | `MyStackBlazor.Core` | Lightweight Fluxor-style state management |
+| ✅ | **IHtmlSanitizer / DefaultHtmlSanitizer** | `MyStackBlazor.Security` | XSS sanitization via HtmlSanitizer 9 |
+| ✅ | **ITokenProvider** | `MyStackBlazor.Security` | Auth token abstraction (In-memory / LocalStorage) |
+| ✅ | **IFocusManager / FocusManager** | `MyStackBlazor.Accessibility` | Programmatic focus, modal trap, `returnFocus` |
+| ✅ | **MsInteractiveBase** | `MyStackBlazor.Accessibility` | ARIA-aware `ComponentBase` with `AriaLabel`, `Disabled`, `ComponentId` |
+| ✅ | **MsRtlProvider** | `MyStackBlazor.Localization` | RTL/LTR wrapper based on `CultureInfo.CurrentUICulture` |
 
 ---
 
@@ -196,11 +223,11 @@ Basic charts (Line, Bar, Pie, Gauge) are now built-in — see [Charts](#charts) 
 | PDF Viewer | [Syncfusion Blazor PDF Viewer](https://blazor.syncfusion.com/documentation/pdfviewer/getting-started) or [PSPDFKit](https://pspdfkit.com/guides/blazor) |
 
 ### 📅 Scheduling
-| Component | Recommended Library |
-|-----------|-------------------|
-| Calendar | [Radzen Blazor Scheduler](https://blazor.radzen.com/scheduler) |
-| Gantt | [Syncfusion Blazor Gantt Chart](https://blazor.syncfusion.com/documentation/gantt-chart/getting-started) |
-| Scheduler | [Radzen Blazor Scheduler](https://blazor.radzen.com/scheduler) |
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Calendar | ✅ | `MsCalendar` — Day/Week/Month/Year/Agenda/Timeline views, recurring events, multi-person, search |
+| Gantt | ✅ | `MsCalendar` Timeline view provides a year Gantt (month rows × day columns with event bars) |
+| Scheduler (time-slot) | ⚠️ | Day/Week views provide time-slot scheduling; for resource scheduling use [Radzen Blazor Scheduler](https://blazor.radzen.com/scheduler) |
 
 ### 🗺️ Diagrams & Maps
 | Component | Recommended Library |
@@ -219,8 +246,10 @@ Basic charts (Line, Bar, Pie, Gauge) are now built-in — see [Charts](#charts) 
 ### 🗂️ Complex Data Components
 | Component | Status | Notes |
 |-----------|--------|-------|
-| TreeList | 🆕 | Hierarchical data table with expand/collapse, ARIA treegrid semantics |
-| PivotGrid | 🆕 | Cross-tab matrix with aggregation, row/column totals, custom aggregate func |
+| TreeList | ✅ | `TreeList<T>` — hierarchical data table with expand/collapse, ARIA treegrid semantics |
+| PivotGrid | ✅ | `PivotGrid<T>` — cross-tab matrix with aggregation, row/column totals, custom aggregate func |
+| Calendar / Scheduler | ✅ | `MsCalendar` — 6 views, recurring events, multi-person, search, Individual/Department mode |
+| Enterprise DataGrid | ✅ | `MsDataGrid<T>` (`MyStackBlazor.DataGrid` package) — server-side sort/filter/search/export |
 | Spreadsheet | ❌ | Use [NPOI](https://github.com/tonyqus/npoi) for server-side processing |
 | Grid (advanced) | ✅ | `AdvancedTable` covers sorting, filtering, pagination, virtualization |
 | Filter (standalone) | ✅ | Per-column + global search built into `DataTable` and `AdvancedTable` |
@@ -229,19 +258,19 @@ Basic charts (Line, Bar, Pie, Gauge) are now built-in — see [Charts](#charts) 
 ### ✏️ Editors (Complex)
 | Component | Status | Notes |
 |-----------|--------|-------|
-| MarkdownEditor | 🆕 | Split edit/preview, toolbar with 13 format actions, live markdown parser, word/char count |
-| DropDownTree | 🆕 | Hierarchical tree in a dropdown, expand/collapse, search, `AllowBranchSelect` |
-| MultiColumnComboBox | 🆕 | Multi-column grid dropdown, searchable across all columns |
+| MarkdownEditor | ✅ | Split edit/preview, toolbar with 13 format actions, live markdown parser, word/char count |
+| DropDownTree | ✅ | Hierarchical tree in a dropdown, expand/collapse, search, `AllowBranchSelect` |
+| MultiColumnComboBox | ✅ | Multi-column grid dropdown, searchable across all columns |
 | Rich Text Editor (WYSIWYG) | ❌ | Use [Blazor.Quill](https://github.com/Blazored/BlazoredTextEditor) or [TinyMCE](https://www.tiny.cloud/docs/integrations/blazor) |
 | Signature | ❌ | Requires canvas + pointer events JS |
 | ColorGradient | ❌ | Advanced canvas-based picker — use `ColorPicker` for basic needs |
-| MaskedTextBox | 🆕 | Basic pattern masking included |
+| MaskedTextBox | ✅ | Basic pattern masking included (`0`=digit, `a`=letter, `*`=any) |
 
 ### 📁 File Management
 | Component | Status | Notes |
 |-----------|--------|-------|
 | DropZone / Upload | ✅ | `FileUpload` — drag-drop + browse, image preview, multi-file |
-| FileManager | 🆕 | Tree sidebar + grid/list view, breadcrumb nav, search, delete callback |
+| FileManager | ✅ | Tree sidebar + grid/list view, breadcrumb nav, search, rename/delete callbacks |
 | FileSelect | ✅ | `FileUpload` covers file selection |
 
 ---
@@ -252,20 +281,47 @@ Basic charts (Line, Bar, Pie, Gauge) are now built-in — see [Charts](#charts) 
 |----------|---------------------|--------------|
 | Common / Display | 13 | 0 |
 | Navigation | 20 | 0 |
-| Form / Editors | 25 | 5 (rich editor, signature, color gradient, dropdown tree, multi-column combobox) |
+| Form / Editors | 25 | 3 (rich editor, signature, color gradient) |
 | Layout | 13 | 0 |
-| Data Display | 6 | 2 (PivotGrid, Spreadsheet) |
+| Data Display | 12 | 1 (Spreadsheet) |
+| Charts | 4 | 5 (advanced: Bubble, Scatter, Heatmap, Radar, Candlestick) |
 | Overlays | 10 | 0 |
-| **Total UI components** | **87** | **7** |
-| Charts / Gauges | 0 | 29 |
+| Enterprise Packages | 9 | 0 |
+| **Total UI components** | **106** | **9** |
 | Barcodes | 0 | 2 |
 | PDF / Maps / Diagrams | 0 | 3 |
-| Scheduling | 0 | 3 |
+| Scheduling | ✅ (built-in) | 0 |
 | AI | 0 | 5 |
 
 ---
 
-## Recently Added (This Release)
+## Release History
+
+### v1.2.0 — 2026-06-17
+
+| Component | Category | Key Feature |
+|-----------|----------|-------------|
+| `MsCalendar` — Year view | Calendar | 12-month card grid with colored dot event indicators |
+| `MsCalendar` — Agenda view | Calendar | Date-grouped scrollable event list for next 60 days |
+| `MsCalendar` — Timeline view | Calendar | Year Gantt: month rows × day columns with stacked event bars |
+| `MsCalendar` — Recurring events | Calendar | Daily/Weekly/Monthly/Yearly with interval, end date, count |
+| `MsCalendar` — People sidebar | Calendar | Per-person colored checkbox toggles (`CalendarPerson`) |
+| `MsCalendar` — Individual/Department | Calendar | Focus mode toggle: own calendar vs full team view |
+| `MsCalendar` — Category filter | Calendar | Sidebar active-highlight category filtering |
+| `MsCalendar` — Live search | Calendar | Filters events by title, location, description, category |
+| `MultiSelect<T>` (full rewrite) | Form | Generic; tag pills; search; per-group Select All; `MaxSelection`; `ItemTemplate`; keyboard nav |
+
+**Bug fixes:** Radio button border too light in light theme → `border-2 border-gray-400`. Switch track/border invisible in light theme → `bg-gray-200 border-gray-500`.
+
+---
+
+### v1.1.0 — 2026-06-15
+
+Bug fixes: CSS styling, light/dark theme token contrast, PivotGrid layout, unlimited scroll in DataGrid, Calendar rendering.
+
+---
+
+### v1.0.2 — 2026-06-13
 
 | Component | Category | Key Feature |
 |-----------|----------|-------------|
@@ -278,27 +334,36 @@ Basic charts (Line, Bar, Pie, Gauge) are now built-in — see [Charts](#charts) 
 | `DropDownButton` | Navigation | Button with open/close dropdown |
 | `SplitButton` | Navigation | Primary action + dropdown arrow |
 | `Wizard` + `WizardStep` | Navigation | Tab-style multi-step wizard |
-| `Stepper` (updated) | Navigation | Added **vertical** orientation mode |
-| `CarouselSlide` | Navigation | Slide child component |
+| `Stepper` (updated) | Navigation | Added vertical orientation mode |
 | `FloatingLabel` | Form | CSS peer-based animated label |
 | `ListBox<T>` | Form | Scrollable list, single/multi-select |
-| `MultiSelect<T>` | Form | Tag-style multi-value selector |
+| `MultiSelect<T>` | Form | Initial tag-style multi-value selector |
 | `DateRangePicker` | Form | Start + end with range highlight |
 | `DateTimePicker` | Form | Calendar + time combined |
 | `RangeSlider` | Form | Dual-handle range input |
 | `MaskedTextBox` | Form | Pattern masking (phone, date, etc.) |
 | `ColorPalette` | Form | Swatch grid colour picker |
+| `MarkdownEditor` | Form | Split edit/preview, 13-action toolbar |
+| `DropDownTree` | Form | Hierarchical tree dropdown |
+| `MultiColumnComboBox` | Form | Multi-column searchable dropdown |
 | `GridLayout` | Layout | CSS grid wrapper |
 | `StackLayout` | Layout | Flex stack wrapper |
-| `Carousel` | Layout | Sliding carousel with dots & arrows |
+| `Carousel` + `CarouselSlide` | Layout | Sliding carousel with dots & arrows |
 | `PanelBar` + `PanelBarItem` | Layout | Panel-bar accordion |
 | `Splitter` + `SplitterPane` | Layout | Resizable split panes |
 | `Loader` | Layout | Contained / full-screen overlay |
 | `ChunkProgressBar` | Layout | Segmented progress bar |
 | `AnimationContainer` | Layout | Configurable enter/exit animations |
+| `AdvancedTable` | Data | Column-level filtering, grouping, custom cell renderers |
+| `PivotGrid<T>` | Data | Cross-tab matrix with aggregates |
+| `TreeList<T>` | Data | Hierarchical data table, ARIA treegrid |
 | `ListView<T>` | Data | Scrollable typed item list |
-| `DataTable<T>` (updated) | Data | Infinite scroll + column filters |
-| `AccordionItem` (updated) | Layout | Smooth CSS grid open/close animation |
+| `FileManager` | Data | Tree sidebar, grid/list view, breadcrumb nav |
+| `MsVirtualList<T>` | Data | Virtualized list via Blazor `Virtualize` |
+| `BarChart` | Charts | Grouped/stacked bars, multi-series |
+| `LineChart` | Charts | Multi-series lines, optional area fill |
+| `PieChart` | Charts | Pie/donut with % labels and center label |
+| `GaugeChart` | Charts | Half-circle gauge with threshold zones |
 | `Window` | Overlays | Floating window with title bar |
 | `Popup` | Overlays | Anchor-relative popup, 4 placements |
 

@@ -10,7 +10,7 @@
 [![Tailwind CSS v4](https://img.shields.io/badge/Tailwind%20CSS-v4-06B6D4?logo=tailwindcss)](https://tailwindcss.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-**166 components** · **Blazor WASM / Server / MAUI Hybrid** · **Light · Dark · System theme** · **Zero external JS deps**
+**168 components** · **Blazor WASM / Server / MAUI Hybrid** · **Light · Dark · System theme** · **Zero external JS deps**
 
 **[Live Demo →](https://vilassagar.github.io/MyStackBlazor/)**
 
@@ -122,6 +122,7 @@
   - [TreeList](#treelist)
   - [ListView](#listview)
   - [FileManager](#filemanager)
+  - [Calendar](#calendar)
 - [Chart Components](#chart-components)
   - [LineChart](#linechart)
   - [BarChart](#barchart)
@@ -144,7 +145,7 @@
 
 ## Overview
 
-MyStackBlazor is a **comprehensive component library** for .NET Blazor applications. It ships 166 ready-to-use Razor components organized across 9 functional categories, all styled with **Tailwind CSS v4** and built with zero external JavaScript dependencies.
+MyStackBlazor is a **comprehensive component library** for .NET Blazor applications. It ships 168 ready-to-use Razor components organized across 9 functional categories, all styled with **Tailwind CSS v4** and built with zero external JavaScript dependencies.
 
 | Feature | Detail |
 |---------|--------|
@@ -154,7 +155,7 @@ MyStackBlazor is a **comprehensive component library** for .NET Blazor applicati
 | **Icons** | 150+ Heroicons v2 (bundled SVG, no icon font) |
 | **Theming** | Light / Dark / System (injectable `ThemeService`) |
 | **Accessibility** | ARIA labels · keyboard navigation · screen reader support |
-| **Components** | 166 across Common, Form, Layout, Navigation, Overlay, Data, Charts, Blocks, Templates |
+| **Components** | 168 across Common, Form, Layout, Navigation, Overlay, Data, Charts, Blocks, Templates |
 | **License** | MIT |
 
 ---
@@ -168,7 +169,7 @@ dotnet add package MyStackBlazor
 Or add via the NuGet Package Manager:
 
 ```xml
-<PackageReference Include="MyStackBlazor" Version="1.0.2" />
+<PackageReference Include="MyStackBlazor" Version="1.2.0" />
 ```
 
 ---
@@ -688,24 +689,82 @@ Searchable single-select dropdown with custom option list.
 
 ### MultiSelect
 
-Tag-style selector for multiple values with search.
+Fully-featured generic multi-select dropdown with tag pills, search, grouping, keyboard navigation, and custom templates.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `Items` | `List<string>` | — | Available options |
-| `SelectedItems` | `List<string>` | — | Bound selected values |
-| `SelectedItemsChanged` | `EventCallback<List<string>>` | — | Two-way binding callback |
-| `Placeholder` | `string` | — | Placeholder text |
+| `Options` | `IEnumerable<TItem>` | — | Available items |
+| `SelectedItems` | `List<TItem>` | — | Bound selected items |
+| `SelectedItemsChanged` | `EventCallback<List<TItem>>` | — | Two-way binding callback |
+| `ItemLabel` | `Func<TItem, string>` | — | Display label selector |
+| `ItemDescription` | `Func<TItem, string?>` | — | Optional description selector |
+| `ItemGroup` | `Func<TItem, string?>` | — | Optional group key selector |
+| `ItemDisabled` | `Func<TItem, bool>` | — | Per-item disabled predicate |
+| `ItemTemplate` | `RenderFragment<TItem>` | — | Custom item renderer |
+| `Placeholder` | `string` | `"Select…"` | Trigger placeholder text |
+| `SearchPlaceholder` | `string` | `"Search…"` | Search input placeholder |
+| `Disabled` | `bool` | `false` | Disables the whole control |
+| `MaxSelection` | `int?` | — | Max number of selections |
+| `MaxVisibleTags` | `int` | `3` | Tags shown before "+N more" |
+| `ShowSelectAll` | `bool` | `true` | Show Select All checkbox |
+| `ShowCount` | `bool` | `true` | Show selection count in footer |
 | `Class` | `string` | — | Extra CSS classes |
 
 ```razor
-<MultiSelect Items="_skills"
+@* Basic string list *@
+<MultiSelect TItem="string"
+             Options="_skills"
+             ItemLabel="s => s"
              @bind-SelectedItems="_chosen"
              Placeholder="Select skills…" />
+
+@* Grouped with descriptions *@
+<MultiSelect TItem="TechOption"
+             Options="_techStack"
+             ItemLabel="t => t.Name"
+             ItemDescription="t => t.Description"
+             ItemGroup="t => t.Group"
+             @bind-SelectedItems="_selectedTech"
+             ShowSelectAll="true" />
+
+@* Max 3 selections with avatar template *@
+<MultiSelect TItem="TeamMember"
+             Options="_team"
+             ItemLabel="m => m.Name"
+             ItemDisabled="m => m.IsExternal"
+             MaxSelection="3"
+             @bind-SelectedItems="_assignees">
+    <ItemTemplate Context="member">
+        <div class="flex items-center gap-2">
+            <span class="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
+                @member.Initials
+            </span>
+            <span>@member.Name</span>
+            <span class="text-xs text-muted-foreground">@member.Role</span>
+        </div>
+    </ItemTemplate>
+</MultiSelect>
 
 @code {
     List<string> _chosen = [];
     List<string> _skills = ["C#", "Blazor", "TypeScript", "SQL", "Docker"];
+
+    record TechOption(string Name, string Group, string Description);
+    List<TechOption> _techStack = [
+        new("Blazor",     "Frontend", "C# UI framework"),
+        new("Tailwind",   "Frontend", "Utility-first CSS"),
+        new("PostgreSQL", "Backend",  "Open-source RDBMS"),
+        new("Redis",      "Backend",  "In-memory cache"),
+    ];
+    List<TechOption> _selectedTech = [];
+
+    record TeamMember(string Name, string Role, string Initials, bool IsExternal = false);
+    List<TeamMember> _team = [
+        new("Alice Chen",   "Engineer", "AC"),
+        new("Sam Rivera",   "Design",   "SR"),
+        new("Taylor Blake", "QA",       "TB"),
+    ];
+    List<TeamMember> _assignees = [];
 }
 ```
 
@@ -2240,6 +2299,109 @@ Full file manager with tree sidebar, breadcrumb navigation, and grid/list view t
 
 ---
 
+### Calendar
+
+Full-featured calendar with 6 views, multi-person calendars, recurring events, live search, and category filters.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `Events` | `List<CalendarEvent>` | — | Event data source |
+| `People` | `List<CalendarPerson>` | — | Team member calendars shown in sidebar |
+| `DefaultView` | `CalendarViewMode` | `Month` | Starting view: `Day` · `Week` · `Month` · `Year` · `Agenda` · `Timeline` |
+| `DefaultFocus` | `FocusMode` | `Individual` | `Individual` (own calendar only) · `Department` (all team calendars) |
+| `ShowMiniCalendar` | `bool` | `true` | Show mini month navigator in sidebar |
+| `AllowAdd` | `bool` | `false` | Enable click-to-add and the Add button |
+| `OnEventAdd` | `EventCallback<CalendarEvent>` | — | Fires when an event is created |
+| `OnEventEdit` | `EventCallback<CalendarEvent>` | — | Fires when an event is edited |
+| `OnEventDelete` | `EventCallback<CalendarEvent>` | — | Fires when an event is deleted |
+
+**`CalendarEvent` model:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `Id` | `string` | Auto-generated unique ID |
+| `Title` | `string` | Event title |
+| `Start` / `End` | `DateTime` | Event start and end times |
+| `AllDay` | `bool` | All-day event flag |
+| `Color` | `string` | Tailwind color name: `blue` · `green` · `red` · `orange` · `purple` · `yellow` · `teal` · `pink` · `indigo` |
+| `Category` | `string?` | Category label for sidebar filtering |
+| `Location` | `string?` | Optional location text |
+| `Description` | `string?` | Optional description |
+| `PersonId` | `string?` | Links event to a `CalendarPerson.Id`; `null` = "My Calendar" |
+| `RecurrenceType` | `RecurrenceType` | `None` · `Daily` · `Weekly` · `Monthly` · `Yearly` |
+| `RecurrenceInterval` | `int` | Repeat every N units (default `1`) |
+| `RecurrenceEndDate` | `DateTime?` | Stop generating occurrences after this date |
+
+**`CalendarPerson` model:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `Id` | `string` | Unique ID referenced by `CalendarEvent.PersonId` |
+| `Name` | `string` | Display name shown in the sidebar |
+| `Color` | `string` | Tailwind color name for the calendar dot and event chips |
+| `IsVisible` | `bool` | Initial sidebar checkbox state |
+
+```razor
+<div class="h-[800px] rounded-xl border overflow-hidden">
+    <MsCalendar Events="_events"
+                People="_people"
+                ShowMiniCalendar="true"
+                AllowAdd="true"
+                DefaultView="CalendarViewMode.Month"
+                DefaultFocus="FocusMode.Department"
+                OnEventAdd="e => _log.Add($"Added {e.Title}")"
+                OnEventEdit="e => _log.Add($"Edited {e.Title}")"
+                OnEventDelete="e => _log.Add($"Deleted {e.Title}")" />
+</div>
+
+@code {
+    List<CalendarPerson> _people =
+    [
+        new() { Id = "alice", Name = "Alice Chen",   Color = "blue"   },
+        new() { Id = "sam",   Name = "Sam Rivera",   Color = "green"  },
+        new() { Id = "taylor",Name = "Taylor Blake", Color = "orange" },
+    ];
+
+    List<CalendarEvent> _events =
+    [
+        // My own event (no PersonId)
+        new() { Title = "Team Standup",
+                Start = DateTime.Today.AddHours(9),
+                End   = DateTime.Today.AddHours(9).AddMinutes(30),
+                Color = "blue", Category = "Work",
+                RecurrenceType = RecurrenceType.Weekly },
+
+        // Alice's event
+        new() { Title = "Design Review",
+                Start = DateTime.Today.AddHours(14),
+                End   = DateTime.Today.AddHours(15),
+                Color = "blue", PersonId = "alice" },
+
+        // Multi-day all-day event
+        new() { Title = "Engineering Offsite",
+                Start = DateTime.Today.AddDays(5),
+                End   = DateTime.Today.AddDays(7),
+                AllDay = true, Color = "purple", Category = "Work",
+                PersonId = "taylor" },
+    ];
+
+    List<string> _log = [];
+}
+```
+
+**Views:**
+
+| View | Description |
+|------|-------------|
+| `Day` | Single-day column with hourly time slots and current-time indicator |
+| `Week` | 7-day column grid with time slots |
+| `Month` | Traditional month grid with event chips and multi-day spanning bars |
+| `Year` | 12-month card grid with colored dot indicators |
+| `Agenda` | Scrollable date-grouped event list for the next 60 days |
+| `Timeline` | Year Gantt chart — month rows × day columns with stacked event bars |
+
+---
+
 ## Chart Components
 
 All charts are pure SVG — no external chart library required. They automatically respect the active light/dark theme.
@@ -2553,7 +2715,7 @@ MyStackBlazor ships optional add-on packages for specialized needs.
 
 | Package | Description |
 |---------|-------------|
-| `MyStackBlazor` | Core library — all 166 components |
+| `MyStackBlazor` | Core library — all 168 components |
 | `MyStackBlazor.Core` | Base abstractions and state primitives |
 | `MyStackBlazor.DataGrid` | Extended enterprise data grid features |
 | `MyStackBlazor.Accessibility` | WCAG 2.2 helpers and ARIA utilities |

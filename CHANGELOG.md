@@ -9,6 +9,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] - 2026-06-17
+
+### New Components
+
+1. Add `MultiSelect<T>` — fully-featured searchable multi-select dropdown with tag pills, Select All, per-group selection, indeterminate checkbox state, `MaxSelection` limit, custom `ItemTemplate`, keyboard navigation (↑↓ Enter Escape Backspace), and `+N more` tag overflow.
+
+### Calendar Enhancements (`MsCalendar`)
+
+2. Add **Year view** — 12-month grid with colored dot event indicators and per-month drill-down.
+3. Add **Agenda view** — scrollable date-grouped event list for the next 60 days with owner and recurrence icons.
+4. Add **Timeline view** — year Gantt chart with month rows, day columns, today indicator, and slot-stacked event bars.
+5. Add **Recurring events** — `Daily`, `Weekly`, `Monthly`, and `Yearly` recurrence with configurable interval, end date, and occurrence count. Events are auto-expanded within any date range.
+6. Add **Individual / Department focus mode** — toggle between your own calendar and the full team view.
+7. Add **People / calendar sidebar** — colored checkbox buttons per team member (`CalendarPerson`) with per-person visibility toggle.
+8. Add **Category filter** — sidebar section to filter events by category with active highlight.
+9. Add **Live search** — toolbar search bar that filters events by title, location, description, and category across all views.
+10. Add `People` and `DefaultFocus` parameters to `MsCalendar`.
+11. Add `CalendarPerson` model and `FocusMode` enum to `CalendarModels.cs`.
+12. Add recurrence fields (`RecurrenceType`, `RecurrenceInterval`, `RecurrenceEndDate`, `RecurrenceCount`) to `CalendarEvent`.
+13. Add recurrence UI to Add/Edit modal — repeat type dropdown, interval input, end date picker.
+14. Add owner display to event detail modal — colored dot + person name.
+
+### Bug Fixes
+
+15. Fix Radio button border not visible in light theme — changed from `border-primary` (light) to `border-2 border-gray-400` (unchecked) / `border-primary` (checked).
+16. Fix Switch control border and track not visible in light theme — unchecked state now uses `bg-gray-200 border-gray-500` instead of `bg-primary/15 border-primary/30`.
+
+---
+
+## [1.1.0] - 2026-06-15
+
+### Bug Fixes & Polish
+
+1. Fix CSS styling issues across multiple components.
+2. Fix light/dark theme token inconsistencies — improved contrast for `text-muted-foreground`, `border-input`, and `bg-accent` tokens.
+3. Fix `PivotGrid` layout and aggregate rendering issues.
+4. Fix unlimited/virtual scroll behaviour in `MsDataGrid` and `MsVirtualList`.
+5. Fix `MsCalendar` rendering issues — event chip overflow, multi-day spanning, and week view alignment.
+6. Add demo layout and data components to the demo project.
+
+---
+
 ## [1.0.2] - 2026-06-13
 
 MyStackBlazor v1.0.2 — new components, charts, enterprise packages, bug fixes & CI:

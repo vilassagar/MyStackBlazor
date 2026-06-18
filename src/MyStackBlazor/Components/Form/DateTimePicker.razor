@@ -5,7 +5,7 @@
          tabindex="0"
          aria-expanded="@_open.ToString().ToLower()"
          aria-haspopup="true"
-         class="flex h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+         class="flex h-10 w-full items-center rounded-md border-2 border-input bg-background px-3 py-2 text-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
          @onclick="TogglePanel"
          @onkeydown='e => { if (e.Key is "Enter" or " ") TogglePanel(); if (e.Key == "Escape") ClosePanel(); }'>
         <svg class="mr-2 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -56,19 +56,19 @@
                 <p class="mb-2 text-xs font-medium text-muted-foreground">Time</p>
                 <div class="flex items-center gap-2">
                     <input type="number" min="0" max="23"
-                           class="w-16 rounded-md border border-input bg-background px-2 py-1 text-center text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                           class="w-16 rounded-md border-2 border-input bg-background px-2 py-1 text-center text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                            value="@_hours"
                            @oninput="e => { if (int.TryParse(e.Value?.ToString(), out var h)) _hours = Math.Clamp(h, 0, 23); }" />
                     <span class="font-bold">:</span>
                     <input type="number" min="0" max="59"
-                           class="w-16 rounded-md border border-input bg-background px-2 py-1 text-center text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                           class="w-16 rounded-md border-2 border-input bg-background px-2 py-1 text-center text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                            value="@_minutes"
                            @oninput="e => { if (int.TryParse(e.Value?.ToString(), out var m)) _minutes = Math.Clamp(m, 0, 59); }" />
                 </div>
             </div>
 
             <div class="flex justify-end gap-2 border-t p-2">
-                <button type="button" class="rounded-md border px-3 py-1.5 text-sm hover:bg-accent" @onclick="ClosePanel">Cancel</button>
+                <button type="button" class="rounded-md border-2 border-input px-3 py-1.5 text-sm hover:bg-accent" @onclick="ClosePanel">Cancel</button>
                 <button type="button" class="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90" @onclick="Confirm">Apply</button>
             </div>
         </div>

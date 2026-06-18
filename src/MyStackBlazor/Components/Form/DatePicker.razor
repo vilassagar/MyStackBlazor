@@ -6,7 +6,7 @@
          aria-expanded="@IsOpen.ToString().ToLower()"
          aria-haspopup="true"
          aria-label="@(Value?.ToString(Format) ?? Placeholder ?? "Pick a date")"
-         class="flex h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+         class="flex h-10 w-full items-center rounded-md border-2 border-input bg-background px-3 py-2 text-sm ring-offset-background cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
          @onclick="ToggleCalendar"
          @onkeydown="HandleKeyDown">
         <svg xmlns="http://www.w3.org/2000/svg" class="mr-2 h-4 w-4 text-muted-foreground" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

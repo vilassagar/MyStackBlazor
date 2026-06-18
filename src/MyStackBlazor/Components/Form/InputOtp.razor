@@ -11,7 +11,7 @@
                pattern="[0-9]*"
                id="@($"otp-{Id}-{index}")"
                value="@(_digits.ElementAtOrDefault(index))"
-               class="flex h-10 w-10 rounded-md border border-input bg-background text-center text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+               class="flex h-10 w-10 rounded-md border-2 border-input bg-background text-center text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                @oninput="e => OnDigitInput(e, index)"
                @onkeydown="e => OnKeyDown(e, index)" />
         @if (GroupAt > 0 && index == GroupAt - 1 && index < Length - 1)

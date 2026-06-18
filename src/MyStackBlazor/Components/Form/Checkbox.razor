@@ -34,7 +34,7 @@
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
 
     private string ComputedClass =>
-        $"peer h-4 w-4 shrink-0 rounded-sm border border-input ring-offset-background " +
+        $"peer h-4 w-4 shrink-0 rounded-sm border-2 border-input ring-offset-background " +
         $"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
         $"disabled:cursor-not-allowed disabled:opacity-50 " +
         $"{(Checked ? "bg-primary text-primary-foreground flex items-center justify-center" : "bg-background")} {Class}".Trim();

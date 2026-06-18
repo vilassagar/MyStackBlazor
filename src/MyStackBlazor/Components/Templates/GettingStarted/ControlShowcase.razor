@@ -1,0 +1,420 @@
+@namespace MyStackBlazor.Components.Templates.GettingStarted
+@using MyStackBlazor.Components.Common
+@using MyStackBlazor.Components.Form
+@using MyStackBlazor.Components.Layout
+
+<div class="min-h-screen bg-background text-foreground">
+    <div class="min-h-screen bg-[linear-gradient(to_right,hsl(var(--border))_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border))_1px,transparent_1px)] bg-[size:48px_48px] px-4 py-8 sm:px-6 lg:px-10">
+        <div class="mx-auto grid max-w-7xl items-start gap-6 lg:grid-cols-3">
+            <div class="space-y-6">
+                <Card Class="rounded-lg border-border/80 bg-card/95 p-6 shadow-sm">
+                    <div class="text-center">
+                        <h2 class="text-xl font-semibold tracking-normal text-foreground">Welcome back</h2>
+                        <p class="mt-2 text-sm text-muted-foreground">Sign in to your account to continue</p>
+                    </div>
+
+                    <div class="mt-6 grid grid-cols-2 gap-3">
+                        <Button Variant="outline" Class="w-full border-input bg-background text-foreground">
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                <path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z" />
+                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06L5.84 9.9C6.71 7.31 9.14 5.38 12 5.38z" />
+                            </svg>
+                            Google
+                        </Button>
+                        <Button Variant="outline" Class="w-full border-input bg-background text-foreground">
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M12 .5A11.5 11.5 0 0 0 8.36 22.9c.58.11.79-.25.79-.56v-2.02c-3.22.7-3.9-1.38-3.9-1.38-.53-1.34-1.3-1.7-1.3-1.7-1.06-.72.08-.71.08-.71 1.17.08 1.79 1.2 1.79 1.2 1.04 1.78 2.73 1.27 3.4.97.1-.75.41-1.27.74-1.56-2.57-.29-5.27-1.28-5.27-5.72 0-1.26.45-2.3 1.2-3.11-.12-.29-.52-1.47.11-3.07 0 0 .98-.31 3.2 1.19A11.05 11.05 0 0 1 12 6.04c.99 0 1.98.13 2.91.39 2.22-1.5 3.2-1.19 3.2-1.19.63 1.6.23 2.78.11 3.07.75.81 1.2 1.85 1.2 3.11 0 4.45-2.71 5.43-5.29 5.71.42.36.79 1.07.79 2.16v3.2c0 .31.21.68.8.56A11.5 11.5 0 0 0 12 .5z" />
+                            </svg>
+                            GitHub
+                        </Button>
+                    </div>
+
+                    <div class="my-5 flex items-center gap-3">
+                        <Separator Class="flex-1" />
+                        <span class="text-xs uppercase text-muted-foreground">Or continue with email</span>
+                        <Separator Class="flex-1" />
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="space-y-2">
+                            <label class="text-sm font-semibold" for="template-email">Email</label>
+                            <Input Id="template-email" Type="email" Placeholder="name@example.com" @bind-Value="_email" Class="border-input" />
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between">
+                                <label class="text-sm font-semibold" for="template-password">Password</label>
+                                <a class="text-xs font-medium text-foreground hover:underline" href="#">Forgot password?</a>
+                            </div>
+                            <Input Id="template-password" Type="password" Placeholder="Enter your password" @bind-Value="_password" Class="border-input" />
+                        </div>
+                        <Checkbox Checked="@_remember" CheckedChanged="@(value => _remember = value)" Label="Remember me for 30 days" />
+                        <Button Class="w-full">Sign in</Button>
+                        <p class="text-center text-sm text-muted-foreground">
+                            Don't have an account?
+                            <a class="font-semibold text-foreground hover:underline" href="#">Sign up</a>
+                        </p>
+                    </div>
+                </Card>
+
+                <Card Class="rounded-lg border-border/80 bg-card/95 p-6 shadow-sm">
+                    <div class="flex items-start gap-3">
+                        <div class="flex h-8 w-8 items-center justify-center rounded-md bg-blue-500/10 text-blue-600">
+                            <Icon Name="server" Size="sm" />
+                        </div>
+                        <div>
+                            <h2 class="text-base font-semibold">Launch Instance</h2>
+                            <p class="text-sm text-muted-foreground">Configure your virtual machine</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 space-y-5">
+                        <div class="space-y-2">
+                            <label class="text-sm font-semibold">Instance type</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                @foreach (var type in _instanceTypes)
+                                {
+                                    <button type="button"
+                                            class="@($"rounded-md border px-3 py-4 text-center transition-colors {(type.Name == _instanceType ? "border-primary bg-muted" : "border-input bg-background hover:bg-muted/60")}")"
+                                            @onclick="() => _instanceType = type.Name">
+                                        <span class="block text-sm font-semibold">@type.Name</span>
+                                        <span class="mt-1 block text-xs text-muted-foreground">@type.Detail</span>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-sm font-semibold" for="template-region">Region</label>
+                            <Select Id="template-region" @bind-Value="_region" Class="border-input">
+                                <option value="US East (N. Virginia)">US East (N. Virginia)</option>
+                                <option value="US West (Oregon)">US West (Oregon)</option>
+                                <option value="EU West (Ireland)">EU West (Ireland)</option>
+                            </Select>
+                        </div>
+
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between">
+                                <label class="text-sm font-semibold">Storage</label>
+                                <span class="text-xs text-muted-foreground">@_storage GB SSD</span>
+                            </div>
+                            <Slider Min="20" Max="500" Step="10" @bind-Value="_storage" />
+                        </div>
+
+                        <Separator />
+
+                        <div class="flex items-end justify-between gap-4">
+                            <div>
+                                <p class="text-xs text-muted-foreground">Estimated cost</p>
+                                <p class="mt-1 text-2xl font-bold">$58.00<span class="text-sm font-normal text-muted-foreground">/mo</span></p>
+                            </div>
+                            <Button>
+                                <Icon Name="rocket-launch" Size="sm" />
+                                Launch
+                            </Button>
+                        </div>
+                    </div>
+                </Card>
+            </div>
+
+            <div class="space-y-6">
+                <Card Class="rounded-lg border-border/80 bg-card/95 p-6 shadow-sm">
+                    <div class="flex items-start gap-3">
+                        <div class="flex h-8 w-8 items-center justify-center rounded-md bg-violet-500/10 text-violet-600">
+                            <Icon Name="sparkles" Size="sm" />
+                        </div>
+                        <div>
+                            <h2 class="text-base font-semibold">AI Assistant</h2>
+                            <p class="text-sm text-muted-foreground">Configure your prompt</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 space-y-5">
+                        <div class="space-y-2">
+                            <label class="text-sm font-semibold" for="template-model">Model</label>
+                            <Select Id="template-model" @bind-Value="_model" Class="border-input">
+                                <option value="Claude Opus 4.6">Claude Opus 4.6</option>
+                                <option value="GPT-5">GPT-5</option>
+                                <option value="Gemini 3 Pro">Gemini 3 Pro</option>
+                            </Select>
+                        </div>
+
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between">
+                                <label class="text-sm font-semibold">Temperature</label>
+                                <span class="text-xs text-muted-foreground">@_temperature.ToString("0.0")</span>
+                            </div>
+                            <Slider Min="0" Max="1" Step="0.1" @bind-Value="_temperature" />
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-sm font-semibold" for="template-prompt">System prompt</label>
+                            <Textarea Id="template-prompt" Rows="3" Placeholder="You are a helpful assistant..." @bind-Value="_prompt" Class="border-input" />
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="space-y-2">
+                                <label class="text-sm font-semibold" for="template-tokens">Max tokens</label>
+                                <Input Id="template-tokens" Type="number" @bind-Value="_maxTokens" Class="border-input" />
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-sm font-semibold" for="template-top-p">Top P</label>
+                                <Input Id="template-top-p" Type="number" @bind-Value="_topP" Class="border-input" />
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-semibold">Streaming</p>
+                                <p class="text-xs text-muted-foreground">Stream response tokens</p>
+                            </div>
+                            <Switch Checked="@_streaming" CheckedChanged="@(value => _streaming = value)" />
+                        </div>
+
+                        <Button Class="w-full">
+                            <Icon Name="play" Size="sm" />
+                            Run Prompt
+                        </Button>
+                    </div>
+                </Card>
+
+                <Card Class="rounded-lg border-border/80 bg-card/95 p-6 shadow-sm">
+                    <h2 class="text-lg font-semibold">Payment Details</h2>
+                    <p class="mt-2 text-sm text-muted-foreground">Complete your purchase securely</p>
+
+                    <div class="mt-4 grid rounded-md bg-muted p-1">
+                        <div class="grid grid-cols-2 gap-1">
+                            <button type="button" class="inline-flex h-9 items-center justify-center gap-2 rounded bg-background text-sm font-semibold shadow-sm">
+                                <Icon Name="credit-card" Size="sm" />
+                                Card
+                            </button>
+                            <button type="button" class="inline-flex h-9 items-center justify-center gap-2 rounded text-sm font-semibold text-muted-foreground hover:text-foreground">
+                                <Icon Name="wallet" Size="sm" />
+                                PayPal
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mt-5 space-y-4">
+                        <div class="space-y-2">
+                            <label class="text-sm font-semibold" for="template-card-name">Name on card</label>
+                            <Input Id="template-card-name" Placeholder="John Doe" @bind-Value="_cardName" Class="border-input" />
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-semibold" for="template-card-number">Card number</label>
+                            <div class="relative">
+                                <Icon Name="credit-card" Size="sm" Class="absolute left-3 top-3 text-muted-foreground" />
+                                <Input Id="template-card-number" Placeholder="4242 4242 4242 4242" @bind-Value="_cardNumber" Class="border-input pl-10" />
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="space-y-2">
+                                <label class="text-sm font-semibold" for="template-expiry">Expiry</label>
+                                <Input Id="template-expiry" Placeholder="MM / YY" @bind-Value="_expiry" Class="border-input" />
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-sm font-semibold" for="template-cvc">CVC</label>
+                                <Input Id="template-cvc" Placeholder="123" @bind-Value="_cvc" Class="border-input" />
+                            </div>
+                        </div>
+
+                        <Separator />
+
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-muted-foreground">Subtotal</span>
+                            <span>$299.00</span>
+                        </div>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-muted-foreground">Tax</span>
+                            <span>$23.92</span>
+                        </div>
+                        <Separator />
+                        <div class="flex items-center justify-between text-base font-bold">
+                            <span>Total</span>
+                            <span>$322.92</span>
+                        </div>
+                        <Button Class="w-full">
+                            <Icon Name="lock-closed" Size="sm" />
+                            Pay $322.92
+                        </Button>
+                        <p class="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                            <Icon Name="shield-check" Size="xs" />
+                            Secured by 256-bit SSL encryption
+                        </p>
+                    </div>
+                </Card>
+            </div>
+
+            <div class="space-y-6">
+                <Card Class="rounded-lg border-border/80 bg-card/95 p-6 shadow-sm">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-lg font-semibold">Analytics</h2>
+                        <Badge Variant="outline" Class="bg-background">Last 30 days</Badge>
+                    </div>
+
+                    <div class="mt-4 grid grid-cols-2 gap-3">
+                        @foreach (var metric in _metrics)
+                        {
+                            <div class="rounded-md border border-input bg-background p-4">
+                                <p class="text-xs text-muted-foreground">@metric.Label</p>
+                                <p class="mt-2 text-xl font-bold">@metric.Value</p>
+                                <p class="@($"mt-1 text-xs {(metric.Up ? "text-green-600" : "text-red-500")}")">@metric.Trend</p>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="mt-5">
+                        <p class="text-sm font-medium text-muted-foreground">Revenue trend</p>
+                        <svg class="mt-2 h-32 w-full overflow-visible" viewBox="0 0 340 120" role="img" aria-label="Revenue trend from January to June">
+                            @foreach (var y in new[] { 20, 40, 60, 80, 100 })
+                            {
+                                <line x1="0" y1="@y" x2="340" y2="@y" stroke="currentColor" class="text-border" stroke-dasharray="4 4" />
+                            }
+                            <path d="M0 72 L68 62 L136 68 L204 56 L272 45 L340 38 L340 112 L0 112 Z" fill="currentColor" class="text-muted" opacity=".85" />
+                            <path d="M0 72 L68 62 L136 68 L204 56 L272 45 L340 38" fill="none" stroke="currentColor" class="text-foreground" stroke-width="2.5" stroke-linecap="round" />
+                        </svg>
+                        <div class="-mt-1 grid grid-cols-6 text-center text-xs text-muted-foreground">
+                            @foreach (var label in _months)
+                            {
+                                <span>@label.Name</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="mt-6 space-y-3">
+                        <p class="text-sm font-medium text-muted-foreground">Top pages</p>
+                        @foreach (var topPage in _topPages)
+                        {
+                            <div class="grid grid-cols-[1fr_64px_36px] items-center gap-3 text-sm">
+                                <span>@topPage.Path</span>
+                                <div class="h-1.5 rounded-full bg-muted">
+                                    <div class="h-full rounded-full bg-foreground" style="@($"width: {topPage.Percent}%")"></div>
+                                </div>
+                                <span class="text-right text-xs text-muted-foreground">@topPage.Count</span>
+                            </div>
+                        }
+                    </div>
+                </Card>
+
+                <Card Class="rounded-lg border-border/80 bg-card/95 p-6 shadow-sm">
+                    <h2 class="text-lg font-semibold">Settings</h2>
+                    <p class="mt-2 text-sm text-muted-foreground">Manage your app preferences</p>
+
+                    <div class="mt-5 space-y-5">
+                        <div class="space-y-2">
+                            <label class="text-sm font-semibold" for="template-language">Language</label>
+                            <Select Id="template-language" @bind-Value="_language" Class="border-input">
+                                <option value="English">English</option>
+                                <option value="Spanish">Spanish</option>
+                                <option value="French">French</option>
+                            </Select>
+                        </div>
+
+                        <Separator />
+
+                        @foreach (var setting in _settings)
+                        {
+                            <div class="flex items-center justify-between gap-4">
+                                <div>
+                                    <p class="text-sm font-semibold">@setting.Title</p>
+                                    <p class="text-xs text-muted-foreground">@setting.Description</p>
+                                </div>
+                                <Switch Checked="@setting.Enabled" CheckedChanged="@(value => setting.Enabled = value)" />
+                            </div>
+                        }
+
+                        <Separator />
+
+                        <div>
+                            <p class="text-sm font-semibold">Notification frequency</p>
+                            <RadioGroup @bind-Value="_frequency" Class="mt-3 gap-3">
+                                <RadioGroupItem Value="Real-time" Label="Real-time" />
+                                <RadioGroupItem Value="Daily digest" Label="Daily digest" />
+                                <RadioGroupItem Value="Weekly summary" Label="Weekly summary" />
+                            </RadioGroup>
+                        </div>
+
+                        <Button Class="w-full">
+                            <Icon Name="save" Size="sm" />
+                            Save Preferences
+                        </Button>
+                    </div>
+                </Card>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string? _email;
+    private string? _password;
+    private bool _remember = true;
+    private string _instanceType = "Standard";
+    private string? _region = "US East (N. Virginia)";
+    private double _storage = 100;
+    private string? _model = "Claude Opus 4.6";
+    private double _temperature = 0.7;
+    private string? _prompt;
+    private string? _maxTokens = "4096";
+    private string? _topP = "1.0";
+    private bool _streaming = true;
+    private string? _cardName;
+    private string? _cardNumber;
+    private string? _expiry;
+    private string? _cvc;
+    private string? _language = "English";
+    private string? _frequency = "Daily digest";
+
+    private readonly IList<SettingOption> _settings =
+    [
+        new("Email notifications", "Receive updates via email", true),
+        new("Push notifications", "Browser push alerts", true),
+        new("Marketing emails", "Product news and offers", false),
+        new("Two-factor auth", "Extra security for your account", true),
+    ];
+
+    private static readonly IList<InstanceType> _instanceTypes =
+    [
+        new("Basic", "2 vCPU - 4 GB"),
+        new("Standard", "4 vCPU - 16 GB"),
+        new("Perf", "8 vCPU - 32 GB"),
+    ];
+
+    private static readonly IList<Metric> _metrics =
+    [
+        new("Revenue", "$48.2K", "+12.5%", true),
+        new("Users", "2,847", "+8.2%", true),
+        new("Conversion", "3.6%", "-0.4%", false),
+        new("Avg. Order", "$64.20", "+4.1%", true),
+    ];
+
+    private static readonly IList<MonthLabel> _months =
+    [
+        new("Jan", 0),
+        new("Feb", 68),
+        new("Mar", 136),
+        new("Apr", 204),
+        new("May", 272),
+        new("Jun", 340),
+    ];
+
+    private static readonly IList<TopPage> _topPages =
+    [
+        new("/dashboard", "1.2K", 84),
+        new("/products", "892", 62),
+        new("/checkout", "654", 48),
+        new("/settings", "321", 22),
+    ];
+
+    private sealed record InstanceType(string Name, string Detail);
+    private sealed record Metric(string Label, string Value, string Trend, bool Up);
+    private sealed record MonthLabel(string Name, int X);
+    private sealed record TopPage(string Path, string Count, int Percent);
+    private sealed class SettingOption(string title, string description, bool enabled)
+    {
+        public string Title { get; } = title;
+        public string Description { get; } = description;
+        public bool Enabled { get; set; } = enabled;
+    }
+}

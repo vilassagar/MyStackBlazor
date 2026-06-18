@@ -5,7 +5,7 @@
          aria-expanded="@IsOpen.ToString().ToLower()"
          aria-haspopup="listbox"
          tabindex="0"
-         class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+         class="flex h-10 w-full items-center justify-between rounded-md border-2 border-input bg-background px-3 py-2 text-sm ring-offset-background cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
          @onclick="ToggleOpen"
          @onkeydown="HandleKeyDown">
         <span class="@(SelectedLabel is null ? "text-muted-foreground" : "")">

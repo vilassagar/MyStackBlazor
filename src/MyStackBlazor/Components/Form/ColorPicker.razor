@@ -3,7 +3,7 @@
 <div class="@($"space-y-3 {Class}".Trim())" @attributes="AdditionalAttributes">
     <div class="flex items-center gap-3">
         <button type="button"
-                class="h-10 w-10 flex-shrink-0 overflow-hidden rounded-md border border-input shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                class="h-10 w-10 flex-shrink-0 overflow-hidden rounded-md border-2 border-input focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 style="background-color: @Value"
                 aria-label="Color preview"
                 title="@Value">
@@ -13,7 +13,7 @@
                value="@Value"
                maxlength="7"
                placeholder="#000000"
-               class="flex h-10 w-32 rounded-md border border-input bg-background px-3 py-2 font-mono text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+               class="flex h-10 w-32 rounded-md border-2 border-input bg-background px-3 py-2 font-mono text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                @oninput="OnHexInput"
                @onblur="NormalizeHex" />
 
@@ -62,7 +62,7 @@
             {
                 var color = swatch;
                 <button type="button"
-                        class="h-6 w-6 rounded border border-input shadow-sm transition-transform hover:scale-110 @(Value?.Equals(swatch, StringComparison.OrdinalIgnoreCase) == true ? "ring-2 ring-ring ring-offset-1" : "")"
+                        class="h-6 w-6 rounded border-2 border-input transition-transform hover:scale-110 @(Value?.Equals(swatch, StringComparison.OrdinalIgnoreCase) == true ? "ring-2 ring-ring ring-offset-1" : "")"
                         style="background-color: @color"
                         title="@swatch"
                         @onclick="() => SelectSwatch(swatch)">
