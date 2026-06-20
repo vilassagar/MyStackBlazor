@@ -1,0 +1,38 @@
+@namespace MyStackBlazor.Components.Navigation
+
+<a href="@Href"
+   class="@ComputedClass"
+   aria-current="@(Active ? "page" : null)"
+   @onclick="HandleClick"
+   @attributes="AdditionalAttributes">
+    @ChildContent
+</a>
+
+@code {
+    [CascadingParameter] public StackNavigationMenuItem? Item { get; set; }
+    [Parameter] public string? Href { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string Size { get; set; } = "md";
+    [Parameter] public bool Active { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string ComputedClass
+    {
+        get
+        {
+            var sizeClass = Size switch
+            {
+                "sm" => "px-3 py-1.5 text-xs",
+                "lg" => "px-5 py-3 text-base",
+                _    => "px-4 py-2 text-sm",
+            };
+            var activeClass = Active
+                ? "bg-accent text-accent-foreground"
+                : "hover:bg-accent hover:text-accent-foreground";
+            return $"block select-none rounded-md leading-none no-underline outline-none transition-colors focus:bg-accent focus:text-accent-foreground {sizeClass} {activeClass} {Class}".Trim();
+        }
+    }
+
+    private void HandleClick() => Item?.Close();
+}

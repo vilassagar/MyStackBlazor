@@ -1,0 +1,75 @@
+@namespace MyStackBlazor.Components.Data
+@typeparam TItem
+
+<li role="treeitem" aria-expanded="@(_expanded && HasChildren ? "true" : "false")">
+    <button type="button"
+            class="flex w-full items-center gap-1 rounded-md py-1 pr-2 text-sm hover:bg-accent hover:text-accent-foreground @(IsSelected ? "bg-accent text-accent-foreground font-medium" : "") focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            style="padding-left: @(Level * 1.25 + 0.5)rem"
+            @onclick="Toggle">
+        @if (HasChildren)
+        {
+            <svg class="h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform @(_expanded ? "rotate-90" : "")"
+                 aria-hidden="true" focusable="false"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+        }
+        else
+        {
+            <span class="h-4 w-4 flex-shrink-0"></span>
+        }
+
+        @if (ItemTemplate is not null)
+        {
+            @ItemTemplate(Item)
+        }
+        else
+        {
+            <span class="truncate">@GetLabel?.Invoke(Item)</span>
+        }
+    </button>
+
+    @if (_expanded && HasChildren)
+    {
+        <ul role="group">
+            @foreach (var child in _children)
+            {
+                <StackTreeViewNode TItem="TItem"
+                              Item="child"
+                              Level="@(Level + 1)"
+                              GetChildren="GetChildren"
+                              GetLabel="GetLabel"
+                              ItemTemplate="ItemTemplate"
+                              SelectedItem="SelectedItem"
+                              OnSelected="OnSelected" />
+            }
+        </ul>
+    }
+</li>
+
+@code {
+    [Parameter] public TItem Item { get; set; } = default!;
+    [Parameter] public int Level { get; set; }
+    [Parameter] public Func<TItem, IEnumerable<TItem>?>? GetChildren { get; set; }
+    [Parameter] public Func<TItem, string>? GetLabel { get; set; }
+    [Parameter] public RenderFragment<TItem>? ItemTemplate { get; set; }
+    [Parameter] public TItem? SelectedItem { get; set; }
+    [Parameter] public EventCallback<TItem> OnSelected { get; set; }
+
+    private bool _expanded;
+    private IEnumerable<TItem> _children = [];
+
+    private bool HasChildren => _children.Any();
+
+    private bool IsSelected =>
+        Item is not null && EqualityComparer<TItem>.Default.Equals(Item, SelectedItem);
+
+    protected override void OnParametersSet() =>
+        _children = GetChildren?.Invoke(Item) ?? [];
+
+    private async Task Toggle()
+    {
+        if (HasChildren) _expanded = !_expanded;
+        await OnSelected.InvokeAsync(Item);
+    }
+}

@@ -1,0 +1,197 @@
+@namespace MyStackBlazor.Components.Form
+@typeparam TItem
+
+<div class="relative">
+    <div class="relative flex items-center">
+        <input type="text"
+               id="@Id"
+               value="@_inputText"
+               placeholder="@Placeholder"
+               disabled="@Disabled"
+               autocomplete="off"
+               class="flex h-10 w-full rounded-md border-2 border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 @Class"
+               @oninput="OnInput"
+               @onfocus="OnFocus"
+               @onblur="OnBlur"
+               @onkeydown="OnKeyDown" />
+
+        @if (_isLoading)
+        {
+            <span class="pointer-events-none absolute right-3">
+                <StackSpinner Size="xs" />
+            </span>
+        }
+        else if (!string.IsNullOrEmpty(_inputText))
+        {
+            <button type="button"
+                    class="absolute right-3 text-muted-foreground hover:text-foreground"
+                    @onmousedown:preventDefault="true"
+                    @onclick="Clear">
+                <svg class="h-3.5 w-3.5" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        }
+    </div>
+
+    @if (_isOpen && (_suggestions.Count > 0 || (_hasSearched && !_isLoading)))
+    {
+        <div class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border bg-popover shadow-md">
+            @if (_suggestions.Count > 0)
+            {
+                @for (var i = 0; i < _suggestions.Count; i++)
+                {
+                    var idx  = i;
+                    var item = _suggestions[i];
+                    <button type="button"
+                            class="flex w-full items-center px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground @(idx == _focusedIndex ? "bg-accent text-accent-foreground" : "")"
+                            @onmousedown:preventDefault="true"
+                            @onclick="() => SelectItem(item)">
+                        @if (ItemTemplate is not null)
+                        {
+                            @ItemTemplate(item)
+                        }
+                        else
+                        {
+                            @GetItemText(item)
+                        }
+                    </button>
+                }
+            }
+            else
+            {
+                <div class="px-3 py-4 text-center text-sm text-muted-foreground">@NoResultsText</div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public TItem? SelectedItem { get; set; }
+    [Parameter] public EventCallback<TItem?> SelectedItemChanged { get; set; }
+    [Parameter] public Func<string, Task<IEnumerable<TItem>>>? SearchAsync { get; set; }
+    [Parameter] public Func<string, IEnumerable<TItem>>? Search { get; set; }
+    [Parameter] public Func<TItem, string>? ItemText { get; set; }
+    [Parameter] public RenderFragment<TItem>? ItemTemplate { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Search...";
+    [Parameter] public int DebounceMs { get; set; } = 300;
+    [Parameter] public int MinChars { get; set; } = 1;
+    [Parameter] public string NoResultsText { get; set; } = "No results found.";
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string _inputText = "";
+    private List<TItem> _suggestions = [];
+    private bool _isOpen;
+    private bool _isLoading;
+    private bool _hasSearched;
+    private int _focusedIndex = -1;
+    private CancellationTokenSource? _cts;
+
+    protected override void OnParametersSet()
+    {
+        if (Value is not null && _inputText != Value)
+            _inputText = Value;
+    }
+
+    private string GetItemText(TItem item) => ItemText?.Invoke(item) ?? item?.ToString() ?? "";
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        _inputText    = e.Value?.ToString() ?? "";
+        _focusedIndex = -1;
+
+        if (_inputText.Length < MinChars)
+        {
+            _isOpen = false;
+            _suggestions.Clear();
+            return;
+        }
+
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+        var token = _cts.Token;
+        var text  = _inputText;
+
+        _isLoading   = true;
+        _hasSearched = false;
+
+        try
+        {
+            await Task.Delay(DebounceMs, token);
+
+            IEnumerable<TItem> results = Search is not null
+                ? Search(text)
+                : SearchAsync is not null
+                    ? await SearchAsync(text)
+                    : [];
+
+            _suggestions = results.ToList();
+            _isOpen      = true;
+            _isLoading   = false;
+            _hasSearched = true;
+        }
+        catch (TaskCanceledException) { }
+        catch { _isLoading = false; }
+    }
+
+    private void OnFocus()
+    {
+        if (_suggestions.Count > 0) _isOpen = true;
+    }
+
+    private async Task OnBlur()
+    {
+        await Task.Delay(200);
+        _isOpen = false;
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                _focusedIndex = Math.Min(_focusedIndex + 1, _suggestions.Count - 1);
+                _isOpen = true;
+                break;
+            case "ArrowUp":
+                _focusedIndex = Math.Max(_focusedIndex - 1, -1);
+                break;
+            case "Enter":
+                if (_focusedIndex >= 0 && _focusedIndex < _suggestions.Count)
+                    await SelectItem(_suggestions[_focusedIndex]);
+                break;
+            case "Escape":
+                _isOpen = false;
+                break;
+        }
+    }
+
+    private async Task SelectItem(TItem item)
+    {
+        _inputText    = GetItemText(item);
+        SelectedItem  = item;
+        Value         = _inputText;
+        _isOpen       = false;
+        _focusedIndex = -1;
+        await SelectedItemChanged.InvokeAsync(item);
+        await ValueChanged.InvokeAsync(Value);
+    }
+
+    private async Task Clear()
+    {
+        _inputText   = "";
+        _suggestions.Clear();
+        _isOpen      = false;
+        SelectedItem = default;
+        Value        = null;
+        await SelectedItemChanged.InvokeAsync(default);
+        await ValueChanged.InvokeAsync(null);
+    }
+}

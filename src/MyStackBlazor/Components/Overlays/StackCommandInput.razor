@@ -1,0 +1,28 @@
+@namespace MyStackBlazor.Components.Overlays
+
+<div class="flex items-center border-b border-border px-3">
+    <svg class="mr-2 h-4 w-4 shrink-0 opacity-50" xmlns="http://www.w3.org/2000/svg"
+         fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 6.53 6.53a7.5 7.5 0 0 0 10.12 10.12z" />
+    </svg>
+    <input type="text"
+           placeholder="@Placeholder"
+           value="@(Command?.Search ?? "")"
+           class="@InputClass"
+           @oninput="OnInput"
+           @attributes="AdditionalAttributes" />
+</div>
+
+@code {
+    [CascadingParameter] public StackCommand? Command { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Type a command or search...";
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string InputClass =>
+        $"flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 {Class}".Trim();
+
+    private void OnInput(ChangeEventArgs e) =>
+        Command?.SetSearch(e.Value?.ToString() ?? "");
+}

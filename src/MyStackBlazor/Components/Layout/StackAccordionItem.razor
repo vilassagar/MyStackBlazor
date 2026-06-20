@@ -1,0 +1,38 @@
+@namespace MyStackBlazor.Components.Layout
+
+<div class="@($"border-b {Class}".Trim())" @attributes="AdditionalAttributes">
+    <h3 class="flex">
+        <button type="button"
+                aria-expanded="@IsOpen.ToString().ToLower()"
+                class="flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline"
+                @onclick="Toggle">
+            @Title
+            <svg xmlns="http://www.w3.org/2000/svg"
+                 aria-hidden="true" focusable="false"
+                 class="h-4 w-4 shrink-0 transition-transform duration-200 @(IsOpen ? "rotate-180" : "")"
+                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+        </button>
+    </h3>
+    <div style="display:grid; grid-template-rows:@(IsOpen ? "1fr" : "0fr"); transition:grid-template-rows 200ms ease-out;">
+        <div style="overflow:hidden;">
+            <div class="overflow-hidden pb-4 pt-0 text-sm">
+                @ChildContent
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] public StackAccordion? Parent { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool IsOpen => Parent?.IsOpen(Value) ?? false;
+
+    private void Toggle() => Parent?.Toggle(Value);
+}

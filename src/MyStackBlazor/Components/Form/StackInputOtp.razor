@@ -1,0 +1,70 @@
+@namespace MyStackBlazor.Components.Form
+@inject IJSRuntime JS
+
+<div class="flex items-center gap-2 @Class" @attributes="AdditionalAttributes">
+    @for (int i = 0; i < Length; i++)
+    {
+        var index = i;
+        <input type="text"
+               maxlength="1"
+               inputmode="numeric"
+               pattern="[0-9]*"
+               id="@($"otp-{Id}-{index}")"
+               value="@(_digits.ElementAtOrDefault(index))"
+               class="flex h-10 w-10 rounded-md border-2 border-input bg-background text-center text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+               @oninput="e => OnDigitInput(e, index)"
+               @onkeydown="e => OnKeyDown(e, index)" />
+        @if (GroupAt > 0 && index == GroupAt - 1 && index < Length - 1)
+        {
+            <StackSeparator Orientation="vertical" Class="h-10" />
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public string? Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
+    [Parameter] public int Length { get; set; } = 6;
+    [Parameter] public int GroupAt { get; set; } = 3;
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string[] _digits = [];
+
+    protected override void OnParametersSet()
+    {
+        _digits = new string[Length];
+        if (Value is not null)
+            for (int i = 0; i < Math.Min(Value.Length, Length); i++)
+                _digits[i] = Value[i].ToString();
+    }
+
+    private async Task OnDigitInput(ChangeEventArgs e, int index)
+    {
+        var val = e.Value?.ToString() ?? "";
+        if (val.Length > 0 && char.IsDigit(val[0]))
+        {
+            _digits[index] = val[^1].ToString();
+            await UpdateValue();
+            if (index < Length - 1)
+                await JS.InvokeVoidAsync("document.getElementById", $"otp-{Id}-{index + 1}");
+        }
+        else
+        {
+            _digits[index] = "";
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e, int index)
+    {
+        if (e.Key == "Backspace" && string.IsNullOrEmpty(_digits.ElementAtOrDefault(index)) && index > 0)
+            await JS.InvokeVoidAsync("document.getElementById", $"otp-{Id}-{index - 1}");
+    }
+
+    private async Task UpdateValue()
+    {
+        Value = string.Join("", _digits);
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

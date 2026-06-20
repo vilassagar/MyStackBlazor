@@ -1,0 +1,229 @@
+@namespace MyStackBlazor.Components.Navigation
+
+<div class="@($"space-y-6 {Class}".Trim())" @attributes="AdditionalAttributes">
+
+    @if (Vertical)
+    {
+        <div class="flex gap-4">
+            <div class="flex flex-col items-center">
+                @for (var i = 0; i < _steps.Count; i++)
+                {
+                    var idx   = i;
+                    var step  = _steps[i];
+                    var isActive = idx == _currentStep;
+                    var isDone   = idx < _currentStep || step.Completed;
+                    var isLast   = idx == _steps.Count - 1;
+
+                    <button type="button"
+                            class="@GetIndicatorClass(isActive, isDone) flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            disabled="@(Linear && idx > _currentStep)"
+                            @onclick="() => GoToStep(idx)">
+                        @if (isDone)
+                        {
+                            <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        }
+                        else
+                        {
+                            @(idx + 1)
+                        }
+                    </button>
+
+                    @if (!isLast)
+                    {
+                        <div class="my-1 w-px flex-1 min-h-[2rem] @(idx < _currentStep ? "bg-primary" : "bg-border") transition-colors"></div>
+                    }
+                }
+            </div>
+
+            <div class="flex flex-col flex-1">
+                @for (var i = 0; i < _steps.Count; i++)
+                {
+                    var idx   = i;
+                    var step  = _steps[i];
+                    var isActive = idx == _currentStep;
+                    var isDone   = idx < _currentStep || step.Completed;
+                    var isLast   = idx == _steps.Count - 1;
+
+                    <div class="@(!isLast ? "mb-8" : "")">
+                        @if (!string.IsNullOrEmpty(step.Title))
+                        {
+                            <div class="mb-2 mt-1">
+                                <span class="text-sm font-medium @(isActive || isDone ? "text-foreground" : "text-muted-foreground")">
+                                    @step.Title
+                                </span>
+                                @if (!string.IsNullOrEmpty(step.Description))
+                                {
+                                    <span class="block text-xs text-muted-foreground">@step.Description</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div>
+            <CascadingValue Value="this">
+                @ChildContent
+            </CascadingValue>
+        </div>
+    }
+    else
+    {
+        <nav aria-label="Progress" class="flex items-center">
+            @for (var i = 0; i < _steps.Count; i++)
+            {
+                var idx      = i;
+                var step     = _steps[i];
+                var isActive = idx == _currentStep;
+                var isDone   = idx < _currentStep || step.Completed;
+                var isLast   = idx == _steps.Count - 1;
+
+                <div class="flex @(isLast ? "" : "flex-1") items-center">
+                    <button type="button"
+                            class="flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                            disabled="@(Linear && idx > _currentStep)"
+                            @onclick="() => GoToStep(idx)">
+                        <span class="@GetIndicatorClass(isActive, isDone) flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 text-sm font-medium transition-colors">
+                            @if (isDone)
+                            {
+                                <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            }
+                            else
+                            {
+                                @(idx + 1)
+                            }
+                        </span>
+                        @if (!string.IsNullOrEmpty(step.Title))
+                        {
+                            <span class="hidden sm:block">
+                                <span class="text-sm font-medium @(isActive || isDone ? "text-foreground" : "text-muted-foreground")">@step.Title</span>
+                                @if (!string.IsNullOrEmpty(step.Description))
+                                {
+                                    <span class="block text-xs text-muted-foreground">@step.Description</span>
+                                }
+                            </span>
+                        }
+                    </button>
+
+                    @if (!isLast)
+                    {
+                        <div class="mx-3 h-px flex-1 @(idx < _currentStep ? "bg-primary" : "bg-border") transition-colors"></div>
+                    }
+                </div>
+            }
+        </nav>
+
+        <div>
+            <CascadingValue Value="this">
+                @ChildContent
+            </CascadingValue>
+        </div>
+    }
+
+    @if (ShowNavigation)
+    {
+        <div class="flex items-center justify-between pt-2">
+            <button type="button"
+                    class="inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
+                    disabled="@(_currentStep == 0)"
+                    @onclick="Previous">
+                <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                Back
+            </button>
+
+            <span class="text-sm text-muted-foreground">
+                Step @(_currentStep + 1) of @_steps.Count
+            </span>
+
+            @if (_currentStep < _steps.Count - 1)
+            {
+                <button type="button"
+                        class="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                        @onclick="Next">
+                    Next
+                    <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </button>
+            }
+            else
+            {
+                <button type="button"
+                        class="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                        @onclick="Complete">
+                    Complete
+                    <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public bool ShowNavigation { get; set; } = true;
+    [Parameter] public bool Linear { get; set; } = true;
+    [Parameter] public bool Vertical { get; set; }
+    [Parameter] public EventCallback OnComplete { get; set; }
+    [Parameter] public EventCallback<int> OnStepChanged { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    internal readonly List<StackStepperStep> _steps = [];
+    private int _currentStep;
+
+    internal void AddStep(StackStepperStep step )
+    {
+        _steps.Add(step);
+        StateHasChanged();
+    }
+
+    internal void RemoveStep(StackStepperStep step ) => _steps.Remove(step);
+
+    internal bool IsActiveStep(StackStepperStep step ) => _steps.IndexOf(step) == _currentStep;
+
+    public async Task GoToStep(int index)
+    {
+        if (index < 0 || index >= _steps.Count) return;
+        if (Linear && index > _currentStep) return;
+        _currentStep = index;
+        await OnStepChanged.InvokeAsync(_currentStep);
+    }
+
+    public async Task Next()
+    {
+        if (_currentStep >= _steps.Count - 1) return;
+        _steps[_currentStep].Completed = true;
+        _currentStep++;
+        await OnStepChanged.InvokeAsync(_currentStep);
+    }
+
+    public async Task Previous()
+    {
+        if (_currentStep <= 0) return;
+        _currentStep--;
+        await OnStepChanged.InvokeAsync(_currentStep);
+    }
+
+    public async Task Complete()
+    {
+        _steps[_currentStep].Completed = true;
+        await OnComplete.InvokeAsync();
+    }
+
+    private static string GetIndicatorClass(bool isActive, bool isDone) => (isActive, isDone) switch
+    {
+        (_, true) => "border-primary bg-primary text-primary-foreground",
+        (true, _) => "border-primary text-primary",
+        _         => "border-border text-muted-foreground",
+    };
+}

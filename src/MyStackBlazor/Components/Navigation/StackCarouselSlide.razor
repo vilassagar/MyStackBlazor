@@ -1,0 +1,16 @@
+@namespace MyStackBlazor.Components.Navigation
+@implements IDisposable
+
+<div class="w-full flex-shrink-0 @Class" @attributes="AdditionalAttributes">
+    @ChildContent
+</div>
+
+@code {
+    [CascadingParameter] public MyStackBlazor.Components.Layout.StackCarousel? Parent { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    protected override void OnInitialized() => Parent?.RegisterSlide();
+    public void Dispose() => Parent?.UnregisterSlide();
+}

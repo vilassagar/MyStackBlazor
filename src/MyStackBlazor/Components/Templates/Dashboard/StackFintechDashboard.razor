@@ -1,0 +1,135 @@
+@namespace MyStackBlazor.Components.Templates.Dashboard
+@using MyStackBlazor.Components.Blocks
+@using MyStackBlazor.Components.Blocks.Dashboard
+
+<div class="flex h-screen overflow-hidden bg-background">
+    <StackDashboardSidebar Brand="FinFlow" Items="@_nav" />
+
+    <div class="flex flex-1 flex-col overflow-hidden">
+        <StackTopNavbar Brand="FinFlow"
+                   UserName="Sarah Chen"
+                   UserInitials="SC"
+                   NotificationCount="5"
+                   Breadcrumbs="@_breadcrumbs" />
+
+        <main class="flex-1 overflow-y-auto p-6">
+            <div class="mb-6 flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-bold text-foreground">Financial Overview</h2>
+                    <p class="text-sm text-muted-foreground">May 2026 · All figures in USD</p>
+                </div>
+                <button class="rounded-lg border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors">
+                    Export report
+                </button>
+            </div>
+
+            <!-- KPIs -->
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <StackCompactCard Label="Total Revenue"      Value="$1.24M"  Trend="+12.5% MoM" TrendUp="true"  IconSvg='<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>' />
+                <StackCompactCard Label="Transactions"       Value="84,320"  Trend="+8.3% MoM"  TrendUp="true"  IconSvg='<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>' />
+                <StackCompactCard Label="Active Accounts"    Value="28,410"  Trend="+4.1% MoM"  TrendUp="true"  IconSvg='<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' />
+                <StackCompactCard Label="Chargeback Rate"    Value="0.08%"   Trend="-0.02% MoM" TrendUp="true"  IconSvg='<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>' />
+            </div>
+
+            <!-- Charts -->
+            <div class="mt-6 grid gap-6 lg:grid-cols-3">
+                <div class="lg:col-span-2">
+                    <StackDashboardCard Title="Revenue Trend" Description="Daily · past 30 days" Trend="+12.5%" TrendUp="true" Value="$1.24M">
+                        <BodyContent>
+                            <div class="flex h-36 items-end gap-1">
+                                @foreach (var h in new[] {28,35,42,38,55,62,50,70,65,80,72,90,85,95,78,88,92,75,100,82,70,88,93,76,85,91,80,95,88,100})
+                                {
+                                    <div class="flex-1 rounded-t bg-primary/25 hover:bg-primary/50 transition-colors" style="height:@(h)%"></div>
+                                }
+                            </div>
+                            <div class="mt-2 flex justify-between text-xs text-muted-foreground">
+                                <span>1 May</span><span>31 May</span>
+                            </div>
+                        </BodyContent>
+                    </StackDashboardCard>
+                </div>
+
+                <StackDashboardCard Title="Payment Methods" Description="May 2026" Value="84,320 txns">
+                    <BodyContent>
+                        <div class="space-y-3">
+                            @foreach (var (method, pct, color) in new[] { ("Card","58%","bg-primary"), ("Bank transfer","24%","bg-primary/60"), ("Wallet","12%","bg-primary/30"), ("Crypto","6%","bg-muted-foreground/30") })
+                            {
+                                <div>
+                                    <div class="mb-1 flex justify-between text-xs">
+                                        <span class="text-muted-foreground">@method</span>
+                                        <span class="font-medium text-foreground">@pct</span>
+                                    </div>
+                                    <div class="h-2 overflow-hidden rounded-full bg-muted">
+                                        <div class="h-full rounded-full @color" style="width:@pct"></div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </BodyContent>
+                </StackDashboardCard>
+            </div>
+
+            <!-- Recent transactions -->
+            <div class="mt-6 rounded-xl border bg-card shadow-sm">
+                <div class="flex items-center justify-between border-b px-6 py-4">
+                    <h3 class="text-sm font-semibold text-foreground">Recent Transactions</h3>
+                    <a href="#" class="text-xs font-medium text-primary hover:underline">View all</a>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="border-b bg-muted/30">
+                            <tr>
+                                @foreach (var h in new[] { "Transaction ID", "Account", "Amount", "Method", "Date", "Status" })
+                                {
+                                    <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">@h</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">
+                            @foreach (var tx in _transactions)
+                            {
+                                <tr class="hover:bg-muted/30 transition-colors">
+                                    <td class="px-5 py-3 font-mono text-xs text-muted-foreground">@tx.Id</td>
+                                    <td class="px-5 py-3 font-medium text-foreground">@tx.Account</td>
+                                    <td class="px-5 py-3 font-semibold @(tx.Debit ? "text-red-500" : "text-green-600")">@(tx.Debit ? "-" : "+")@tx.Amount</td>
+                                    <td class="px-5 py-3 text-muted-foreground">@tx.Method</td>
+                                    <td class="px-5 py-3 text-muted-foreground">@tx.Date</td>
+                                    <td class="px-5 py-3">
+                                        <span class="rounded-full px-2 py-0.5 text-xs font-semibold @(tx.Status == "Completed" ? "bg-green-500/10 text-green-600" : tx.Status == "Pending" ? "bg-yellow-500/10 text-yellow-600" : "bg-red-500/10 text-red-500")">
+                                            @tx.Status
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+@code {
+    private static readonly IList<DashboardNavItem> _nav =
+    [
+        new("Dashboard",    "#", "<svg class='h-4 w-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'><rect x='3' y='3' width='7' height='7'/><rect x='14' y='3' width='7' height='7'/><rect x='14' y='14' width='7' height='7'/><rect x='3' y='14' width='7' height='7'/></svg>", true),
+        new("Transactions", "#", "<svg class='h-4 w-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'><polyline points='23 6 13.5 15.5 8.5 10.5 1 18'/><polyline points='17 6 23 6 23 12'/></svg>"),
+        new("Accounts",     "#", "<svg class='h-4 w-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'><path d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/></svg>"),
+        new("Analytics",    "#", "<svg class='h-4 w-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'><line x1='18' y1='20' x2='18' y2='10'/><line x1='12' y1='20' x2='12' y2='4'/><line x1='6' y1='20' x2='6' y2='14'/></svg>"),
+        new("Compliance",   "#", "<svg class='h-4 w-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'><path d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/></svg>"),
+        new("Settings",     "#", "<svg class='h-4 w-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'><circle cx='12' cy='12' r='3'/></svg>"),
+    ];
+
+    private record TxRow(string Id, string Account, string Amount, string Method, string Date, string Status, bool Debit);
+    private static readonly IList<TxRow> _transactions =
+    [
+        new("TXN-98231", "Acme Corp",       "$14,200", "Wire",    "16 May 14:30", "Completed", false),
+        new("TXN-98230", "John Smith",      "$450",    "Card",    "16 May 13:55", "Completed", false),
+        new("TXN-98229", "Refund #8821",    "$280",    "Card",    "16 May 13:20", "Completed", true),
+        new("TXN-98228", "GlobalTech Ltd",  "$8,750",  "ACH",     "16 May 12:44", "Pending",   false),
+        new("TXN-98227", "Maria Garcia",    "$120",    "Wallet",  "16 May 12:10", "Completed", false),
+        new("TXN-98226", "Unknown Device",  "$3,400",  "Card",    "16 May 11:58", "Flagged",   false),
+    ];
+
+    private IList<NavBreadcrumb> _breadcrumbs = [new("Dashboard")];
+}

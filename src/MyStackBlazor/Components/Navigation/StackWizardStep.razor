@@ -1,0 +1,21 @@
+@namespace MyStackBlazor.Components.Navigation
+@implements IDisposable
+
+@if (Parent.IsActiveStep(this))
+{
+    <div @attributes="AdditionalAttributes">
+        @ChildContent
+    </div>
+}
+
+@code {
+    [CascadingParameter] public StackWizard Parent { get; set; } = default!;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    internal bool Completed { get; set; }
+
+    protected override void OnInitialized() => Parent.AddStep(this);
+    public void Dispose() => Parent.RemoveStep(this);
+}

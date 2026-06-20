@@ -159,32 +159,32 @@ public class PaginationTests : TestContext
 
 public class TabsTests : TestContext
 {
-    private static IRenderedComponent<Tabs> RenderTabs(TestContext ctx, string active = "tab1") =>
-        ctx.RenderComponent<Tabs>(p => p
+    private static IRenderedComponent<StackTabs> RenderTabs(TestContext ctx, string active = "tab1") =>
+        ctx.RenderComponent<StackTabs>(p => p
             .Add(t => t.ActiveTab, active)
             .AddChildContent(builder =>
             {
-                builder.OpenComponent<TabsList>(0);
+                builder.OpenComponent<StackTabsList>(0);
                 builder.AddAttribute(1, "ChildContent", (RenderFragment)(b =>
                 {
-                    b.OpenComponent<TabsTrigger>(0);
+                    b.OpenComponent<StackTabsTrigger>(0);
                     b.AddAttribute(1, "Value", "tab1");
                     b.AddAttribute(2, "ChildContent", (RenderFragment)(b2 => b2.AddContent(0, "Tab 1")));
                     b.CloseComponent();
 
-                    b.OpenComponent<TabsTrigger>(3);
+                    b.OpenComponent<StackTabsTrigger>(3);
                     b.AddAttribute(4, "Value", "tab2");
                     b.AddAttribute(5, "ChildContent", (RenderFragment)(b2 => b2.AddContent(0, "Tab 2")));
                     b.CloseComponent();
                 }));
                 builder.CloseComponent();
 
-                builder.OpenComponent<TabsContent>(6);
+                builder.OpenComponent<StackTabsContent>(6);
                 builder.AddAttribute(7, "Value", "tab1");
                 builder.AddAttribute(8, "ChildContent", (RenderFragment)(b => b.AddContent(0, "Panel 1 content")));
                 builder.CloseComponent();
 
-                builder.OpenComponent<TabsContent>(9);
+                builder.OpenComponent<StackTabsContent>(9);
                 builder.AddAttribute(10, "Value", "tab2");
                 builder.AddAttribute(11, "ChildContent", (RenderFragment)(b => b.AddContent(0, "Panel 2 content")));
                 builder.CloseComponent();
