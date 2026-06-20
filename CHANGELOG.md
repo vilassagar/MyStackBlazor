@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.2] - 2026-06-20
+
+### Bug Fixes
+
+1. Restore solution build after the Stack-prefixed component migration by adding unit-test compatibility mappings for legacy component names.
+2. Fix unit test compilation for renamed generic component types such as `ChipList<T>`, `TreeView<T>`, `TreeList<T>`, `PivotGrid<T>`, `DropDownTree<T>`, `MultiColumnComboBox<T>`, and `MsPivotGrid<T>`.
+3. Align test imports with current component namespaces so older test coverage continues to build against the renamed public component surface.
+
+---
+
 ## [1.2.1] - 2026-06-18
 
 ### Bug Fixes

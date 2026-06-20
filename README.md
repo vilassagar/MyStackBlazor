@@ -37,7 +37,7 @@ dotnet add package MyStackBlazor
 Or manually:
 
 ```xml
-<PackageReference Include="MyStackBlazor" Version="1.2.1" />
+<PackageReference Include="MyStackBlazor" Version="1.2.2" />
 ```
 
 ## Setup
