@@ -5,7 +5,7 @@
 <!-- Hero -->
 <div class="mb-12">
     <div class="flex items-center gap-2 mb-4">
-        <Badge>New</Badge>
+        <StackBadge>New</StackBadge>
         <span class="text-sm text-muted-foreground">v1.0.1 now available on NuGet</span>
     </div>
     <h1 class="text-4xl font-bold tracking-tight mb-4">
@@ -17,26 +17,26 @@
         Styled with Tailwind CSS v4, built for .NET 10.
     </p>
     <div class="demo-row">
-        <Button Variant="default" OnClick="@(_ => {})">Get Started</Button>
-        <Button Variant="outline" OnClick="@(_ => {})">View on GitHub</Button>
+        <StackButton Variant="default" OnClick="@(_ => {})">Get Started</StackButton>
+        <StackButton Variant="outline" OnClick="@(_ => {})">View on GitHub</StackButton>
     </div>
 </div>
 
 <!-- Install -->
-<Card Class="mb-10">
-    <CardHeader>
-        <CardTitle>Quick Install</CardTitle>
-        <CardDescription>Add to your Blazor project in seconds.</CardDescription>
-    </CardHeader>
-    <CardContent>
+<StackCard Class="mb-10">
+    <StackCardHeader>
+        <StackCardTitle>Quick Install</StackCardTitle>
+        <StackCardDescription>Add to your Blazor project in seconds.</StackCardDescription>
+    </StackCardHeader>
+    <StackCardContent>
         <pre class="bg-muted rounded-md px-4 py-3 text-sm overflow-x-auto"><code>dotnet add package MyStackBlazor</code></pre>
         <p class="text-sm text-muted-foreground mt-3">Then register services in <code class="bg-muted px-1 rounded">Program.cs</code>:</p>
         <pre class="bg-muted rounded-md px-4 py-3 text-sm overflow-x-auto mt-2"><code>builder.Services.AddMyStackBlazor();</code></pre>
         <p class="text-sm text-muted-foreground mt-3">Add the stylesheet to <code class="bg-muted px-1 rounded">index.html</code> / <code class="bg-muted px-1 rounded">App.razor</code>:</p>
         <pre class="bg-muted rounded-md px-4 py-3 text-sm overflow-x-auto mt-2"><code>&lt;link rel="stylesheet" href="_content/MyStackBlazor/css/mystackblazor.css" /&gt;
 &lt;script src="_content/MyStackBlazor/js/mystackblazor.js"&gt;&lt;/script&gt;</code></pre>
-    </CardContent>
-</Card>
+    </StackCardContent>
+</StackCard>
 
 <!-- Feature grid -->
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
@@ -53,32 +53,32 @@
 <!-- Component preview strip -->
 <div class="mb-8">
     <h2 class="text-2xl font-bold mb-4">Component Preview</h2>
-    <Card>
-        <CardContent Class="pt-6">
+    <StackCard>
+        <StackCardContent Class="pt-6">
             <div class="demo-row mb-4">
-                <Button Variant="default">Default</Button>
-                <Button Variant="secondary">Secondary</Button>
-                <Button Variant="outline">Outline</Button>
-                <Button Variant="destructive">Destructive</Button>
-                <Button Variant="ghost">Ghost</Button>
+                <StackButton Variant="default">Default</StackButton>
+                <StackButton Variant="secondary">Secondary</StackButton>
+                <StackButton Variant="outline">Outline</StackButton>
+                <StackButton Variant="destructive">Destructive</StackButton>
+                <StackButton Variant="ghost">Ghost</StackButton>
             </div>
             <div class="demo-row mb-4">
-                <Badge>Default</Badge>
-                <Badge Variant="secondary">Secondary</Badge>
-                <Badge Variant="destructive">Destructive</Badge>
-                <Badge Variant="outline">Outline</Badge>
-                <Avatar Initials="VS" Size="sm" />
-                <Avatar Initials="AB" Size="sm" />
-                <Spinner Size="sm" />
+                <StackBadge>Default</StackBadge>
+                <StackBadge Variant="secondary">Secondary</StackBadge>
+                <StackBadge Variant="destructive">Destructive</StackBadge>
+                <StackBadge Variant="outline">Outline</StackBadge>
+                <StackAvatar Initials="VS" Size="sm" />
+                <StackAvatar Initials="AB" Size="sm" />
+                <StackSpinner Size="sm" />
             </div>
             <div class="demo-row">
-                <Alert Class="w-full">
-                    <AlertTitle>Heads up!</AlertTitle>
-                    <AlertDescription>You can explore all components using the sidebar navigation.</AlertDescription>
-                </Alert>
+                <StackAlert Class="w-full">
+                    <StackAlertTitle>Heads up!</StackAlertTitle>
+                    <StackAlertDescription>You can explore all components using the sidebar navigation.</StackAlertDescription>
+                </StackAlert>
             </div>
-        </CardContent>
-    </Card>
+        </StackCardContent>
+    </StackCard>
 </div>
 
 @code {

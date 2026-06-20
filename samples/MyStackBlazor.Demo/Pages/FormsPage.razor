@@ -10,10 +10,10 @@
              Description="Supports two-way binding. Use Type for email, password, number, etc."
              Code="@_inputCode">
     <div class="w-full max-w-sm space-y-3">
-        <Input Placeholder="Your name" @bind-Value="_name" />
-        <Input Placeholder="Email" Type="email" @bind-Value="_email" />
-        <Input Placeholder="Disabled" Disabled />
-        <Input Placeholder="Read-only" Value="Read-only value" ReadOnly />
+        <StackInput Placeholder="Your name" @bind-Value="_name" />
+        <StackInput Placeholder="Email" Type="email" @bind-Value="_email" />
+        <StackInput Placeholder="Disabled" Disabled />
+        <StackInput Placeholder="Read-only" Value="Read-only value" ReadOnly />
         @if (!string.IsNullOrEmpty(_name))
         {
             <p class="text-sm text-muted-foreground">Hello, <strong>@_name</strong>!</p>
@@ -24,7 +24,7 @@
 <!-- Textarea -->
 <DemoSection Title="Textarea" Code="@_textareaCode">
     <div class="w-full max-w-sm">
-        <Textarea Placeholder="Write a message..." @bind-Value="_message" Rows="4" />
+        <StackTextarea Placeholder="Write a message..." @bind-Value="_message" Rows="4" />
         @if (!string.IsNullOrEmpty(_message))
         {
             <p class="text-xs text-muted-foreground mt-1">@_message.Length characters</p>
@@ -35,12 +35,12 @@
 <!-- Select -->
 <DemoSection Title="Select" Code="@_selectCode">
     <div class="w-full max-w-sm">
-        <Select @bind-Value="_framework" Placeholder="Choose a framework">
+        <StackSelect @bind-Value="_framework" Placeholder="Choose a framework">
             <option value="blazor">Blazor</option>
             <option value="maui">MAUI Blazor</option>
             <option value="server">Blazor Server</option>
             <option value="wasm">Blazor WASM</option>
-        </Select>
+        </StackSelect>
         @if (!string.IsNullOrEmpty(_framework))
         {
             <p class="text-sm text-muted-foreground mt-2">Selected: <strong>@_framework</strong></p>
@@ -51,9 +51,9 @@
 <!-- Switch -->
 <DemoSection Title="Switch" Code="@_switchCode">
     <div class="space-y-3 w-full max-w-sm">
-        <Switch Id="sw-notif" @bind-Checked="_notifications" Label="Enable notifications" />
-        <Switch Id="sw-dark" @bind-Checked="_darkMode" Label="Dark mode preview" />
-        <Switch Id="sw-disabled" Disabled Label="Disabled switch" />
+        <StackSwitch Id="sw-notif" @bind-Checked="_notifications" Label="Enable notifications" />
+        <StackSwitch Id="sw-dark" @bind-Checked="_darkMode" Label="Dark mode preview" />
+        <StackSwitch Id="sw-disabled" Disabled Label="Disabled switch" />
         <p class="text-sm text-muted-foreground">
             Notifications: <strong>@(_notifications ? "on" : "off")</strong> &nbsp;|&nbsp;
             Dark mode: <strong>@(_darkMode ? "on" : "off")</strong>
@@ -66,11 +66,11 @@
     <div class="w-full max-w-sm space-y-4">
         <div>
             <p class="text-sm font-medium mb-2">Volume: @_volume%</p>
-            <Slider @bind-Value="_volume" Min="0" Max="100" Step="5" />
+            <StackSlider @bind-Value="_volume" Min="0" Max="100" Step="5" />
         </div>
         <div>
             <p class="text-sm font-medium mb-2">Brightness: @_brightness%</p>
-            <Slider @bind-Value="_brightness" Min="0" Max="100" Step="10" />
+            <StackSlider @bind-Value="_brightness" Min="0" Max="100" Step="10" />
         </div>
     </div>
 </DemoSection>
@@ -80,11 +80,11 @@
     <div class="w-full max-w-sm space-y-6">
         <div>
             <p class="text-sm font-medium mb-2">Select a plan</p>
-            <RadioGroup @bind-Value="_plan">
-                <RadioGroupItem Value="free"       Label="Free — $0/month"         Id="plan-free" />
-                <RadioGroupItem Value="pro"        Label="Pro — $9/month"          Id="plan-pro" />
-                <RadioGroupItem Value="enterprise" Label="Enterprise — Contact us" Id="plan-enterprise" />
-            </RadioGroup>
+            <StackRadioGroup @bind-Value="_plan">
+                <StackRadioGroupItem Value="free"       Label="Free — $0/month"         Id="plan-free" />
+                <StackRadioGroupItem Value="pro"        Label="Pro — $9/month"          Id="plan-pro" />
+                <StackRadioGroupItem Value="enterprise" Label="Enterprise — Contact us" Id="plan-enterprise" />
+            </StackRadioGroup>
             @if (!string.IsNullOrEmpty(_plan))
             {
                 <p class="text-sm text-muted-foreground mt-3">Selected: <strong>@_plan</strong></p>
@@ -92,11 +92,11 @@
         </div>
         <div>
             <p class="text-sm font-medium mb-2">Disabled options</p>
-            <RadioGroup Value="free">
-                <RadioGroupItem Value="free"    Label="Available option"  Id="dis-free" />
-                <RadioGroupItem Value="locked"  Label="Locked option"     Id="dis-locked"  Disabled />
-                <RadioGroupItem Value="locked2" Label="Another locked"    Id="dis-locked2" Disabled />
-            </RadioGroup>
+            <StackRadioGroup Value="free">
+                <StackRadioGroupItem Value="free"    Label="Available option"  Id="dis-free" />
+                <StackRadioGroupItem Value="locked"  Label="Locked option"     Id="dis-locked"  Disabled />
+                <StackRadioGroupItem Value="locked2" Label="Another locked"    Id="dis-locked2" Disabled />
+            </StackRadioGroup>
         </div>
     </div>
 </DemoSection>
@@ -106,9 +106,9 @@
              Description="Label animates above the input when focused or filled."
              Code="@_floatingCode">
     <div class="w-full max-w-sm space-y-4">
-        <FloatingLabel Label="First name" @bind-Value="_floatName" />
-        <FloatingLabel Label="Email" Type="email" @bind-Value="_floatEmail" />
-        <FloatingLabel Label="Password" Type="password" @bind-Value="_floatPass" />
+        <StackFloatingLabel Label="First name" @bind-Value="_floatName" />
+        <StackFloatingLabel Label="Email" Type="email" @bind-Value="_floatEmail" />
+        <StackFloatingLabel Label="Password" Type="password" @bind-Value="_floatPass" />
     </div>
 </DemoSection>
 
@@ -118,16 +118,16 @@
              Code="@_numericCode">
     <div class="w-full max-w-xs space-y-4">
         <div>
-            <Label For="ni-qty">Quantity (1–99)</Label>
-            <NumericInput Id="ni-qty" @bind-Value="_quantity" Min="1" Max="99" Step="1" />
+            <StackLabel For="ni-qty">Quantity (1–99)</StackLabel>
+            <StackNumericInput Id="ni-qty" @bind-Value="_quantity" Min="1" Max="99" Step="1" />
         </div>
         <div>
-            <Label For="ni-price">Price ($)</Label>
-            <NumericInput Id="ni-price" @bind-Value="_price" Min="0" Max="9999" Step="0.01" />
+            <StackLabel For="ni-price">Price ($)</StackLabel>
+            <StackNumericInput Id="ni-price" @bind-Value="_price" Min="0" Max="9999" Step="0.01" />
         </div>
         <div>
-            <Label For="ni-nospin">No stepper</Label>
-            <NumericInput Id="ni-nospin" @bind-Value="_quantity" ShowStepper="false" />
+            <StackLabel For="ni-nospin">No stepper</StackLabel>
+            <StackNumericInput Id="ni-nospin" @bind-Value="_quantity" ShowStepper="false" />
         </div>
         <p class="text-sm text-muted-foreground">Qty: <strong>@_quantity</strong> — Price: <strong>$@_price</strong></p>
     </div>
@@ -139,12 +139,12 @@
              Code="@_otpCode">
     <div class="space-y-3">
         <div>
-            <Label>6-digit code (grouped 3+3)</Label>
-            <InputOtp Length="6" GroupAt="3" @bind-Value="_otp" />
+            <StackLabel>6-digit code (grouped 3+3)</StackLabel>
+            <StackInputOtp Length="6" GroupAt="3" @bind-Value="_otp" />
         </div>
         <div>
-            <Label>4-digit PIN</Label>
-            <InputOtp Length="4" GroupAt="4" @bind-Value="_pin" />
+            <StackLabel>4-digit PIN</StackLabel>
+            <StackInputOtp Length="4" GroupAt="4" @bind-Value="_pin" />
         </div>
         @if (!string.IsNullOrEmpty(_otp))
         {
@@ -159,16 +159,16 @@
              Code="@_maskedCode">
     <div class="w-full max-w-xs space-y-4">
         <div>
-            <Label For="msk-phone">Phone (000-000-0000)</Label>
-            <MaskedTextBox Id="msk-phone" Mask="000-000-0000" @bind-Value="_maskedPhone" />
+            <StackLabel For="msk-phone">Phone (000-000-0000)</StackLabel>
+            <StackMaskedTextBox Id="msk-phone" Mask="000-000-0000" @bind-Value="_maskedPhone" />
         </div>
         <div>
-            <Label For="msk-date">Date (DD/MM/YYYY)</Label>
-            <MaskedTextBox Id="msk-date" Mask="00/00/0000" @bind-Value="_maskedDate" />
+            <StackLabel For="msk-date">Date (DD/MM/YYYY)</StackLabel>
+            <StackMaskedTextBox Id="msk-date" Mask="00/00/0000" @bind-Value="_maskedDate" />
         </div>
         <div>
-            <Label For="msk-card">Card number (0000 0000 0000 0000)</Label>
-            <MaskedTextBox Id="msk-card" Mask="0000 0000 0000 0000" @bind-Value="_maskedCard" />
+            <StackLabel For="msk-card">Card number (0000 0000 0000 0000)</StackLabel>
+            <StackMaskedTextBox Id="msk-card" Mask="0000 0000 0000 0000" @bind-Value="_maskedCard" />
         </div>
     </div>
 </DemoSection>
@@ -178,16 +178,16 @@
              Description="Wrapper that adds a Label, helper text, and error message around any input."
              Code="@_formFieldCode">
     <div class="w-full max-w-sm space-y-4">
-        <FormField Label="Username" For="ff-user" Description="Only letters, numbers, and underscores.">
-            <Input Id="ff-user" Placeholder="vilas_sagar" @bind-Value="_ffUsername" />
-        </FormField>
-        <FormField Label="Email" For="ff-email" Required ErrorMessage="@_ffEmailError">
-            <Input Id="ff-email" Type="email" Placeholder="you@example.com" @bind-Value="_ffEmail" @onblur="ValidateEmail" />
-        </FormField>
-        <FormField Label="Notes" For="ff-notes" Description="Optional. Max 200 characters." Disabled="_ffDisabled">
-            <Textarea Id="ff-notes" Placeholder="Any extra notes..." Disabled="_ffDisabled" />
-        </FormField>
-        <Switch @bind-Checked="_ffDisabled" Label="Disable notes field" />
+        <StackFormField Label="Username" For="ff-user" Description="Only letters, numbers, and underscores.">
+            <StackInput Id="ff-user" Placeholder="vilas_sagar" @bind-Value="_ffUsername" />
+        </StackFormField>
+        <StackFormField Label="Email" For="ff-email" Required ErrorMessage="@_ffEmailError">
+            <StackInput Id="ff-email" Type="email" Placeholder="you@example.com" @bind-Value="_ffEmail" @onblur="ValidateEmail" />
+        </StackFormField>
+        <StackFormField Label="Notes" For="ff-notes" Description="Optional. Max 200 characters." Disabled="_ffDisabled">
+            <StackTextarea Id="ff-notes" Placeholder="Any extra notes..." Disabled="_ffDisabled" />
+        </StackFormField>
+        <StackSwitch @bind-Checked="_ffDisabled" Label="Disable notes field" />
     </div>
 </DemoSection>
 
@@ -200,7 +200,7 @@
         <!-- Basic -->
         <div class="space-y-2">
             <p class="text-sm font-semibold">Basic</p>
-            <MultiSelect TItem="string"
+            <StackMultiSelect TItem="string"
                          Options="_countries"
                          @bind-SelectedItems="_selCountries"
                          ItemLabel="x => x"
@@ -214,7 +214,7 @@
         <!-- With descriptions + groups -->
         <div class="space-y-2">
             <p class="text-sm font-semibold">With Groups &amp; Descriptions</p>
-            <MultiSelect TItem="TechOption"
+            <StackMultiSelect TItem="TechOption"
                          Options="_techOptions"
                          @bind-SelectedItems="_selTech"
                          ItemLabel="x => x.Name"
@@ -231,7 +231,7 @@
         <!-- Max selection + custom template -->
         <div class="space-y-2">
             <p class="text-sm font-semibold">Max 3 Selections + Custom Item Template</p>
-            <MultiSelect TItem="TeamMember"
+            <StackMultiSelect TItem="TeamMember"
                          Options="_teamMembers"
                          @bind-SelectedItems="_selMembers"
                          ItemLabel="m => m.Name"
@@ -249,7 +249,7 @@
                         </div>
                     </div>
                 </ItemTemplate>
-            </MultiSelect>
+            </StackMultiSelect>
             @if (_selMembers.Any())
             {
                 <p class="text-xs text-muted-foreground">Assigned: <strong>@string.Join(", ", _selMembers.Select(m => m.Name))</strong></p>
@@ -259,7 +259,7 @@
         <!-- Disabled state -->
         <div class="space-y-2">
             <p class="text-sm font-semibold">Disabled</p>
-            <MultiSelect TItem="string"
+            <StackMultiSelect TItem="string"
                          Options="_countries"
                          SelectedItems='new List<string> { "India", "Germany" }'
                          Placeholder="Disabled multi-select"
@@ -274,8 +274,8 @@
              Code="@_listboxCode">
     <div class="flex flex-wrap gap-6">
         <div>
-            <Label>Single select</Label>
-            <ListBox TItem="string"
+            <StackLabel>Single select</StackLabel>
+            <StackListBox TItem="string"
                      Items="_frameworks"
                      @bind-Value="_selectedFramework"
                      ItemLabel="x => x"
@@ -287,8 +287,8 @@
             }
         </div>
         <div>
-            <Label>Multi select</Label>
-            <ListBox TItem="string"
+            <StackLabel>Multi select</StackLabel>
+            <StackListBox TItem="string"
                      Items="_frameworks"
                      MultiSelect
                      @bind-SelectedItems="_selectedFrameworks"
@@ -310,25 +310,25 @@
     <div class="w-full max-w-sm space-y-3">
         <div>
             <p class="text-xs text-muted-foreground mb-1">Small — URL prefix</p>
-            <InputGroup Size="sm">
+            <StackInputGroup Size="sm">
                 <Prefix><span>https://</span></Prefix>
-                <ChildContent><Input Placeholder="example.com" /></ChildContent>
-            </InputGroup>
+                <ChildContent><StackInput Placeholder="example.com" /></ChildContent>
+            </StackInputGroup>
         </div>
         <div>
             <p class="text-xs text-muted-foreground mb-1">Medium — currency prefix + suffix</p>
-            <InputGroup>
+            <StackInputGroup>
                 <Prefix><span>$</span></Prefix>
-                <ChildContent><Input Placeholder="0.00" Type="number" /></ChildContent>
+                <ChildContent><StackInput Placeholder="0.00" Type="number" /></ChildContent>
                 <Suffix><span>USD</span></Suffix>
-            </InputGroup>
+            </StackInputGroup>
         </div>
         <div>
             <p class="text-xs text-muted-foreground mb-1">Large — email suffix</p>
-            <InputGroup Size="lg">
-                <ChildContent><Input Placeholder="username" /></ChildContent>
+            <StackInputGroup Size="lg">
+                <ChildContent><StackInput Placeholder="username" /></ChildContent>
                 <Suffix><span>@@example.com</span></Suffix>
-            </InputGroup>
+            </StackInputGroup>
         </div>
     </div>
 </DemoSection>
@@ -338,21 +338,21 @@
              Description="Native HTML &lt;select&gt; with consistent Tailwind styling. Use Size for sm / md / lg."
              Code="@_nativeSelectCode">
     <div class="w-full max-w-sm space-y-3">
-        <NativeSelect Size="sm" Placeholder="Small — pick a colour" @bind-Value="_nativeColor">
+        <StackNativeSelect Size="sm" Placeholder="Small — pick a colour" @bind-Value="_nativeColor">
             <option value="red">Red</option>
             <option value="green">Green</option>
             <option value="blue">Blue</option>
-        </NativeSelect>
-        <NativeSelect Placeholder="Medium — pick a framework" @bind-Value="_nativeFramework">
+        </StackNativeSelect>
+        <StackNativeSelect Placeholder="Medium — pick a framework" @bind-Value="_nativeFramework">
             <option value="blazor">Blazor</option>
             <option value="react">React</option>
             <option value="vue">Vue</option>
-        </NativeSelect>
-        <NativeSelect Size="lg" Placeholder="Large — pick a country" @bind-Value="_nativeCountry">
+        </StackNativeSelect>
+        <StackNativeSelect Size="lg" Placeholder="Large — pick a country" @bind-Value="_nativeCountry">
             <option value="us">United States</option>
             <option value="uk">United Kingdom</option>
             <option value="au">Australia</option>
-        </NativeSelect>
+        </StackNativeSelect>
         @if (!string.IsNullOrEmpty(_nativeFramework))
         {
             <p class="text-sm text-muted-foreground">Framework: <strong>@_nativeFramework</strong></p>
@@ -365,8 +365,8 @@
              Description="Click a swatch to select a color. ShowHex displays the selected hex value."
              Code="@_colorCode">
     <div class="space-y-4">
-        <ColorPalette Label="Brand color" @bind-Value="_brandColor" ShowHex />
-        <ColorPalette Label="Accent color" @bind-Value="_accentColor" ShowHex
+        <StackColorPalette Label="Brand color" @bind-Value="_brandColor" ShowHex />
+        <StackColorPalette Label="Accent color" @bind-Value="_accentColor" ShowHex
                       Colors="@(new[] { "#ef4444","#f97316","#eab308","#22c55e","#3b82f6","#8b5cf6","#ec4899" })" />
     </div>
 </DemoSection>
@@ -457,78 +457,78 @@
     private string? _plan = "pro";
 
     private const string _inputCode = """
-        <Input Placeholder="Your name" @bind-Value="_name" />
-        <Input Placeholder="Email" Type="email" @bind-Value="_email" />
-        <Input Placeholder="Disabled" Disabled />
+        <StackInput Placeholder="Your name" @bind-Value="_name" />
+        <StackInput Placeholder="Email" Type="email" @bind-Value="_email" />
+        <StackInput Placeholder="Disabled" Disabled />
         """;
 
     private const string _textareaCode = """
-        <Textarea Placeholder="Write a message..." @bind-Value="_message" Rows="4" />
+        <StackTextarea Placeholder="Write a message..." @bind-Value="_message" Rows="4" />
         """;
 
     private const string _selectCode = """
-        <Select @bind-Value="_framework" Placeholder="Choose a framework">
+        <StackSelect @bind-Value="_framework" Placeholder="Choose a framework">
             <option value="blazor">Blazor</option>
             <option value="maui">MAUI Blazor</option>
-        </Select>
+        </StackSelect>
         """;
 
     private const string _switchCode = """
-        <Switch Id="sw-notif" @bind-Checked="_notifications" Label="Enable notifications" />
-        <Switch Id="sw-dark"  @bind-Checked="_darkMode"      Label="Dark mode preview" />
+        <StackSwitch Id="sw-notif" @bind-Checked="_notifications" Label="Enable notifications" />
+        <StackSwitch Id="sw-dark"  @bind-Checked="_darkMode"      Label="Dark mode preview" />
         """;
 
     private const string _sliderCode = """
-        <Slider @bind-Value="_volume" Min="0" Max="100" Step="5" />
+        <StackSlider @bind-Value="_volume" Min="0" Max="100" Step="5" />
         """;
 
     private const string _radioCode = """
-        <RadioGroup @bind-Value="_plan">
-            <RadioGroupItem Value="free"       Label="Free — $0/month"        Id="plan-free" />
-            <RadioGroupItem Value="pro"        Label="Pro — $9/month"         Id="plan-pro" />
-            <RadioGroupItem Value="enterprise" Label="Enterprise — Contact us" Id="plan-enterprise" />
-        </RadioGroup>
+        <StackRadioGroup @bind-Value="_plan">
+            <StackRadioGroupItem Value="free"       Label="Free — $0/month"        Id="plan-free" />
+            <StackRadioGroupItem Value="pro"        Label="Pro — $9/month"         Id="plan-pro" />
+            <StackRadioGroupItem Value="enterprise" Label="Enterprise — Contact us" Id="plan-enterprise" />
+        </StackRadioGroup>
         """;
 
     private const string _floatingCode = """
-        <FloatingLabel Label="First name" @bind-Value="_name" />
-        <FloatingLabel Label="Email" Type="email" @bind-Value="_email" />
+        <StackFloatingLabel Label="First name" @bind-Value="_name" />
+        <StackFloatingLabel Label="Email" Type="email" @bind-Value="_email" />
         """;
 
     private const string _numericCode = """
-        <NumericInput @bind-Value="_qty" Min="1" Max="99" Step="1" />
-        <NumericInput @bind-Value="_price" Min="0" Step="0.01" ShowStepper="false" />
+        <StackNumericInput @bind-Value="_qty" Min="1" Max="99" Step="1" />
+        <StackNumericInput @bind-Value="_price" Min="0" Step="0.01" ShowStepper="false" />
         """;
 
     private const string _otpCode = """
-        <InputOtp Length="6" GroupAt="3" @bind-Value="_otp" />
-        <InputOtp Length="4" GroupAt="4" @bind-Value="_pin" />
+        <StackInputOtp Length="6" GroupAt="3" @bind-Value="_otp" />
+        <StackInputOtp Length="4" GroupAt="4" @bind-Value="_pin" />
         """;
 
     private const string _maskedCode = """
-        <MaskedTextBox Mask="000-000-0000" @bind-Value="_phone" />   <!-- phone -->
-        <MaskedTextBox Mask="00/00/0000"   @bind-Value="_date" />    <!-- date  -->
+        <StackMaskedTextBox Mask="000-000-0000" @bind-Value="_phone" />   <!-- phone -->
+        <StackMaskedTextBox Mask="00/00/0000"   @bind-Value="_date" />    <!-- date  -->
         """;
 
     private const string _formFieldCode = """
-        <FormField Label="Username" For="user" Description="Letters, numbers, underscores only.">
-            <Input Id="user" Placeholder="vilas_sagar" @bind-Value="_username" />
-        </FormField>
-        <FormField Label="Email" For="email" Required ErrorMessage="@_emailError">
-            <Input Id="email" Type="email" @bind-Value="_email" />
-        </FormField>
+        <StackFormField Label="Username" For="user" Description="Letters, numbers, underscores only.">
+            <StackInput Id="user" Placeholder="vilas_sagar" @bind-Value="_username" />
+        </StackFormField>
+        <StackFormField Label="Email" For="email" Required ErrorMessage="@_emailError">
+            <StackInput Id="email" Type="email" @bind-Value="_email" />
+        </StackFormField>
         """;
 
     private const string _multiSelectCode = """
         <!-- Basic string list -->
-        <MultiSelect TItem="string"
+        <StackMultiSelect TItem="string"
                      Options="_countries"
                      @bind-SelectedItems="_selCountries"
                      ItemLabel="x => x"
                      Placeholder="Select countries…" />
 
         <!-- Grouped with descriptions -->
-        <MultiSelect TItem="TechOption"
+        <StackMultiSelect TItem="TechOption"
                      Options="_techOptions"
                      @bind-SelectedItems="_selTech"
                      ItemLabel="x => x.Name"
@@ -537,7 +537,7 @@
                      Placeholder="Select technologies…" />
 
         <!-- Max 3, custom template -->
-        <MultiSelect TItem="TeamMember"
+        <StackMultiSelect TItem="TeamMember"
                      Options="_teamMembers"
                      @bind-SelectedItems="_selMembers"
                      ItemLabel="m => m.Name"
@@ -553,7 +553,7 @@
                     </div>
                 </div>
             </ItemTemplate>
-        </MultiSelect>
+        </StackMultiSelect>
 
         @code {
             // data models
@@ -568,31 +568,31 @@
 
     private const string _listboxCode = """
         <!-- Single select -->
-        <ListBox TItem="string" Items="_items" @bind-Value="_selected" ItemLabel="x => x" />
+        <StackListBox TItem="string" Items="_items" @bind-Value="_selected" ItemLabel="x => x" />
 
         <!-- Multi select -->
-        <ListBox TItem="string" Items="_items" MultiSelect @bind-SelectedItems="_selectedList" ItemLabel="x => x" />
+        <StackListBox TItem="string" Items="_items" MultiSelect @bind-SelectedItems="_selectedList" ItemLabel="x => x" />
         """;
 
     private const string _colorCode = """
-        <ColorPalette Label="Brand color" @bind-Value="_color" ShowHex />
-        <ColorPalette Label="Accent"
+        <StackColorPalette Label="Brand color" @bind-Value="_color" ShowHex />
+        <StackColorPalette Label="Accent"
                       Colors="@(new[] { "#ef4444","#3b82f6","#22c55e","#8b5cf6" })"
                       @bind-Value="_accent" ShowHex />
         """;
 
     private const string _inputGroupCode = """
-        <InputGroup>
+        <StackInputGroup>
             <Prefix><span>$</span></Prefix>
-            <Input Placeholder="0.00" Type="number" />
+            <StackInput Placeholder="0.00" Type="number" />
             <Suffix><span>USD</span></Suffix>
-        </InputGroup>
+        </StackInputGroup>
         """;
 
     private const string _nativeSelectCode = """
-        <NativeSelect Placeholder="Pick a framework" @bind-Value="_framework">
+        <StackNativeSelect Placeholder="Pick a framework" @bind-Value="_framework">
             <option value="blazor">Blazor</option>
             <option value="react">React</option>
-        </NativeSelect>
+        </StackNativeSelect>
         """;
 }

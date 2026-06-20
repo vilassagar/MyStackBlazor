@@ -27,7 +27,7 @@
 
 <!-- Calendar component -->
 <div class="h-[860px] rounded-xl border overflow-hidden shadow-sm">
-    <MsCalendar Events="_events"
+    <StackMsCalendar Events="_events"
                 People="_people"
                 ShowMiniCalendar="true"
                 AllowAdd="true"
@@ -238,7 +238,7 @@
     private const string _code = """
         <!-- Multi-calendar with people + focus modes -->
         <div class="h-[800px] rounded-xl border overflow-hidden">
-            <MsCalendar Events="_events"
+            <StackCalendar Events="_events"
                         People="_people"
                         ShowMiniCalendar="true"
                         AllowAdd="true"

@@ -7,14 +7,14 @@
 <p class="text-muted-foreground mb-8">Ready-made Dashboard and E-commerce listing UI blocks — compose them to build full screens.</p>
 
 <!-- ─── DASHBOARD ─────────────────────────────────────────────── -->
-<Typography Variant="h2" Class="mt-2 mb-4">Dashboard</Typography>
+<StackTypography Variant="h2" Class="mt-2 mb-4">Dashboard</StackTypography>
 
 <!-- TopNavbar -->
 <DemoSection Title="Top Navbar"
              Description="Sticky dashboard header with brand, breadcrumbs, search bar, notification bell, and user avatar."
              Code="@_topNavCode">
     <div class="w-full rounded-xl border overflow-hidden">
-        <TopNavbar Brand="MyDashboard"
+        <StackTopNavbar Brand="MyDashboard"
                    ShowSearch
                    UserName="Vilas Sagar"
                    UserInitials="VS"
@@ -34,7 +34,7 @@
              Description="Fixed-width sidebar with grouped navigation items, active-state highlighting, and a footer slot."
              Code="@_sidebarCode">
     <div class="w-64 rounded-xl border overflow-hidden" style="height:420px">
-        <DashboardSidebar Brand="MyApp"
+        <StackDashboardSidebar Brand="MyApp"
                           Groups="@(new Dictionary<string, IList<DashboardNavItem>>
                           {
                               ["Main"] = new List<DashboardNavItem>
@@ -53,12 +53,12 @@
             <FooterContent>
                 <div class="px-3 py-2 border-t">
                     <div class="flex items-center gap-2">
-                        <Avatar Initials="VS" Size="sm" />
+                        <StackAvatar Initials="VS" Size="sm" />
                         <div class="text-xs"><p class="font-medium">Vilas Sagar</p><p class="text-muted-foreground">Admin</p></div>
                     </div>
                 </div>
             </FooterContent>
-        </DashboardSidebar>
+        </StackDashboardSidebar>
     </div>
 </DemoSection>
 
@@ -67,10 +67,10 @@
              Description="Small metric card with an icon, value, trend, and optional description."
              Code="@_compactCardCode">
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
-        <CompactCard Label="Total revenue"   Value="$45 231"  Trend="+20.1% from last month"  TrendUp />
-        <CompactCard Label="Subscriptions"   Value="+2 350"   Trend="+180 this week"           TrendUp />
-        <CompactCard Label="Bounce rate"     Value="24.8%"    Trend="-3.2% this month"         TrendUp="false" />
-        <CompactCard Label="Active users"    Value="1 284"    Trend="+12% vs last week"         TrendUp />
+        <StackCompactCard Label="Total revenue"   Value="$45 231"  Trend="+20.1% from last month"  TrendUp />
+        <StackCompactCard Label="Subscriptions"   Value="+2 350"   Trend="+180 this week"           TrendUp />
+        <StackCompactCard Label="Bounce rate"     Value="24.8%"    Trend="-3.2% this month"         TrendUp="false" />
+        <StackCompactCard Label="Active users"    Value="1 284"    Trend="+12% vs last week"         TrendUp />
     </div>
 </DemoSection>
 
@@ -79,7 +79,7 @@
              Description="Larger card with header (title/description/actions), value, trend, and a body slot for charts or tables."
              Code="@_dashCardCode">
     <div class="grid md:grid-cols-2 gap-4 w-full">
-        <DashboardCard Title="Monthly revenue"
+        <StackDashboardCard Title="Monthly revenue"
                        Value="$12 450"
                        Description="Recurring subscription income"
                        Trend="+8.2%"
@@ -87,8 +87,8 @@
             <BodyContent>
                 <div class="h-32 rounded-md bg-muted/40 flex items-center justify-center text-xs text-muted-foreground">[Chart placeholder]</div>
             </BodyContent>
-        </DashboardCard>
-        <DashboardCard Title="New sign-ups"
+        </StackDashboardCard>
+        <StackDashboardCard Title="New sign-ups"
                        Value="348"
                        Description="Accounts created this month"
                        Trend="-4 from last month"
@@ -99,26 +99,26 @@
                     {
                         <div class="flex items-center gap-2 text-sm">
                             <span class="w-16 text-muted-foreground">@label</span>
-                            <Progress Value="@pct" Class="flex-1" />
+                            <StackProgress Value="@pct" Class="flex-1" />
                             <span class="w-8 text-right text-muted-foreground">@pct%</span>
                         </div>
                     }
                 </div>
             </BodyContent>
-        </DashboardCard>
+        </StackDashboardCard>
     </div>
 </DemoSection>
 
 <!-- ─── LISTING / E-COMMERCE ──────────────────────────────────── -->
-<Separator Class="my-8" />
-<Typography Variant="h2" Class="mb-4">E-Commerce Listing</Typography>
+<StackSeparator Class="my-8" />
+<StackTypography Variant="h2" Class="mb-4">E-Commerce Listing</StackTypography>
 
 <!-- SortBar -->
 <DemoSection Title="Sort Bar"
              Description="Result count display, sort dropdown, and grid/list view toggle."
              Code="@_sortBarCode">
     <div class="w-full max-w-2xl">
-        <SortBar ResultCount="124"
+        <StackSortBar ResultCount="124"
                  SelectedSort="_sortBy"
                  OnSortChanged="s => _sortBy = s"
                  ViewMode="_viewMode"
@@ -133,7 +133,7 @@
              Description="Collapsible filter categories with multi-select checkboxes and a clear-all button."
              Code="@_filterCode">
     <div class="w-full max-w-xs">
-        <FilterPanel Title="Filters"
+        <StackFilterPanel Title="Filters"
                      OnFilterChange="HandleFilterChange"
                      Categories="@(new List<FilterCategory>
                      {
@@ -171,11 +171,11 @@
              Description="Product tile with image placeholder, star rating, price, stock badge, and Add to Cart callback."
              Code="@_productCardCode">
     <div class="grid grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-2xl">
-        <ProductCard Item="@(new ProductItem("Wireless Headphones Pro", "$149.99", BadgeText: "New", Rating: 4.7m, ReviewCount: 312, IsInStock: true))"
+        <StackProductCard Item="@(new ProductItem("Wireless Headphones Pro", "$149.99", BadgeText: "New", Rating: 4.7m, ReviewCount: 312, IsInStock: true))"
                      OnAddToCart="@(p => Toast.Show($"{p.Title} added to cart!", "Added", "success"))" />
-        <ProductCard Item="@(new ProductItem("Ergonomic Office Chair", "$349.00", Rating: 4.2m, ReviewCount: 87, IsInStock: true))"
+        <StackProductCard Item="@(new ProductItem("Ergonomic Office Chair", "$349.00", Rating: 4.2m, ReviewCount: 87, IsInStock: true))"
                      OnAddToCart="@(p => Toast.Show($"{p.Title} added to cart!", "Added", "success"))" />
-        <ProductCard Item="@(new ProductItem("Mechanical Keyboard", "$89.00", BadgeText: "Sale", Rating: 4.5m, ReviewCount: 524, IsInStock: false))"
+        <StackProductCard Item="@(new ProductItem("Mechanical Keyboard", "$89.00", BadgeText: "Sale", Rating: 4.5m, ReviewCount: 524, IsInStock: false))"
                      OnAddToCart="@(p => Toast.Show($"{p.Title} added to cart!"))" />
     </div>
 </DemoSection>
@@ -185,7 +185,7 @@
              Description="Full-page login with email/password, forgot password link, and sign-up link."
              Code="@_loginCode">
     <div class="w-full max-w-md mx-auto rounded-xl border overflow-hidden shadow-sm">
-        <LoginForm Title="Welcome back"
+        <StackLoginForm Title="Welcome back"
                    Subtitle="Sign in to your MyStackBlazor account"
                    Brand="MyStackBlazor"
                    ButtonText="Sign in"
@@ -200,7 +200,7 @@
              Description="Registration form with first/last name, email, password confirmation, and terms links."
              Code="@_signupCode">
     <div class="w-full max-w-md mx-auto rounded-xl border overflow-hidden shadow-sm">
-        <SignUpForm Title="Create an account"
+        <StackSignUpForm Title="Create an account"
                     Subtitle="Start building with MyStackBlazor today"
                     Brand="MyStackBlazor"
                     ButtonText="Create account"
@@ -214,9 +214,9 @@
 <DemoSection Title="Flyout Navigation"
              Description="Mobile drawer navigation with nested categories. Opens from the left."
              Code="@_flyoutCode">
-    <Button Variant="outline" OnClick="@(() => _flyoutOpen = true)">Open flyout nav</Button>
+    <StackButton Variant="outline" OnClick="@(() => _flyoutOpen = true)">Open flyout nav</StackButton>
 
-    <FlyoutNavigation Brand="MyShop"
+    <StackFlyoutNavigation Brand="MyShop"
                       @bind-IsOpen="_flyoutOpen"
                       Categories="@(new List<NavCategory>
                       {
@@ -242,7 +242,7 @@
         => _activeFilters = filters;
 
     private const string _topNavCode = """
-        <TopNavbar Brand="MyDashboard"
+        <StackTopNavbar Brand="MyDashboard"
                    ShowSearch
                    UserName="Vilas Sagar"
                    UserInitials="VS"
@@ -251,7 +251,7 @@
         """;
 
     private const string _sidebarCode = """
-        <DashboardSidebar Brand="MyApp"
+        <StackDashboardSidebar Brand="MyApp"
                           Groups="@(new Dictionary<string, IList<DashboardNavItem>>
                           {
                               ["Main"] = new List<DashboardNavItem>
@@ -263,24 +263,24 @@
         """;
 
     private const string _compactCardCode = """
-        <CompactCard Label="Total revenue"
+        <StackCompactCard Label="Total revenue"
                      Value="$45 231"
                      Trend="+20.1% from last month"
                      TrendUp />
         """;
 
     private const string _dashCardCode = """
-        <DashboardCard Title="Monthly revenue"
+        <StackDashboardCard Title="Monthly revenue"
                        Value="$12 450"
                        Description="Recurring income"
                        Trend="+8.2%"
                        TrendUp>
             <BodyContent><!-- chart or table --></BodyContent>
-        </DashboardCard>
+        </StackDashboardCard>
         """;
 
     private const string _sortBarCode = """
-        <SortBar ResultCount="124"
+        <StackSortBar ResultCount="124"
                  SelectedSort="_sort"
                  OnSortChanged="s => _sort = s"
                  ViewMode="_view"
@@ -289,7 +289,7 @@
         """;
 
     private const string _filterCode = """
-        <FilterPanel Title="Filters"
+        <StackFilterPanel Title="Filters"
                      OnFilterChange="HandleFilterChange"
                      Categories="@(new List<FilterCategory>
                      {
@@ -302,13 +302,13 @@
         """;
 
     private const string _productCardCode = """
-        <ProductCard Item="@(new ProductItem("Wireless Headphones Pro", "$149.99",
+        <StackProductCard Item="@(new ProductItem("Wireless Headphones Pro", "$149.99",
                          BadgeText: "New", Rating: 4.7m, ReviewCount: 312, IsInStock: true))"
                      OnAddToCart="p => Toast.Show($"{p.Title} added to cart!")" />
         """;
 
     private const string _loginCode = """
-        <LoginForm Title="Welcome back"
+        <StackLoginForm Title="Welcome back"
                    Brand="MyApp"
                    ForgotPasswordHref="/forgot"
                    SignUpHref="/register"
@@ -316,7 +316,7 @@
         """;
 
     private const string _signupCode = """
-        <SignUpForm Title="Create an account"
+        <StackSignUpForm Title="Create an account"
                     Brand="MyApp"
                     SuccessMessage="Check your inbox to verify."
                     LoginHref="/login"
@@ -324,8 +324,8 @@
         """;
 
     private const string _flyoutCode = """
-        <Button OnClick="@(() => _open = true)">Open menu</Button>
-        <FlyoutNavigation Brand="MyShop"
+        <StackButton OnClick="@(() => _open = true)">Open menu</StackButton>
+        <StackFlyoutNavigation Brand="MyShop"
                           @bind-IsOpen="_open"
                           Categories="@(new List<NavCategory>
                           {

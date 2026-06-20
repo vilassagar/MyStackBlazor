@@ -9,14 +9,14 @@
 <!-- Alert -->
 <DemoSection Title="Alert" Description="Use Variant to control severity. Supports Icon, AlertTitle, and AlertDescription slots." Code="@_alertCode">
     <div class="w-full space-y-3">
-        <Alert>
-            <AlertTitle>Information</AlertTitle>
-            <AlertDescription>This is a default informational alert message.</AlertDescription>
-        </Alert>
-        <Alert Variant="destructive">
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>Something went wrong. Please try again later.</AlertDescription>
-        </Alert>
+        <StackAlert>
+            <StackAlertTitle>Information</StackAlertTitle>
+            <StackAlertDescription>This is a default informational alert message.</StackAlertDescription>
+        </StackAlert>
+        <StackAlert Variant="destructive">
+            <StackAlertTitle>Error</StackAlertTitle>
+            <StackAlertDescription>Something went wrong. Please try again later.</StackAlertDescription>
+        </StackAlert>
     </div>
 </DemoSection>
 
@@ -25,47 +25,47 @@
     <div class="w-full max-w-sm space-y-4">
         <div>
             <p class="text-sm font-medium mb-1">Upload progress</p>
-            <Progress Value="@_progress" />
+            <StackProgress Value="@_progress" />
             <p class="text-xs text-muted-foreground mt-1">@_progress%</p>
         </div>
         <div class="demo-row">
-            <Button Size="sm" Variant="outline" OnClick="DecProgress">-10</Button>
-            <Button Size="sm" Variant="outline" OnClick="IncProgress">+10</Button>
-            <Button Size="sm" OnClick="SimulateUpload" IsLoading="_uploading">
+            <StackButton Size="sm" Variant="outline" OnClick="DecProgress">-10</StackButton>
+            <StackButton Size="sm" Variant="outline" OnClick="IncProgress">+10</StackButton>
+            <StackButton Size="sm" OnClick="SimulateUpload" IsLoading="_uploading">
                 @(_uploading ? "Uploading..." : "Simulate Upload")
-            </Button>
+            </StackButton>
         </div>
     </div>
 </DemoSection>
 
 <!-- Dialog -->
 <DemoSection Title="Dialog" Description="Controlled by IsOpen / IsOpenChanged. CloseOnBackdropClick defaults to true." Code="@_dialogCode">
-    <Button OnClick="@(_ => _dialogOpen = true)">Open Dialog</Button>
-    <Button Variant="outline" OnClick="@(_ => _confirmOpen = true)">Confirm Action</Button>
+    <StackButton OnClick="@(_ => _dialogOpen = true)">Open Dialog</StackButton>
+    <StackButton Variant="outline" OnClick="@(_ => _confirmOpen = true)">Confirm Action</StackButton>
 
-    <Dialog @bind-IsOpen="_dialogOpen">
-        <DialogHeader>
-            <DialogTitle>Edit Profile</DialogTitle>
-        </DialogHeader>
+    <StackDialog @bind-IsOpen="_dialogOpen">
+        <StackDialogHeader>
+            <StackDialogTitle>Edit Profile</StackDialogTitle>
+        </StackDialogHeader>
         <div class="space-y-4 py-2">
             <div>
                 <label class="text-sm font-medium mb-1 block" for="dlg-name">Display name</label>
-                <Input Id="dlg-name" Placeholder="Vilas Sagar" @bind-Value="_profileName" />
+                <StackInput Id="dlg-name" Placeholder="Vilas Sagar" @bind-Value="_profileName" />
             </div>
             <div>
                 <label class="text-sm font-medium mb-1 block" for="dlg-bio">Bio</label>
-                <Textarea Id="dlg-bio" Placeholder="Tell us about yourself..." @bind-Value="_profileBio" Rows="3" />
+                <StackTextarea Id="dlg-bio" Placeholder="Tell us about yourself..." @bind-Value="_profileBio" Rows="3" />
             </div>
         </div>
-        <DialogFooter>
+        <StackDialogFooter>
             <div class="demo-row justify-end w-full">
-                <Button Variant="outline" OnClick="@(_ => _dialogOpen = false)">Cancel</Button>
-                <Button OnClick="SaveProfile">Save changes</Button>
+                <StackButton Variant="outline" OnClick="@(_ => _dialogOpen = false)">Cancel</StackButton>
+                <StackButton OnClick="SaveProfile">Save changes</StackButton>
             </div>
-        </DialogFooter>
-    </Dialog>
+        </StackDialogFooter>
+    </StackDialog>
 
-    <AlertDialog @bind-IsOpen="_confirmOpen"
+    <StackAlertDialog @bind-IsOpen="_confirmOpen"
                  Title="Delete item?"
                  Description="This action cannot be undone. This will permanently delete the item from our servers."
                  ConfirmText="Delete"
@@ -75,15 +75,15 @@
 
 <!-- Toast -->
 <DemoSection Title="Toast Notifications" Description="Use ToastService (injected) to fire toasts from anywhere. Toaster must be in your layout." Code="@_toastCode">
-    <Button OnClick="@(_ => Toast.Show("Changes saved successfully.", "Saved!", "success"))">
+    <StackButton OnClick="@(_ => Toast.Show("Changes saved successfully.", "Saved!", "success"))">
         Success Toast
-    </Button>
-    <Button Variant="destructive" OnClick="@(_ => Toast.Show("Something went wrong.", "Error", "destructive"))">
+    </StackButton>
+    <StackButton Variant="destructive" OnClick="@(_ => Toast.Show("Something went wrong.", "Error", "destructive"))">
         Error Toast
-    </Button>
-    <Button Variant="outline" OnClick="@(_ => Toast.Show("Update available.", "Info"))">
+    </StackButton>
+    <StackButton Variant="outline" OnClick="@(_ => Toast.Show("Update available.", "Info"))">
         Default Toast
-    </Button>
+    </StackButton>
 </DemoSection>
 
 @code {
@@ -124,39 +124,39 @@
     }
 
     private const string _alertCode = """
-        <Alert>
-            <AlertTitle>Information</AlertTitle>
-            <AlertDescription>This is an informational alert.</AlertDescription>
-        </Alert>
-        <Alert Variant="destructive">
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>Something went wrong.</AlertDescription>
-        </Alert>
+        <StackAlert>
+            <StackAlertTitle>Information</StackAlertTitle>
+            <StackAlertDescription>This is an informational alert.</StackAlertDescription>
+        </StackAlert>
+        <StackAlert Variant="destructive">
+            <StackAlertTitle>Error</StackAlertTitle>
+            <StackAlertDescription>Something went wrong.</StackAlertDescription>
+        </StackAlert>
         """;
 
     private const string _progressCode = """
-        <Progress Value="@_progress" />
-        <Progress Value="75" Max="100" />
+        <StackProgress Value="@_progress" />
+        <StackProgress Value="75" Max="100" />
         """;
 
     private const string _dialogCode = """
-        <Button OnClick="@(_ => _dialogOpen = true)">Open Dialog</Button>
+        <StackButton OnClick="@(_ => _dialogOpen = true)">Open Dialog</StackButton>
 
-        <Dialog @bind-IsOpen="_dialogOpen">
-            <DialogHeader><DialogTitle>Edit Profile</DialogTitle></DialogHeader>
-            <Input Placeholder="Name" @bind-Value="_name" />
-            <DialogFooter>
-                <Button OnClick="@(_ => _dialogOpen = false)">Cancel</Button>
-                <Button OnClick="Save">Save</Button>
-            </DialogFooter>
-        </Dialog>
+        <StackDialog @bind-IsOpen="_dialogOpen">
+            <StackDialogHeader><StackDialogTitle>Edit Profile</StackDialogTitle></StackDialogHeader>
+            <StackInput Placeholder="Name" @bind-Value="_name" />
+            <StackDialogFooter>
+                <StackButton OnClick="@(_ => _dialogOpen = false)">Cancel</StackButton>
+                <StackButton OnClick="Save">Save</StackButton>
+            </StackDialogFooter>
+        </StackDialog>
         """;
 
     private const string _toastCode = """
         @inject ToastService Toast
 
-        <Button OnClick="@(_ => Toast.Show("Saved!", "success", "Done"))">
+        <StackButton OnClick="@(_ => Toast.Show("Saved!", "success", "Done"))">
             Show Toast
-        </Button>
+        </StackButton>
         """;
 }

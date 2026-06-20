@@ -2,7 +2,7 @@
 @inherits LayoutComponentBase
 @inject NavigationManager Nav
 
-<ThemeProvider>
+<StackThemeProvider>
     <!-- Top bar -->
     <header class="fixed top-0 left-0 right-0 z-40 h-14 border-b bg-background/95 backdrop-blur flex items-center px-4 gap-4">
         <button type="button" class="md:hidden p-2 rounded-md hover:bg-accent" @onclick="ToggleSidebar" aria-label="Toggle menu">
@@ -22,7 +22,7 @@
             GitHub
         </a>
         <span class="hidden sm:block text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">v1.0.1</span>
-        <ThemeToggle />
+        <StackThemeToggle />
     </header>
 
     <!-- Sidebar overlay (mobile) -->
@@ -44,8 +44,8 @@
     </main>
 
     <!-- Toast host -->
-    <Toaster />
-</ThemeProvider>
+    <StackToaster />
+</StackThemeProvider>
 
 @code {
     private bool _sidebarOpen;

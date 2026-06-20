@@ -11,15 +11,15 @@
              Description="Appears on hover. Use Text for simple labels, Content for rich markup. Side controls placement."
              Code="@_tooltipCode">
     <div class="flex flex-wrap gap-6">
-        <Tooltip Text="This is a tooltip" Side="top">
-            <Button Variant="outline" Size="sm">Hover me (top)</Button>
-        </Tooltip>
-        <Tooltip Text="Appears below" Side="bottom">
-            <Button Variant="outline" Size="sm">Hover me (bottom)</Button>
-        </Tooltip>
-        <Tooltip Side="right">
+        <StackTooltip Text="This is a tooltip" Side="top">
+            <StackButton Variant="outline" Size="sm">Hover me (top)</StackButton>
+        </StackTooltip>
+        <StackTooltip Text="Appears below" Side="bottom">
+            <StackButton Variant="outline" Size="sm">Hover me (bottom)</StackButton>
+        </StackTooltip>
+        <StackTooltip Side="right">
             <ChildContent>
-                <Button Variant="outline" Size="sm">Rich tooltip →</Button>
+                <StackButton Variant="outline" Size="sm">Rich tooltip →</StackButton>
             </ChildContent>
             <Content>
                 <div class="space-y-1">
@@ -27,7 +27,7 @@
                     <p class="text-xs text-muted-foreground">Press <kbd class="bg-muted px-1 rounded text-xs">⌘K</kbd> to open command palette</p>
                 </div>
             </Content>
-        </Tooltip>
+        </StackTooltip>
     </div>
 </DemoSection>
 
@@ -36,30 +36,30 @@
              Description="Click-triggered floating panel with arbitrary content. Closes when clicking outside."
              Code="@_popoverCode">
     <div class="flex flex-wrap gap-4">
-        <Popover>
+        <StackPopover>
             <Trigger>
-                <Button Variant="outline">Open popover</Button>
+                <StackButton Variant="outline">Open popover</StackButton>
             </Trigger>
             <Content>
                 <div class="space-y-3 p-1">
                     <p class="text-sm font-semibold">Notification settings</p>
                     <div class="space-y-2">
-                        <Switch Id="pop-email" Label="Email notifications" Checked />
-                        <Switch Id="pop-push" Label="Push notifications" />
-                        <Switch Id="pop-sms" Label="SMS alerts" />
+                        <StackSwitch Id="pop-email" Label="Email notifications" Checked />
+                        <StackSwitch Id="pop-push" Label="Push notifications" />
+                        <StackSwitch Id="pop-sms" Label="SMS alerts" />
                     </div>
-                    <Button Size="sm" Class="w-full">Save</Button>
+                    <StackButton Size="sm" Class="w-full">Save</StackButton>
                 </div>
             </Content>
-        </Popover>
+        </StackPopover>
 
-        <Popover Align="end">
+        <StackPopover Align="end">
             <Trigger>
-                <Button Variant="ghost" Size="icon" AriaLabel="Filter options">
+                <StackButton Variant="ghost" Size="icon" AriaLabel="Filter options">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
                     </svg>
-                </Button>
+                </StackButton>
             </Trigger>
             <Content>
                 <div class="p-1 space-y-1 text-sm">
@@ -69,7 +69,7 @@
                     <label class="flex items-center gap-2"><input type="checkbox" class="rounded" /> Pending</label>
                 </div>
             </Content>
-        </Popover>
+        </StackPopover>
     </div>
 </DemoSection>
 
@@ -78,7 +78,7 @@
              Description="Richer preview card that appears on hover. Great for user/link previews."
              Code="@_hoverCardCode">
     <div class="flex flex-wrap gap-6">
-        <HoverCard>
+        <StackHoverCard>
             <Trigger>
                 <a href="#" class="text-sm font-medium underline underline-offset-4 text-primary" @onclick:preventDefault>
                     @@vilas_sagar
@@ -86,7 +86,7 @@
             </Trigger>
             <Content>
                 <div class="flex gap-3 p-1">
-                    <Avatar Initials="VS" Size="lg" />
+                    <StackAvatar Initials="VS" Size="lg" />
                     <div>
                         <p class="text-sm font-semibold">Vilas Sagar</p>
                         <p class="text-xs text-muted-foreground">Lead Engineer · MyStackBlazor</p>
@@ -94,20 +94,20 @@
                     </div>
                 </div>
             </Content>
-        </HoverCard>
+        </StackHoverCard>
 
-        <HoverCard>
+        <StackHoverCard>
             <Trigger>
-                <Badge Variant="outline" Class="cursor-default">MyStackBlazor v1.0</Badge>
+                <StackBadge Variant="outline" Class="cursor-default">MyStackBlazor v1.0</StackBadge>
             </Trigger>
             <Content>
                 <div class="p-1 space-y-1">
                     <p class="text-sm font-semibold">Release notes</p>
                     <p class="text-xs text-muted-foreground">100+ components · Tailwind CSS v4 · .NET 10</p>
-                    <Badge Variant="secondary" Class="text-xs">Stable</Badge>
+                    <StackBadge Variant="secondary" Class="text-xs">Stable</StackBadge>
                 </div>
             </Content>
-        </HoverCard>
+        </StackHoverCard>
     </div>
 </DemoSection>
 
@@ -116,32 +116,32 @@
              Description="Slides in from a side of the screen. Use Side to control direction."
              Code="@_sheetCode">
     <div class="flex flex-wrap gap-3">
-        <Button Variant="outline" OnClick="@(() => _sheetRight = true)">Open right sheet</Button>
-        <Button Variant="outline" OnClick="@(() => _sheetLeft = true)">Open left sheet</Button>
-        <Button Variant="outline" OnClick="@(() => _sheetBottom = true)">Open bottom sheet</Button>
+        <StackButton Variant="outline" OnClick="@(() => _sheetRight = true)">Open right sheet</StackButton>
+        <StackButton Variant="outline" OnClick="@(() => _sheetLeft = true)">Open left sheet</StackButton>
+        <StackButton Variant="outline" OnClick="@(() => _sheetBottom = true)">Open bottom sheet</StackButton>
     </div>
 
-    <Sheet @bind-IsOpen="_sheetRight" Side="right">
+    <StackSheet @bind-IsOpen="_sheetRight" Side="right">
         <div class="p-6 space-y-4">
             <h3 class="text-lg font-semibold">Edit settings</h3>
             <p class="text-sm text-muted-foreground">Make changes to your account here.</p>
             <div class="space-y-3">
-                <FormField Label="Display name" For="sh-name">
-                    <Input Id="sh-name" Placeholder="Vilas Sagar" />
-                </FormField>
-                <FormField Label="Role" For="sh-role">
-                    <Select Id="sh-role" Placeholder="Select role">
+                <StackFormField Label="Display name" For="sh-name">
+                    <StackInput Id="sh-name" Placeholder="Vilas Sagar" />
+                </StackFormField>
+                <StackFormField Label="Role" For="sh-role">
+                    <StackSelect Id="sh-role" Placeholder="Select role">
                         <option value="admin">Admin</option>
                         <option value="editor">Editor</option>
                         <option value="viewer">Viewer</option>
-                    </Select>
-                </FormField>
+                    </StackSelect>
+                </StackFormField>
             </div>
-            <Button Class="w-full" OnClick="@(() => { _sheetRight = false; Toast.Show("Settings saved."); })">Save changes</Button>
+            <StackButton Class="w-full" OnClick="@(() => { _sheetRight = false; Toast.Show("Settings saved."); })">Save changes</StackButton>
         </div>
-    </Sheet>
+    </StackSheet>
 
-    <Sheet @bind-IsOpen="_sheetLeft" Side="left">
+    <StackSheet @bind-IsOpen="_sheetLeft" Side="left">
         <div class="p-6 space-y-4">
             <h3 class="text-lg font-semibold">Navigation</h3>
             <nav class="space-y-1">
@@ -154,39 +154,39 @@
                 }
             </nav>
         </div>
-    </Sheet>
+    </StackSheet>
 
-    <Sheet @bind-IsOpen="_sheetBottom" Side="bottom">
+    <StackSheet @bind-IsOpen="_sheetBottom" Side="bottom">
         <div class="p-6 space-y-4">
             <h3 class="text-lg font-semibold">Share this item</h3>
             <div class="flex gap-3">
-                <Button Variant="outline" Class="flex-1" OnClick="@(() => { _sheetBottom = false; Toast.Show("Copied to clipboard!"); })">Copy link</Button>
-                <Button Class="flex-1" OnClick="@(() => { _sheetBottom = false; Toast.Show("Shared!"); })">Share</Button>
+                <StackButton Variant="outline" Class="flex-1" OnClick="@(() => { _sheetBottom = false; Toast.Show("Copied to clipboard!"); })">Copy link</StackButton>
+                <StackButton Class="flex-1" OnClick="@(() => { _sheetBottom = false; Toast.Show("Shared!"); })">Share</StackButton>
             </div>
         </div>
-    </Sheet>
+    </StackSheet>
 </DemoSection>
 
 <!-- Drawer -->
 <DemoSection Title="Drawer"
              Description="Bottom drawer with a handle bar. Ideal for mobile action sheets."
              Code="@_drawerCode">
-    <Button Variant="outline" OnClick="@(() => _drawerOpen = true)">Open drawer</Button>
+    <StackButton Variant="outline" OnClick="@(() => _drawerOpen = true)">Open drawer</StackButton>
 
-    <Drawer @bind-IsOpen="_drawerOpen">
+    <StackDrawer @bind-IsOpen="_drawerOpen">
         <div class="p-6 space-y-4">
             <h3 class="text-lg font-semibold">Quick actions</h3>
             <div class="grid grid-cols-2 gap-3">
                 @foreach (var action in new[] { ("New item", "default"), ("Duplicate", "outline"), ("Archive", "outline"), ("Delete", "destructive") })
                 {
-                    <Button Variant="@action.Item2"
+                    <StackButton Variant="@action.Item2"
                             OnClick="@(() => { _drawerOpen = false; Toast.Show($"{action.Item1} triggered."); })">
                         @action.Item1
-                    </Button>
+                    </StackButton>
                 }
             </div>
         </div>
-    </Drawer>
+    </StackDrawer>
 </DemoSection>
 
 <!-- Window -->
@@ -194,53 +194,53 @@
              Description="Modal window with title bar, scrollable content, and footer. Use Width (sm/md/lg/xl/full)."
              Code="@_windowCode">
     <div class="flex flex-wrap gap-3">
-        <Button OnClick="@(() => _windowOpen = true)">Open window</Button>
-        <Button Variant="outline" OnClick="@(() => _windowLg = true)">Large window</Button>
+        <StackButton OnClick="@(() => _windowOpen = true)">Open window</StackButton>
+        <StackButton Variant="outline" OnClick="@(() => _windowLg = true)">Large window</StackButton>
     </div>
 
-    <Window @bind-IsOpen="_windowOpen"
+    <StackWindow @bind-IsOpen="_windowOpen"
             Title="Create new project"
             Width="md">
         <ChildContent>
             <div class="space-y-4">
-                <FormField Label="Project name" For="win-name" Required>
-                    <Input Id="win-name" Placeholder="my-blazor-app" />
-                </FormField>
-                <FormField Label="Template" For="win-tmpl">
-                    <Select Id="win-tmpl" Placeholder="Choose template">
+                <StackFormField Label="Project name" For="win-name" Required>
+                    <StackInput Id="win-name" Placeholder="my-blazor-app" />
+                </StackFormField>
+                <StackFormField Label="Template" For="win-tmpl">
+                    <StackSelect Id="win-tmpl" Placeholder="Choose template">
                         <option value="blank">Blank</option>
                         <option value="wasm">Blazor WASM</option>
                         <option value="server">Blazor Server</option>
-                    </Select>
-                </FormField>
-                <Switch Label="Initialize with git" Checked />
+                    </StackSelect>
+                </StackFormField>
+                <StackSwitch Label="Initialize with git" Checked />
             </div>
         </ChildContent>
         <FooterContent>
             <div class="flex justify-end gap-2">
-                <Button Variant="outline" OnClick="@(() => _windowOpen = false)">Cancel</Button>
-                <Button OnClick="@(() => { _windowOpen = false; Toast.Show("Project created!", "Success", "success"); })">Create</Button>
+                <StackButton Variant="outline" OnClick="@(() => _windowOpen = false)">Cancel</StackButton>
+                <StackButton OnClick="@(() => { _windowOpen = false; Toast.Show("Project created!", "Success", "success"); })">Create</StackButton>
             </div>
         </FooterContent>
-    </Window>
+    </StackWindow>
 
-    <Window @bind-IsOpen="_windowLg"
+    <StackWindow @bind-IsOpen="_windowLg"
             Title="Data preview"
             Width="lg">
         <ChildContent>
-            <ScrollArea MaxHeight="300px">
+            <StackScrollArea MaxHeight="300px">
                 @for (int i = 1; i <= 30; i++)
                 {
                     <div class="py-2 border-b border-border/50 text-sm">Row @i — sample data content</div>
                 }
-            </ScrollArea>
+            </StackScrollArea>
         </ChildContent>
         <FooterContent>
             <div class="flex justify-end">
-                <Button Variant="outline" OnClick="@(() => _windowLg = false)">Close</Button>
+                <StackButton Variant="outline" OnClick="@(() => _windowLg = false)">Close</StackButton>
             </div>
         </FooterContent>
-    </Window>
+    </StackWindow>
 </DemoSection>
 
 <!-- Popup -->
@@ -248,9 +248,9 @@
              Description="Lightweight positioned popup relative to an anchor element."
              Code="@_popupCode">
     <div class="flex flex-wrap gap-4">
-        <Popup Placement="bottom" Align="start">
+        <StackPopup Placement="bottom" Align="start">
             <Anchor>
-                <Button Variant="outline">Bottom start</Button>
+                <StackButton Variant="outline">Bottom start</StackButton>
             </Anchor>
             <Content>
                 <div class="p-3 text-sm space-y-1">
@@ -260,16 +260,16 @@
                     <button class="block w-full text-left px-2 py-1 rounded hover:bg-muted text-sm text-destructive" @onclick="@(() => Toast.Show("Deleted"))">Delete</button>
                 </div>
             </Content>
-        </Popup>
+        </StackPopup>
 
-        <Popup Placement="top" Align="center">
+        <StackPopup Placement="top" Align="center">
             <Anchor>
-                <Button Variant="ghost">Top center</Button>
+                <StackButton Variant="ghost">Top center</StackButton>
             </Anchor>
             <Content>
                 <div class="p-2 text-xs text-muted-foreground">This popup appears above</div>
             </Content>
-        </Popup>
+        </StackPopup>
     </div>
 </DemoSection>
 
@@ -280,49 +280,49 @@
     <div class="flex flex-wrap gap-8 items-start">
         <div>
             <p class="text-xs text-muted-foreground mb-2 font-medium">Small</p>
-            <Command Size="sm">
-                <CommandInput Placeholder="Search..." />
-                <CommandList>
-                    <CommandGroup Heading="Files">
-                        <CommandItem Value="readme" Label="README">README.md</CommandItem>
-                        <CommandItem Value="index" Label="Index">index.html</CommandItem>
-                    </CommandGroup>
-                    <CommandEmpty />
-                </CommandList>
-            </Command>
+            <StackCommand Size="sm">
+                <StackCommandInput Placeholder="Search..." />
+                <StackCommandList>
+                    <StackCommandGroup Heading="Files">
+                        <StackCommandItem Value="readme" Label="README">README.md</StackCommandItem>
+                        <StackCommandItem Value="index" Label="Index">index.html</StackCommandItem>
+                    </StackCommandGroup>
+                    <StackCommandEmpty />
+                </StackCommandList>
+            </StackCommand>
         </div>
         <div>
             <p class="text-xs text-muted-foreground mb-2 font-medium">Medium (default)</p>
-            <Command>
-                <CommandInput Placeholder="Type a command or search..." />
-                <CommandList>
-                    <CommandGroup Heading="Suggestions">
-                        <CommandItem Value="calendar" Label="Calendar" Shortcut="⌘C">Calendar</CommandItem>
-                        <CommandItem Value="search" Label="Search Emoji" Shortcut="⌘E">Search Emoji</CommandItem>
-                        <CommandItem Value="calculator" Label="Calculator" Shortcut="⌘R">Calculator</CommandItem>
-                    </CommandGroup>
-                    <CommandGroup Heading="Settings">
-                        <CommandItem Value="profile" Label="Profile" Shortcut="⌘P">Profile</CommandItem>
-                        <CommandItem Value="billing" Label="Billing" Shortcut="⌘B">Billing</CommandItem>
-                        <CommandItem Value="settings" Label="Settings" Shortcut="⌘S">Settings</CommandItem>
-                    </CommandGroup>
-                    <CommandEmpty />
-                </CommandList>
-            </Command>
+            <StackCommand>
+                <StackCommandInput Placeholder="Type a command or search..." />
+                <StackCommandList>
+                    <StackCommandGroup Heading="Suggestions">
+                        <StackCommandItem Value="calendar" Label="Calendar" Shortcut="⌘C">Calendar</StackCommandItem>
+                        <StackCommandItem Value="search" Label="Search Emoji" Shortcut="⌘E">Search Emoji</StackCommandItem>
+                        <StackCommandItem Value="calculator" Label="Calculator" Shortcut="⌘R">Calculator</StackCommandItem>
+                    </StackCommandGroup>
+                    <StackCommandGroup Heading="Settings">
+                        <StackCommandItem Value="profile" Label="Profile" Shortcut="⌘P">Profile</StackCommandItem>
+                        <StackCommandItem Value="billing" Label="Billing" Shortcut="⌘B">Billing</StackCommandItem>
+                        <StackCommandItem Value="settings" Label="Settings" Shortcut="⌘S">Settings</StackCommandItem>
+                    </StackCommandGroup>
+                    <StackCommandEmpty />
+                </StackCommandList>
+            </StackCommand>
         </div>
         <div>
             <p class="text-xs text-muted-foreground mb-2 font-medium">Large</p>
-            <Command Size="lg">
-                <CommandInput Placeholder="Type a command or search..." />
-                <CommandList>
-                    <CommandGroup Heading="Actions">
-                        <CommandItem Value="new-project" Label="New Project">New Project</CommandItem>
-                        <CommandItem Value="open-repo" Label="Open Repository">Open Repository</CommandItem>
-                        <CommandItem Value="deploy" Label="Deploy to production" Disabled>Deploy to production</CommandItem>
-                    </CommandGroup>
-                    <CommandEmpty>No commands matched your search.</CommandEmpty>
-                </CommandList>
-            </Command>
+            <StackCommand Size="lg">
+                <StackCommandInput Placeholder="Type a command or search..." />
+                <StackCommandList>
+                    <StackCommandGroup Heading="Actions">
+                        <StackCommandItem Value="new-project" Label="New Project">New Project</StackCommandItem>
+                        <StackCommandItem Value="open-repo" Label="Open Repository">Open Repository</StackCommandItem>
+                        <StackCommandItem Value="deploy" Label="Deploy to production" Disabled>Deploy to production</StackCommandItem>
+                    </StackCommandGroup>
+                    <StackCommandEmpty>No commands matched your search.</StackCommandEmpty>
+                </StackCommandList>
+            </StackCommand>
         </div>
     </div>
 </DemoSection>
@@ -336,90 +336,90 @@
     private bool _windowLg;
 
     private const string _tooltipCode = """
-        <Tooltip Text="Simple label" Side="top">
-            <Button>Hover me</Button>
-        </Tooltip>
-        <Tooltip Side="right">
-            <Button>Rich tooltip</Button>
+        <StackTooltip Text="Simple label" Side="top">
+            <StackButton>Hover me</StackButton>
+        </StackTooltip>
+        <StackTooltip Side="right">
+            <StackButton>Rich tooltip</StackButton>
             <Content><p>Rich <strong>HTML</strong> content</p></Content>
-        </Tooltip>
+        </StackTooltip>
         """;
 
     private const string _popoverCode = """
-        <Popover>
-            <Trigger><Button>Open popover</Button></Trigger>
+        <StackPopover>
+            <Trigger><StackButton>Open popover</StackButton></Trigger>
             <Content>
-                <Switch Label="Email notifications" />
-                <Switch Label="Push notifications" />
-                <Button Size="sm">Save</Button>
+                <StackSwitch Label="Email notifications" />
+                <StackSwitch Label="Push notifications" />
+                <StackButton Size="sm">Save</StackButton>
             </Content>
-        </Popover>
+        </StackPopover>
         """;
 
     private const string _hoverCardCode = """
-        <HoverCard>
+        <StackHoverCard>
             <Trigger><a href="#">@@username</a></Trigger>
             <Content>
-                <Avatar Initials="VS" />
+                <StackAvatar Initials="VS" />
                 <p>Vilas Sagar — Lead Engineer</p>
             </Content>
-        </HoverCard>
+        </StackHoverCard>
         """;
 
     private const string _sheetCode = """
-        <Button OnClick="@(() => _open = true)">Open sheet</Button>
-        <Sheet @bind-IsOpen="_open" Side="right">
+        <StackButton OnClick="@(() => _open = true)">Open sheet</StackButton>
+        <StackSheet @bind-IsOpen="_open" Side="right">
             <div class="p-6">
                 <h3>Edit settings</h3>
-                <Input Placeholder="Name" />
-                <Button OnClick="@(() => _open = false)">Save</Button>
+                <StackInput Placeholder="Name" />
+                <StackButton OnClick="@(() => _open = false)">Save</StackButton>
             </div>
-        </Sheet>
+        </StackSheet>
         """;
 
     private const string _drawerCode = """
-        <Button OnClick="@(() => _open = true)">Open drawer</Button>
-        <Drawer @bind-IsOpen="_open">
+        <StackButton OnClick="@(() => _open = true)">Open drawer</StackButton>
+        <StackDrawer @bind-IsOpen="_open">
             <div class="p-6">
                 <h3>Quick actions</h3>
-                <Button>New item</Button>
-                <Button Variant="destructive">Delete</Button>
+                <StackButton>New item</StackButton>
+                <StackButton Variant="destructive">Delete</StackButton>
             </div>
-        </Drawer>
+        </StackDrawer>
         """;
 
     private const string _windowCode = """
-        <Window @bind-IsOpen="_open" Title="Create project" Width="md">
-            <Input Placeholder="Project name" />
+        <StackWindow @bind-IsOpen="_open" Title="Create project" Width="md">
+            <StackInput Placeholder="Project name" />
             <FooterContent>
-                <Button OnClick="@(() => _open = false)">Cancel</Button>
-                <Button>Create</Button>
+                <StackButton OnClick="@(() => _open = false)">Cancel</StackButton>
+                <StackButton>Create</StackButton>
             </FooterContent>
-        </Window>
+        </StackWindow>
         """;
 
     private const string _popupCode = """
-        <Popup Placement="bottom" Align="start">
-            <Anchor><Button>Trigger</Button></Anchor>
+        <StackPopup Placement="bottom" Align="start">
+            <Anchor><StackButton>Trigger</StackButton></Anchor>
             <Content>
                 <div class="p-2">
                     <button>Edit</button>
                     <button>Delete</button>
                 </div>
             </Content>
-        </Popup>
+        </StackPopup>
         """;
 
     private const string _commandCode = """
-        <Command>
-            <CommandInput Placeholder="Type a command or search..." />
-            <CommandList>
-                <CommandGroup Heading="Suggestions">
-                    <CommandItem Value="calendar" Label="Calendar" Shortcut="⌘C">Calendar</CommandItem>
-                    <CommandItem Value="search"   Label="Search"   Shortcut="⌘E">Search Emoji</CommandItem>
-                </CommandGroup>
-                <CommandEmpty />
-            </CommandList>
-        </Command>
+        <StackCommand>
+            <StackCommandInput Placeholder="Type a command or search..." />
+            <StackCommandList>
+                <StackCommandGroup Heading="Suggestions">
+                    <StackCommandItem Value="calendar" Label="Calendar" Shortcut="⌘C">Calendar</StackCommandItem>
+                    <StackCommandItem Value="search"   Label="Search"   Shortcut="⌘E">Search Emoji</StackCommandItem>
+                </StackCommandGroup>
+                <StackCommandEmpty />
+            </StackCommandList>
+        </StackCommand>
         """;
 }

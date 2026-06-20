@@ -10,31 +10,31 @@
              Description="Composable table primitives. Use TableHeader, TableBody, TableRow, TableHead, TableCell."
              Code="@_tableCode">
     <div class="w-full overflow-x-auto">
-        <Table>
-            <TableHeader>
-                <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead Class="text-right">Joined</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
+        <StackTable>
+            <StackTableHeader>
+                <StackTableRow>
+                    <StackTableHead>Name</StackTableHead>
+                    <StackTableHead>Role</StackTableHead>
+                    <StackTableHead>Status</StackTableHead>
+                    <StackTableHead Class="text-right">Joined</StackTableHead>
+                </StackTableRow>
+            </StackTableHeader>
+            <StackTableBody>
                 @foreach (var p in _people)
                 {
-                    <TableRow>
-                        <TableCell Class="font-medium">@p.Name</TableCell>
-                        <TableCell>@p.Role</TableCell>
-                        <TableCell>
-                            <Badge Variant="@(p.Active ? "default" : "secondary")">
+                    <StackTableRow>
+                        <StackTableCell Class="font-medium">@p.Name</StackTableCell>
+                        <StackTableCell>@p.Role</StackTableCell>
+                        <StackTableCell>
+                            <StackBadge Variant="@(p.Active ? "default" : "secondary")">
                                 @(p.Active ? "Active" : "Inactive")
-                            </Badge>
-                        </TableCell>
-                        <TableCell Class="text-right text-muted-foreground">@p.Joined.ToString("MMM yyyy")</TableCell>
-                    </TableRow>
+                            </StackBadge>
+                        </StackTableCell>
+                        <StackTableCell Class="text-right text-muted-foreground">@p.Joined.ToString("MMM yyyy")</StackTableCell>
+                    </StackTableRow>
                 }
-            </TableBody>
-        </Table>
+            </StackTableBody>
+        </StackTable>
     </div>
 </DemoSection>
 
@@ -43,7 +43,7 @@
              Description="Built-in search, column sort, per-column filter, and pagination. Pass ShowSearch, ShowPagination, PageSize."
              Code="@_dataTableCode">
     <div class="w-full">
-        <DataTable TItem="Person"
+        <StackDataTable TItem="Person"
                    Items="_people"
                    PageSize="4"
                    Columns="_columns" />
@@ -55,24 +55,24 @@
              Description="Generic list with ItemTemplate, selection highlight, and click callback."
              Code="@_listViewCode">
     <div class="w-full max-w-sm">
-        <ListView TItem="Person"
+        <StackListView TItem="Person"
                   Items="_people"
                   SelectedItem="_selectedPerson"
                   OnItemClick="p => _selectedPerson = p"
                   Height="220px">
             <ItemTemplate Context="person">
                 <div class="flex items-center gap-3 px-4 py-3">
-                    <Avatar Initials="@person.Initials" Size="sm" />
+                    <StackAvatar Initials="@person.Initials" Size="sm" />
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-medium truncate">@person.Name</p>
                         <p class="text-xs text-muted-foreground truncate">@person.Role</p>
                     </div>
-                    <Badge Variant="@(person.Active ? "default" : "secondary")" >
+                    <StackBadge Variant="@(person.Active ? "default" : "secondary")" >
                         @(person.Active ? "Active" : "Inactive")
-                    </Badge>
+                    </StackBadge>
                 </div>
             </ItemTemplate>
-        </ListView>
+        </StackListView>
         @if (_selectedPerson is not null)
         {
             <p class="text-sm text-muted-foreground mt-2">
@@ -87,7 +87,7 @@
              Description="Recursive tree with expand/collapse, keyboard-accessible selection."
              Code="@_treeCode">
     <div class="w-full max-w-xs rounded-md border p-2">
-        <TreeView TItem="TreeNode"
+        <StackTreeView TItem="TreeNode"
                   Items="_treeRoots"
                   GetChildren="n => n.Children"
                   GetLabel="n => n.Label"
@@ -124,9 +124,9 @@
             </MsDataGridColumn>
             <MsDataGridColumn Field="InStock" Title="Stock" Width="100px" Sortable="true">
                 <CellTemplate Context="p">
-                    <Badge Variant="@(p.InStock ? "default" : "secondary")">
+                    <StackBadge Variant="@(p.InStock ? "default" : "secondary")">
                         @(p.InStock ? "In Stock" : "Out")
-                    </Badge>
+                    </StackBadge>
                 </CellTemplate>
             </MsDataGridColumn>
         </MsDataGrid>
@@ -148,7 +148,7 @@
              Description="Blazor Virtualize wrapper for large flat lists. Renders only visible rows."
              Code="@_virtualCode">
     <div class="w-full max-w-sm">
-        <MsVirtualList TItem="string"
+        <StackMsVirtualList TItem="string"
                        Items="_virtualItems"
                        ItemHeight="44"
                        Height="220px">
@@ -159,7 +159,7 @@
                     <span class="text-sm truncate">@item</span>
                 </div>
             </ItemTemplate>
-        </MsVirtualList>
+        </StackMsVirtualList>
         <p class="text-xs text-muted-foreground mt-1">@_virtualItems.Count items — only visible rows rendered.</p>
     </div>
 </DemoSection>
@@ -196,9 +196,9 @@
         {
             Key = "status", Header = "Status", Sortable = false,
             Template = p =>
-                @<Badge Variant="@(p.Active ? "default" : "secondary")">
+                @<StackBadge Variant="@(p.Active ? "default" : "secondary")">
                     @(p.Active ? "Active" : "Inactive")
-                </Badge>
+                </StackBadge>
         },
     ];
 
@@ -341,32 +341,32 @@
             <MsDataGridColumn Field="Price"    Title="Price"    Sortable="true" />
             <MsDataGridColumn Field="InStock"  Title="Stock">
                 <CellTemplate Context="p">
-                    <Badge Variant="@(p.InStock ? "default" : "secondary")">@(p.InStock ? "In Stock" : "Out")</Badge>
+                    <StackBadge Variant="@(p.InStock ? "default" : "secondary")">@(p.InStock ? "In Stock" : "Out")</StackBadge>
                 </CellTemplate>
             </MsDataGridColumn>
         </MsDataGrid>
         """;
 
     private const string _tableCode = """
-        <Table>
-            <TableHeader>
-                <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Status</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
+        <StackTable>
+            <StackTableHeader>
+                <StackTableRow>
+                    <StackTableHead>Name</StackTableHead>
+                    <StackTableHead>Role</StackTableHead>
+                    <StackTableHead>Status</StackTableHead>
+                </StackTableRow>
+            </StackTableHeader>
+            <StackTableBody>
                 @foreach (var p in _people)
                 {
-                    <TableRow>
-                        <TableCell Class="font-medium">@p.Name</TableCell>
-                        <TableCell>@p.Role</TableCell>
-                        <TableCell><Badge>@p.Status</Badge></TableCell>
-                    </TableRow>
+                    <StackTableRow>
+                        <StackTableCell Class="font-medium">@p.Name</StackTableCell>
+                        <StackTableCell>@p.Role</StackTableCell>
+                        <StackTableCell><StackBadge>@p.Status</StackBadge></StackTableCell>
+                    </StackTableRow>
                 }
-            </TableBody>
-        </Table>
+            </StackTableBody>
+        </StackTable>
         """;
 
     private const string _dataTableCode = """
@@ -375,31 +375,31 @@
             new() { Key = "name",   Header = "Name",   Value = p => p.Name,  Sortable = true, Filterable = true },
             new() { Key = "role",   Header = "Role",   Value = p => p.Role,  Sortable = true, Filterable = true },
             new() { Key = "joined", Header = "Joined", Value = p => p.Joined, Sortable = true },
-            new() { Key = "status", Header = "Status", Template = p => @<Badge>@p.Status</Badge> },
+            new() { Key = "status", Header = "Status", Template = p => @<StackBadge>@p.Status</StackBadge> },
         ];
 
-        <DataTable TItem="Person" Items="_people" PageSize="5" Columns="_columns" />
+        <StackDataTable TItem="Person" Items="_people" PageSize="5" Columns="_columns" />
         """;
 
     private const string _listViewCode = """
-        <ListView TItem="Person"
+        <StackListView TItem="Person"
                   Items="_people"
                   SelectedItem="_selected"
                   OnItemClick="p => _selected = p"
                   Height="220px">
             <ItemTemplate Context="person">
                 <div class="flex items-center gap-3 px-4 py-3">
-                    <Avatar Initials="@person.Initials" Size="sm" />
+                    <StackAvatar Initials="@person.Initials" Size="sm" />
                     <span>@person.Name</span>
                 </div>
             </ItemTemplate>
-        </ListView>
+        </StackListView>
         """;
 
     private const string _treeCode = """
         record TreeNode(string Label, List<TreeNode>? Children = null);
 
-        <TreeView TItem="TreeNode"
+        <StackTreeView TItem="TreeNode"
                   Items="_roots"
                   GetChildren="n => n.Children"
                   GetLabel="n => n.Label"
@@ -407,7 +407,7 @@
         """;
 
     private const string _virtualCode = """
-        <MsVirtualList TItem="string"
+        <StackVirtualList TItem="string"
                        Items="_items"
                        ItemHeight="44"
                        Height="300px">
@@ -416,6 +416,6 @@
                     @item
                 </div>
             </ItemTemplate>
-        </MsVirtualList>
+        </StackVirtualList>
         """;
 }

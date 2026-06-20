@@ -9,57 +9,57 @@
 <DemoSection Title="Button Variants"
              Description="Use Variant to control the visual style."
              Code="@_btnVariants">
-    <Button Variant="default">Default</Button>
-    <Button Variant="secondary">Secondary</Button>
-    <Button Variant="outline">Outline</Button>
-    <Button Variant="destructive">Destructive</Button>
-    <Button Variant="ghost">Ghost</Button>
-    <Button Variant="link">Link</Button>
+    <StackButton Variant="default">Default</StackButton>
+    <StackButton Variant="secondary">Secondary</StackButton>
+    <StackButton Variant="outline">Outline</StackButton>
+    <StackButton Variant="destructive">Destructive</StackButton>
+    <StackButton Variant="ghost">Ghost</StackButton>
+    <StackButton Variant="link">Link</StackButton>
 </DemoSection>
 
 <!-- Button Sizes -->
 <DemoSection Title="Button Sizes"
              Description="Use Size to control the button dimensions."
              Code="@_btnSizes">
-    <Button Size="sm">Small</Button>
-    <Button Size="default">Default</Button>
-    <Button Size="lg">Large</Button>
-    <Button Size="icon" AriaLabel="Settings">
+    <StackButton Size="sm">Small</StackButton>
+    <StackButton Size="default">Default</StackButton>
+    <StackButton Size="lg">Large</StackButton>
+    <StackButton Size="icon" AriaLabel="Settings">
         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
-    </Button>
+    </StackButton>
 </DemoSection>
 
 <!-- Loading & Disabled -->
 <DemoSection Title="Loading &amp; Disabled States" Code="@_btnStates">
-    <Button IsLoading="_loading" OnClick="SimulateLoad">
+    <StackButton IsLoading="_loading" OnClick="SimulateLoad">
         @(_loading ? "Saving..." : "Save Changes")
-    </Button>
-    <Button Variant="outline" Disabled>Disabled</Button>
-    <Button Variant="secondary" IsLoading>Always Loading</Button>
+    </StackButton>
+    <StackButton Variant="outline" Disabled>Disabled</StackButton>
+    <StackButton Variant="secondary" IsLoading>Always Loading</StackButton>
 </DemoSection>
 
 <!-- Badge Variants -->
 <DemoSection Title="Badge Variants" Code="@_badges">
-    <Badge>Default</Badge>
-    <Badge Variant="secondary">Secondary</Badge>
-    <Badge Variant="destructive">Destructive</Badge>
-    <Badge Variant="outline">Outline</Badge>
+    <StackBadge>Default</StackBadge>
+    <StackBadge Variant="secondary">Secondary</StackBadge>
+    <StackBadge Variant="destructive">Destructive</StackBadge>
+    <StackBadge Variant="outline">Outline</StackBadge>
 </DemoSection>
 
 <!-- Chips -->
 <DemoSection Title="Chips" Description="Use OnRemove to make chips removable." Code="@_chips">
     @foreach (var tag in _tags)
     {
-        <Chip OnRemove="@(() => RemoveTag(tag))" RemoveLabel="@($"Remove {tag}")">@tag</Chip>
+        <StackChip OnRemove="@(() => RemoveTag(tag))" RemoveLabel="@($"Remove {tag}")">@tag</StackChip>
     }
-    <Chip Variant="secondary">React</Chip>
-    <Chip Variant="success">Success</Chip>
-    <Chip Variant="warning">Warning</Chip>
-    <Chip Variant="outline">Outline</Chip>
+    <StackChip Variant="secondary">React</StackChip>
+    <StackChip Variant="success">Success</StackChip>
+    <StackChip Variant="warning">Warning</StackChip>
+    <StackChip Variant="outline">Outline</StackChip>
     @if (_tags.Count == 0)
     {
         <span class="text-xs text-muted-foreground">All tags removed — refresh to reset.</span>
@@ -68,36 +68,36 @@
 
 <!-- Avatar -->
 <DemoSection Title="Avatar" Description="Shows initials as fallback when no image source is set." Code="@_avatars">
-    <Avatar Initials="VS" Size="xs" />
-    <Avatar Initials="AB" Size="sm" />
-    <Avatar Initials="CD" />
-    <Avatar Initials="EF" Size="lg" />
-    <Avatar Initials="GH" Size="xl" />
-    <Avatar />
+    <StackAvatar Initials="VS" Size="xs" />
+    <StackAvatar Initials="AB" Size="sm" />
+    <StackAvatar Initials="CD" />
+    <StackAvatar Initials="EF" Size="lg" />
+    <StackAvatar Initials="GH" Size="xl" />
+    <StackAvatar />
 </DemoSection>
 
 <!-- Spinner -->
 <DemoSection Title="Spinner" Description="Use for loading states. Size mirrors button sizes." Code="@_spinners">
-    <Spinner Size="xs" />
-    <Spinner Size="sm" />
-    <Spinner />
-    <Spinner Size="lg" />
-    <Spinner Size="xl" />
+    <StackSpinner Size="xs" />
+    <StackSpinner Size="sm" />
+    <StackSpinner />
+    <StackSpinner Size="lg" />
+    <StackSpinner Size="xl" />
 </DemoSection>
 
 <!-- Skeleton -->
 <DemoSection Title="Skeleton" Description="Pulse placeholder while content loads." Code="@_skeleton">
     <div class="w-full space-y-3">
         <div class="flex items-center gap-3">
-            <Skeleton Class="h-10 w-10 rounded-full" />
+            <StackSkeleton Class="h-10 w-10 rounded-full" />
             <div class="flex-1 space-y-2">
-                <Skeleton Class="h-4 w-1/3" />
-                <Skeleton Class="h-3 w-1/2" />
+                <StackSkeleton Class="h-4 w-1/3" />
+                <StackSkeleton Class="h-3 w-1/2" />
             </div>
         </div>
-        <Skeleton Class="h-4 w-full" />
-        <Skeleton Class="h-4 w-4/5" />
-        <Skeleton Class="h-4 w-2/3" />
+        <StackSkeleton Class="h-4 w-full" />
+        <StackSkeleton Class="h-4 w-4/5" />
+        <StackSkeleton Class="h-4 w-2/3" />
     </div>
 </DemoSection>
 
@@ -106,17 +106,17 @@
              Description="Semantic text elements. Use Variant to switch between h1–h6, p, lead, large, small, muted, blockquote, and code."
              Code="@_typographyCode">
     <div class="w-full space-y-2">
-        <Typography Variant="h1">Heading 1</Typography>
-        <Typography Variant="h2">Heading 2</Typography>
-        <Typography Variant="h3">Heading 3</Typography>
-        <Typography Variant="h4">Heading 4</Typography>
-        <Typography Variant="lead">Lead paragraph — larger introductory text.</Typography>
-        <Typography Variant="p">Body paragraph — the default text style for content.</Typography>
-        <Typography Variant="large">Large text</Typography>
-        <Typography Variant="small">Small text</Typography>
-        <Typography Variant="muted">Muted / secondary text</Typography>
-        <Typography Variant="blockquote">"Great components are composed, not configured." — someone wise</Typography>
-        <Typography Variant="code">npm install mystack-blazor</Typography>
+        <StackTypography Variant="h1">Heading 1</StackTypography>
+        <StackTypography Variant="h2">Heading 2</StackTypography>
+        <StackTypography Variant="h3">Heading 3</StackTypography>
+        <StackTypography Variant="h4">Heading 4</StackTypography>
+        <StackTypography Variant="lead">Lead paragraph — larger introductory text.</StackTypography>
+        <StackTypography Variant="p">Body paragraph — the default text style for content.</StackTypography>
+        <StackTypography Variant="large">Large text</StackTypography>
+        <StackTypography Variant="small">Small text</StackTypography>
+        <StackTypography Variant="muted">Muted / secondary text</StackTypography>
+        <StackTypography Variant="blockquote">"Great components are composed, not configured." — someone wise</StackTypography>
+        <StackTypography Variant="code">npm install mystack-blazor</StackTypography>
     </div>
 </DemoSection>
 
@@ -125,8 +125,8 @@
              Description="Associates with an input via For. Styled to match the design system."
              Code="@_labelCode">
     <div class="w-full max-w-xs space-y-1">
-        <Label For="lbl-demo">Your email address</Label>
-        <Input Id="lbl-demo" Type="email" Placeholder="you@example.com" />
+        <StackLabel For="lbl-demo">Your email address</StackLabel>
+        <StackInput Id="lbl-demo" Type="email" Placeholder="you@example.com" />
     </div>
 </DemoSection>
 
@@ -135,16 +135,16 @@
              Description="Groups related buttons together, removing gaps between them."
              Code="@_btnGroupCode">
     <div class="space-y-3">
-        <ButtonGroup>
-            <Button Variant="outline" Size="sm">Left</Button>
-            <Button Variant="outline" Size="sm">Center</Button>
-            <Button Variant="outline" Size="sm">Right</Button>
-        </ButtonGroup>
-        <ButtonGroup>
-            <Button Size="sm">Save</Button>
-            <Button Variant="outline" Size="sm">Preview</Button>
-            <Button Variant="outline" Size="sm">Discard</Button>
-        </ButtonGroup>
+        <StackButtonGroup>
+            <StackButton Variant="outline" Size="sm">Left</StackButton>
+            <StackButton Variant="outline" Size="sm">Center</StackButton>
+            <StackButton Variant="outline" Size="sm">Right</StackButton>
+        </StackButtonGroup>
+        <StackButtonGroup>
+            <StackButton Size="sm">Save</StackButton>
+            <StackButton Variant="outline" Size="sm">Preview</StackButton>
+            <StackButton Variant="outline" Size="sm">Discard</StackButton>
+        </StackButtonGroup>
     </div>
 </DemoSection>
 
@@ -153,24 +153,24 @@
              Description="Stateful button that tracks a pressed/active state via IsPressed / IsPressedChanged."
              Code="@_toggleCode">
     <div class="flex flex-wrap gap-3">
-        <ToggleButton @bind-IsPressed="_boldOn">
+        <StackToggleButton @bind-IsPressed="_boldOn">
             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 4h8a4 4 0 010 8H6zM6 12h9a4 4 0 010 8H6z" />
             </svg>
             Bold
-        </ToggleButton>
-        <ToggleButton @bind-IsPressed="_italicOn">
+        </StackToggleButton>
+        <StackToggleButton @bind-IsPressed="_italicOn">
             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 4h-9M14 20H5M15 4L9 20" />
             </svg>
             Italic
-        </ToggleButton>
-        <ToggleButton @bind-IsPressed="_underlineOn">
+        </StackToggleButton>
+        <StackToggleButton @bind-IsPressed="_underlineOn">
             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v8a5 5 0 0010 0V4M5 20h14" />
             </svg>
             Underline
-        </ToggleButton>
+        </StackToggleButton>
         <p class="text-sm text-muted-foreground w-full">
             Active: @(string.Join(", ", new[] {
                 _boldOn ? "Bold" : null,
@@ -193,23 +193,23 @@
         <div class="space-y-2">
             <p class="text-xs text-muted-foreground font-medium">Small</p>
             <div class="flex gap-1">
-                <Kbd Size="sm">⌘</Kbd>
-                <Kbd Size="sm">K</Kbd>
+                <StackKbd Size="sm">⌘</StackKbd>
+                <StackKbd Size="sm">K</StackKbd>
             </div>
         </div>
         <div class="space-y-2">
             <p class="text-xs text-muted-foreground font-medium">Medium</p>
             <div class="flex gap-1">
-                <Kbd>Ctrl</Kbd>
-                <Kbd>Shift</Kbd>
-                <Kbd>P</Kbd>
+                <StackKbd>Ctrl</StackKbd>
+                <StackKbd>Shift</StackKbd>
+                <StackKbd>P</StackKbd>
             </div>
         </div>
         <div class="space-y-2">
             <p class="text-xs text-muted-foreground font-medium">Large</p>
             <div class="flex gap-1">
-                <Kbd Size="lg">Alt</Kbd>
-                <Kbd Size="lg">F4</Kbd>
+                <StackKbd Size="lg">Alt</StackKbd>
+                <StackKbd Size="lg">F4</StackKbd>
             </div>
         </div>
     </div>
@@ -221,18 +221,18 @@
              Code="@_emptyCode">
     <div class="w-full grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="rounded-lg border border-border">
-            <Empty Size="sm" Title="Nothing here" Description="No items found." />
+            <StackEmpty Size="sm" Title="Nothing here" Description="No items found." />
         </div>
         <div class="rounded-lg border border-border">
-            <Empty Title="No results found"
+            <StackEmpty Title="No results found"
                    Description="Try adjusting your search or filters.">
                 <Action>
-                    <Button Size="sm" Variant="outline">Reset filters</Button>
+                    <StackButton Size="sm" Variant="outline">Reset filters</StackButton>
                 </Action>
-            </Empty>
+            </StackEmpty>
         </div>
         <div class="rounded-lg border border-border">
-            <Empty Size="lg" Title="No data yet" Description="Start by creating your first record." />
+            <StackEmpty Size="lg" Title="No data yet" Description="Start by creating your first record." />
         </div>
     </div>
 </DemoSection>
@@ -244,15 +244,15 @@
     <div class="w-full space-y-4">
         <div class="rounded-lg border border-border p-4">
             <p class="text-xs text-muted-foreground mb-2 font-medium">LTR (default)</p>
-            <Direction Dir="ltr">
+            <StackDirection Dir="ltr">
                 <p class="text-sm">Left-to-right text layout. English, French, Spanish etc.</p>
-            </Direction>
+            </StackDirection>
         </div>
         <div class="rounded-lg border border-border p-4">
             <p class="text-xs text-muted-foreground mb-2 font-medium">RTL</p>
-            <Direction Dir="rtl">
+            <StackDirection Dir="rtl">
                 <p class="text-sm">مرحبًا بالعالم — Right-to-left text layout for Arabic, Hebrew etc.</p>
-            </Direction>
+            </StackDirection>
         </div>
     </div>
 </DemoSection>
@@ -264,20 +264,20 @@
     <div class="w-full max-w-sm space-y-4">
         <div class="rounded-md border border-border p-1 space-y-0.5">
             <p class="px-3 py-1 text-xs text-muted-foreground font-medium">Small items</p>
-            <Item Size="sm" Shortcut="⌘N">New File</Item>
-            <Item Size="sm" Shortcut="⌘O">Open...</Item>
-            <Item Size="sm" Disabled>Save As (disabled)</Item>
+            <StackItem Size="sm" Shortcut="⌘N">New File</StackItem>
+            <StackItem Size="sm" Shortcut="⌘O">Open...</StackItem>
+            <StackItem Size="sm" Disabled>Save As (disabled)</StackItem>
         </div>
         <div class="rounded-md border border-border p-1 space-y-0.5">
             <p class="px-3 py-1.5 text-xs text-muted-foreground font-medium">Medium items (default)</p>
-            <Item Selected>Selected item</Item>
-            <Item Shortcut="⌘X">Cut</Item>
-            <Item Shortcut="⌘C">Copy</Item>
+            <StackItem Selected>Selected item</StackItem>
+            <StackItem Shortcut="⌘X">Cut</StackItem>
+            <StackItem Shortcut="⌘C">Copy</StackItem>
         </div>
         <div class="rounded-md border border-border p-1 space-y-0.5">
             <p class="px-4 py-2 text-xs text-muted-foreground font-medium">Large items</p>
-            <Item Size="lg">Dashboard</Item>
-            <Item Size="lg">Settings</Item>
+            <StackItem Size="lg">Dashboard</StackItem>
+            <StackItem Size="lg">Settings</StackItem>
         </div>
     </div>
 </DemoSection>
@@ -299,111 +299,111 @@
     private void RemoveTag(string tag) => _tags.Remove(tag);
 
     private const string _btnVariants = """
-        <Button Variant="default">Default</Button>
-        <Button Variant="secondary">Secondary</Button>
-        <Button Variant="outline">Outline</Button>
-        <Button Variant="destructive">Destructive</Button>
-        <Button Variant="ghost">Ghost</Button>
-        <Button Variant="link">Link</Button>
+        <StackButton Variant="default">Default</StackButton>
+        <StackButton Variant="secondary">Secondary</StackButton>
+        <StackButton Variant="outline">Outline</StackButton>
+        <StackButton Variant="destructive">Destructive</StackButton>
+        <StackButton Variant="ghost">Ghost</StackButton>
+        <StackButton Variant="link">Link</StackButton>
         """;
 
     private const string _btnSizes = """
-        <Button Size="sm">Small</Button>
-        <Button Size="default">Default</Button>
-        <Button Size="lg">Large</Button>
-        <Button Size="icon" AriaLabel="Settings">...</Button>
+        <StackButton Size="sm">Small</StackButton>
+        <StackButton Size="default">Default</StackButton>
+        <StackButton Size="lg">Large</StackButton>
+        <StackButton Size="icon" AriaLabel="Settings">...</StackButton>
         """;
 
     private const string _btnStates = """
-        <Button IsLoading="_loading" OnClick="SimulateLoad">
+        <StackButton IsLoading="_loading" OnClick="SimulateLoad">
             @(_loading ? "Saving..." : "Save Changes")
-        </Button>
-        <Button Variant="outline" Disabled>Disabled</Button>
+        </StackButton>
+        <StackButton Variant="outline" Disabled>Disabled</StackButton>
         """;
 
     private const string _badges = """
-        <Badge>Default</Badge>
-        <Badge Variant="secondary">Secondary</Badge>
-        <Badge Variant="destructive">Destructive</Badge>
-        <Badge Variant="outline">Outline</Badge>
+        <StackBadge>Default</StackBadge>
+        <StackBadge Variant="secondary">Secondary</StackBadge>
+        <StackBadge Variant="destructive">Destructive</StackBadge>
+        <StackBadge Variant="outline">Outline</StackBadge>
         """;
 
     private const string _chips = """
-        <Chip OnRemove="@(() => RemoveTag(tag))" RemoveLabel="@($"Remove {tag}")">@tag</Chip>
-        <Chip Variant="success">Success</Chip>
-        <Chip Variant="warning">Warning</Chip>
+        <StackChip OnRemove="@(() => RemoveTag(tag))" RemoveLabel="@($"Remove {tag}")">@tag</StackChip>
+        <StackChip Variant="success">Success</StackChip>
+        <StackChip Variant="warning">Warning</StackChip>
         """;
 
     private const string _avatars = """
-        <Avatar Initials="VS" Size="xs" />
-        <Avatar Initials="AB" Size="sm" />
-        <Avatar Initials="CD" />
-        <Avatar Initials="EF" Size="lg" />
-        <Avatar />
+        <StackAvatar Initials="VS" Size="xs" />
+        <StackAvatar Initials="AB" Size="sm" />
+        <StackAvatar Initials="CD" />
+        <StackAvatar Initials="EF" Size="lg" />
+        <StackAvatar />
         """;
 
     private const string _spinners = """
-        <Spinner Size="xs" />
-        <Spinner Size="sm" />
-        <Spinner />
-        <Spinner Size="lg" />
+        <StackSpinner Size="xs" />
+        <StackSpinner Size="sm" />
+        <StackSpinner />
+        <StackSpinner Size="lg" />
         """;
 
     private const string _skeleton = """
-        <Skeleton Class="h-10 w-10 rounded-full" />
-        <Skeleton Class="h-4 w-full" />
-        <Skeleton Class="h-4 w-4/5" />
+        <StackSkeleton Class="h-10 w-10 rounded-full" />
+        <StackSkeleton Class="h-4 w-full" />
+        <StackSkeleton Class="h-4 w-4/5" />
         """;
 
     private const string _typographyCode = """
-        <Typography Variant="h1">Heading 1</Typography>
-        <Typography Variant="h2">Heading 2</Typography>
-        <Typography Variant="lead">Lead paragraph</Typography>
-        <Typography Variant="p">Body paragraph</Typography>
-        <Typography Variant="muted">Muted text</Typography>
-        <Typography Variant="blockquote">"A quote."</Typography>
-        <Typography Variant="code">dotnet add package MyStackBlazor</Typography>
+        <StackTypography Variant="h1">Heading 1</StackTypography>
+        <StackTypography Variant="h2">Heading 2</StackTypography>
+        <StackTypography Variant="lead">Lead paragraph</StackTypography>
+        <StackTypography Variant="p">Body paragraph</StackTypography>
+        <StackTypography Variant="muted">Muted text</StackTypography>
+        <StackTypography Variant="blockquote">"A quote."</StackTypography>
+        <StackTypography Variant="code">dotnet add package MyStackBlazor</StackTypography>
         """;
 
     private const string _labelCode = """
-        <Label For="email">Your email address</Label>
-        <Input Id="email" Type="email" Placeholder="you@example.com" />
+        <StackLabel For="email">Your email address</StackLabel>
+        <StackInput Id="email" Type="email" Placeholder="you@example.com" />
         """;
 
     private const string _btnGroupCode = """
-        <ButtonGroup>
-            <Button Variant="outline" Size="sm">Left</Button>
-            <Button Variant="outline" Size="sm">Center</Button>
-            <Button Variant="outline" Size="sm">Right</Button>
-        </ButtonGroup>
+        <StackButtonGroup>
+            <StackButton Variant="outline" Size="sm">Left</StackButton>
+            <StackButton Variant="outline" Size="sm">Center</StackButton>
+            <StackButton Variant="outline" Size="sm">Right</StackButton>
+        </StackButtonGroup>
         """;
 
     private const string _toggleCode = """
-        <ToggleButton @bind-IsPressed="_bold">Bold</ToggleButton>
-        <ToggleButton @bind-IsPressed="_italic">Italic</ToggleButton>
+        <StackToggleButton @bind-IsPressed="_bold">Bold</StackToggleButton>
+        <StackToggleButton @bind-IsPressed="_italic">Italic</StackToggleButton>
         """;
 
     private const string _kbdCode = """
-        <Kbd Size="sm">⌘</Kbd>
-        <Kbd>Ctrl</Kbd>
-        <Kbd Size="lg">Alt</Kbd>
+        <StackKbd Size="sm">⌘</StackKbd>
+        <StackKbd>Ctrl</StackKbd>
+        <StackKbd Size="lg">Alt</StackKbd>
         """;
 
     private const string _emptyCode = """
-        <Empty Title="No results found" Description="Try adjusting your search.">
-            <Action><Button Size="sm" Variant="outline">Reset</Button></Action>
-        </Empty>
+        <StackEmpty Title="No results found" Description="Try adjusting your search.">
+            <Action><StackButton Size="sm" Variant="outline">Reset</StackButton></Action>
+        </StackEmpty>
         """;
 
     private const string _dirCode = """
-        <Direction Dir="ltr">Left-to-right content</Direction>
-        <Direction Dir="rtl">محتوى من اليمين إلى اليسار</Direction>
+        <StackDirection Dir="ltr">Left-to-right content</StackDirection>
+        <StackDirection Dir="rtl">محتوى من اليمين إلى اليسار</StackDirection>
         """;
 
     private const string _itemCode = """
-        <Item Shortcut="⌘N">New File</Item>
-        <Item Selected>Selected item</Item>
-        <Item Disabled>Disabled item</Item>
-        <Item Size="lg">Large item</Item>
+        <StackItem Shortcut="⌘N">New File</StackItem>
+        <StackItem Selected>Selected item</StackItem>
+        <StackItem Disabled>Disabled item</StackItem>
+        <StackItem Size="lg">Large item</StackItem>
         """;
 }
