@@ -333,6 +333,22 @@
     </div>
 </DemoSection>
 
+<!-- PhoneInput -->
+<DemoSection Title="Phone Input"
+             Description="Country-code dropdown combined with a tel input. Defaults to +91."
+             Code="@_phoneCode">
+    <div class="w-full max-w-sm space-y-3">
+        <StackPhoneInput @bind-Value="_phone" @bind-DialCode="_dialCode" Size="sm" />
+        <StackPhoneInput @bind-Value="_phone" @bind-DialCode="_dialCode" />
+        <StackPhoneInput @bind-Value="_phone" @bind-DialCode="_dialCode" Size="lg" />
+        <StackPhoneInput Disabled Placeholder="Disabled" />
+        @if (!string.IsNullOrEmpty(_phone))
+        {
+            <p class="text-sm text-muted-foreground">Number: <strong>@_dialCode @_phone</strong></p>
+        }
+    </div>
+</DemoSection>
+
 <!-- NativeSelect -->
 <DemoSection Title="Native Select"
              Description="Native HTML &lt;select&gt; with consistent Tailwind styling. Use Size for sm / md / lg."
@@ -436,6 +452,9 @@
         new("Grace Park",    "Data Scientist",      "GP", "#eab308"),
         new("Henry Brown",   "Security Engineer",   "HB", "#ef4444"),
     ];
+
+    private string? _phone;
+    private string _dialCode = "+91";
 
     private string? _brandColor = "#3b82f6";
     private string? _accentColor = "#8b5cf6";
@@ -587,6 +606,10 @@
             <StackInput Placeholder="0.00" Type="number" />
             <Suffix><span>USD</span></Suffix>
         </StackInputGroup>
+        """;
+
+    private const string _phoneCode = """
+        <StackPhoneInput @bind-Value="_phone" @bind-DialCode="_dialCode" />
         """;
 
     private const string _nativeSelectCode = """

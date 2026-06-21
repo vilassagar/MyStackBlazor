@@ -1,0 +1,78 @@
+@namespace MyStackBlazor.Components.Form
+
+<div class="flex w-full @Class">
+    <select class="@SelectClass"
+            disabled="@Disabled"
+            @onchange="OnDialCodeChange">
+        @foreach (var country in _countries)
+        {
+            <option value="@country.Dial" selected="@(country.Dial == DialCode)">@country.Flag @country.Dial</option>
+        }
+    </select>
+    <input type="tel"
+           id="@Id"
+           placeholder="@Placeholder"
+           value="@Value"
+           disabled="@Disabled"
+           class="@InputClass"
+           @oninput="OnInputChanged"
+           @attributes="AdditionalAttributes" />
+</div>
+
+@code {
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public string DialCode { get; set; } = "+91";
+    [Parameter] public EventCallback<string> DialCodeChanged { get; set; }
+    [Parameter] public string Size { get; set; } = "md";
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Phone number";
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private static readonly (string Flag, string Dial)[] _countries =
+    [
+        ("🇮🇳", "+91"),
+        ("🇺🇸", "+1"),
+        ("🇬🇧", "+44"),
+        ("🇦🇪", "+971"),
+        ("🇸🇬", "+65"),
+        ("🇦🇺", "+61"),
+        ("🇨🇦", "+1"),
+        ("🇩🇪", "+49"),
+        ("🇫🇷", "+33"),
+        ("🇯🇵", "+81"),
+    ];
+
+    private string SizeClass => Size switch
+    {
+        "sm" => "h-8 text-xs",
+        "lg" => "h-12 text-base",
+        _    => "h-10 text-sm",
+    };
+
+    private string SelectClass =>
+        $"inline-flex items-center shrink-0 rounded-l-md border-2 border-r-0 border-input bg-muted " +
+        $"text-muted-foreground font-medium px-2 cursor-pointer " +
+        $"focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
+        $"disabled:cursor-not-allowed disabled:opacity-50 {SizeClass}";
+
+    private string InputClass =>
+        $"flex-1 min-w-0 w-full rounded-r-md rounded-l-none border-2 border-input bg-background px-3 py-2 " +
+        $"ring-offset-background placeholder:text-muted-foreground " +
+        $"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
+        $"disabled:cursor-not-allowed disabled:opacity-50 {SizeClass}";
+
+    private async Task OnInputChanged(ChangeEventArgs e)
+    {
+        Value = e.Value?.ToString();
+        await ValueChanged.InvokeAsync(Value);
+    }
+
+    private async Task OnDialCodeChange(ChangeEventArgs e)
+    {
+        DialCode = e.Value?.ToString() ?? "+91";
+        await DialCodeChanged.InvokeAsync(DialCode);
+    }
+}

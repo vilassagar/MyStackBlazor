@@ -47,9 +47,9 @@
 </DemoSection>
 
 <!-- Tabs -->
-<DemoSection Title="Tabs" Description="Controlled via ActiveTab / ActiveTabChanged." Code="@_tabsCode">
-    <div class="w-full max-w-lg">
-        <StackTabs @bind-ActiveTab="_activeTab">
+<DemoSection Title="Tabs" Description="Controlled via @bind-ActiveTab. Use OnChange to react to tab switches." Code="@_tabsCode">
+    <div class="w-full max-w-lg space-y-2">
+        <StackTabs @bind-ActiveTab="_activeTab" OnChange="OnTabChanged">
             <StackTabsList Class="w-full">
                 <StackTabsTrigger Value="overview">Overview</StackTabsTrigger>
                 <StackTabsTrigger Value="install">Install</StackTabsTrigger>
@@ -72,11 +72,15 @@
             <StackTabsContent Value="usage">
                 <StackCard>
                     <StackCardContent Class="pt-4">
-                        <pre class="text-sm bg-muted rounded p-3"><code>&lt;Button Variant="primary"&gt;Click me&lt;/Button&gt;</code></pre>
+                        <pre class="text-sm bg-muted rounded p-3"><code>&lt;StackButton&gt;Click me&lt;/StackButton&gt;</code></pre>
                     </StackCardContent>
                 </StackCard>
             </StackTabsContent>
         </StackTabs>
+        @if (!string.IsNullOrEmpty(_lastTabChange))
+        {
+            <p class="text-xs text-muted-foreground">OnChange fired: <strong>@_lastTabChange</strong></p>
+        }
     </div>
 </DemoSection>
 
@@ -361,6 +365,9 @@
 
 @code {
     private string? _activeTab = "overview";
+    private string? _lastTabChange;
+    private void OnTabChanged(string? tab) => _lastTabChange = tab;
+
     private double _chunkValue = 2;
     private double _levelValue = 40;
     private bool _animVisible = true;
@@ -392,7 +399,7 @@
         """;
 
     private const string _tabsCode = """
-        <StackTabs @bind-ActiveTab="_activeTab">
+        <StackTabs @bind-ActiveTab="_activeTab" OnChange="OnTabChanged">
             <StackTabsList>
                 <StackTabsTrigger Value="overview">Overview</StackTabsTrigger>
                 <StackTabsTrigger Value="install">Install</StackTabsTrigger>
@@ -400,6 +407,11 @@
             <StackTabsContent Value="overview">...</StackTabsContent>
             <StackTabsContent Value="install">...</StackTabsContent>
         </StackTabs>
+
+        @code {
+            private string? _activeTab = "overview";
+            private void OnTabChanged(string? tab) { /* react to tab switch */ }
+        }
         """;
 
     private const string _separatorCode = """
