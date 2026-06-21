@@ -1,4 +1,4 @@
-<div align="center">
+
 
 # MyStackBlazor
 
@@ -14,7 +14,7 @@ A modern Blazor component library powered by Tailwind CSS v4.
 
 [Live Demo](https://vilassagar.github.io/MyStackBlazor/)
 
-</div>
+
 
 ---
 
