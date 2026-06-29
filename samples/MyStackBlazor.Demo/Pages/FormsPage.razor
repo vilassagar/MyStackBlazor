@@ -376,6 +376,19 @@
     </div>
 </DemoSection>
 
+<!-- MonthYearPicker -->
+<DemoSection Title="Month Year Picker"
+             Description="Select a month and year. Displays full month names in a 3×4 grid with year navigation arrows."
+             Code="@_monthYearPickerCode">
+    <div class="w-full max-w-xs space-y-3">
+        <StackMonthYearPicker @bind-Value="_selectedMonthYear" Placeholder="Pick month & year" />
+        @if (_selectedMonthYear.HasValue)
+        {
+            <p class="text-sm text-muted-foreground">Selected: <strong>@_selectedMonthYear.Value.ToString("MMMM yyyy")</strong></p>
+        }
+    </div>
+</DemoSection>
+
 <!-- ColorPalette -->
 <DemoSection Title="Color Palette"
              Description="Click a swatch to select a color. ShowHex displays the selected hex value."
@@ -455,6 +468,8 @@
 
     private string? _phone;
     private string _dialCode = "+91";
+
+    private DateTime? _selectedMonthYear;
 
     private string? _brandColor = "#3b82f6";
     private string? _accentColor = "#8b5cf6";
@@ -617,5 +632,14 @@
             <option value="blazor">Blazor</option>
             <option value="react">React</option>
         </StackNativeSelect>
+        """;
+
+    private const string _monthYearPickerCode = """
+        <StackMonthYearPicker @bind-Value="_selectedMonthYear" Placeholder="Pick month & year" />
+
+        @if (_selectedMonthYear.HasValue)
+        {
+            <p>Selected: @_selectedMonthYear.Value.ToString("MMMM yyyy")</p>
+        }
         """;
 }

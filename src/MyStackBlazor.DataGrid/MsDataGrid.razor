@@ -14,66 +14,289 @@
      aria-rowcount="@_totalCount"
      aria-busy="@(_isLoading ? "true" : null)">
 
-    @* Toolbar: search + export *@
-    <div class="ms-datagrid__toolbar flex items-center justify-between gap-4 border-b border-border px-4 py-3">
-        <div class="relative flex-1 max-w-xs">
-            <input type="search"
-                   class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                   placeholder="Search…"
-                   aria-label="Search grid"
-                   value="@_state.SearchTerm"
-                   @oninput="OnSearchInput" />
+    @* ── Toolbar ─────────────────────────────────────────────────────────── *@
+    <div class="ms-datagrid__toolbar flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
+        <div class="flex items-center gap-2 flex-1 min-w-0">
+            <div class="relative max-w-xs flex-1">
+                <input type="search"
+                       class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                       placeholder="Search…"
+                       aria-label="Search grid"
+                       value="@_state.SearchTerm"
+                       @oninput="OnSearchInput" />
+            </div>
+            @if (EditMode != EditMode.None && NewRowFactory is not null)
+            {
+                <button class="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
+                        aria-label="Add row" @onclick="AddRow">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Row
+                </button>
+            }
+            @if (EditMode == EditMode.Batch && _batchEdits.Count > 0)
+            {
+                <button class="inline-flex items-center gap-1.5 rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-sm hover:bg-primary/90"
+                        @onclick="SaveBatchEdits">
+                    Save All (@_batchEdits.Count)
+                </button>
+                <button class="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
+                        @onclick="CancelBatchEdits">
+                    Discard
+                </button>
+            }
         </div>
         <div class="flex items-center gap-2">
             @if (_isLoading)
             {
-                <span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-primary" aria-label="Loading" role="status"></span>
+                <span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-primary"
+                      aria-label="Loading" role="status"></span>
             }
-            <button class="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
-                    aria-label="Export to Excel"
-                    disabled="@(_isLoading || DataProvider is null)"
-                    @onclick="ExportToExcel">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Export
-            </button>
+
+            @* Column chooser *@
+            @if (_columns.Count > 0)
+            {
+                <div class="relative">
+                    <button class="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
+                            aria-label="Column chooser" aria-expanded="@_showColumnChooser"
+                            @onclick="ToggleColumnChooser">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        Columns
+                    </button>
+                    @if (_showColumnChooser)
+                    {
+                        <div class="fixed inset-0 z-40" @onclick="() => _showColumnChooser = false"></div>
+                        <div class="absolute right-0 top-full z-50 mt-1 min-w-[11rem] rounded-md border border-border bg-background shadow-lg"
+                             role="dialog" aria-label="Column visibility">
+                            <div class="p-2 space-y-0.5 max-h-72 overflow-y-auto">
+                                @foreach (var col in _columns)
+                                {
+                                    var isVisible = !_hiddenColumns.Contains(col.Field);
+                                    <label class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm select-none">
+                                        <input type="checkbox" class="rounded" checked="@isVisible"
+                                               @onclick:stopPropagation="true"
+                                               @onchange="e => ToggleColumnVisibility(col, (bool)(e.Value ?? true))" />
+                                        @col.Title
+                                    </label>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+            @* Export dropdown *@
+            <div class="relative">
+                <button class="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
+                        aria-label="Export options" disabled="@(_isLoading || DataProvider is null)"
+                        @onclick="ToggleExportMenu">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Export
+                    <svg class="h-3 w-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                @if (_showExportMenu)
+                {
+                    <div class="fixed inset-0 z-40" @onclick="() => _showExportMenu = false"></div>
+                    <div class="absolute right-0 top-full z-50 mt-1 min-w-[9rem] rounded-md border border-border bg-background shadow-lg py-1">
+                        <button class="w-full text-left px-4 py-2 text-sm hover:bg-muted"
+                                @onclick="ExportExcel">Excel (.xlsx)</button>
+                        <button class="w-full text-left px-4 py-2 text-sm hover:bg-muted"
+                                @onclick="ExportCsv">CSV (.csv)</button>
+                        <button class="w-full text-left px-4 py-2 text-sm hover:bg-muted"
+                                @onclick="ExportJson">JSON (.json)</button>
+                    </div>
+                }
+            </div>
         </div>
     </div>
 
-    @* Column header row *@
-    <div class="ms-datagrid__header grid bg-muted/40 border-b border-border" role="row"
-         style="grid-template-columns: @_columnTemplate">
-        @foreach (var col in _columns)
-        {
-            var sortState = GetSortState(col.Field);
-            <div class="@HeaderCellClass(col) px-4 py-3 text-sm font-semibold text-foreground"
-                 role="columnheader"
-                 aria-sort="@GetAriaSortValue(sortState)"
-                 style="@(col.Width is not null ? $"width:{col.Width}" : "")"
-                 @onclick="() => OnSortClicked(col)">
-                <span>@col.Title</span>
-                @if (col.Sortable)
+    @* ── Group Panel ──────────────────────────────────────────────────────── *@
+    @if (ShowGroupPanel)
+    {
+        <div class="ms-datagrid__group-panel flex flex-wrap items-center gap-2 border-b border-border px-4 py-2 min-h-[42px] bg-muted/20">
+            @if (_activeGroups.Count == 0)
+            {
+                <span class="text-xs text-muted-foreground italic">
+                    Click the ≡ icon in a column header to group by that column.
+                </span>
+            }
+            else
+            {
+                <span class="text-xs text-muted-foreground mr-1">Grouped by:</span>
+                @foreach (var field in _activeGroups)
                 {
-                    <span class="ms-sort-icon ml-1 opacity-50" aria-hidden="true">
-                        @if (sortState == SortDirection.Ascending) { <span>↑</span> }
-                        else if (sortState == SortDirection.Descending) { <span>↓</span> }
-                        else { <span>↕</span> }
+                    var f = field;
+                    var title = _columns.FirstOrDefault(c => c.Field == f)?.Title ?? f;
+                    <span class="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-0.5 text-xs font-medium text-primary">
+                        @title
+                        <button class="ml-1 hover:text-destructive leading-none" aria-label="Remove group"
+                                @onclick="() => RemoveGroup(f)">×</button>
                     </span>
                 }
+                <button class="ml-auto text-xs text-muted-foreground hover:text-foreground hover:underline underline-offset-2"
+                        @onclick="ClearGroups">Clear all</button>
+            }
+        </div>
+    }
+
+    @* ── Column header row ────────────────────────────────────────────────── *@
+    <div class="ms-datagrid__header grid bg-muted/40 border-b border-border" role="row"
+         style="grid-template-columns: @_columnTemplate">
+        @if (SelectionMode == SelectionMode.Multiple)
+        {
+            <div class="flex items-center justify-center px-3 py-3" role="columnheader" aria-label="Select all">
+                <input type="checkbox" class="rounded" aria-label="Select all rows"
+                       checked="@_allSelected" @onchange="ToggleSelectAll" />
+            </div>
+        }
+        @foreach (var col in VisibleColumns)
+        {
+            var sortDir = GetSortState(col.Field);
+            var sortOrd = GetSortOrder(col.Field);
+            var hasMenuFilter = _menuFilters.TryGetValue(col.Field, out var mfc) && !string.IsNullOrEmpty(mfc.Value);
+            <div class="relative flex items-center px-4 py-3 text-sm font-semibold text-foreground @(col.Sortable ? "cursor-pointer select-none hover:bg-muted/60" : "")"
+                 role="columnheader"
+                 aria-sort="@GetAriaSortValue(sortDir)"
+                 title="@col.Tooltip"
+                 @onclick="e => OnSortClicked(col, e)">
+                <span class="flex-1 truncate">@col.Title</span>
+
+                @* Sort indicator *@
+                @if (col.Sortable)
+                {
+                    <span class="ml-1 text-xs" aria-hidden="true">
+                        @if (sortDir == SortDirection.Ascending)
+                        {
+                            <span class="opacity-70">↑</span>
+                            @if (_state.Sort.Count > 1 && sortOrd > 0)
+                            {
+                                <sup class="text-[9px] opacity-70">@sortOrd</sup>
+                            }
+                        }
+                        else if (sortDir == SortDirection.Descending)
+                        {
+                            <span class="opacity-70">↓</span>
+                            @if (_state.Sort.Count > 1 && sortOrd > 0)
+                            {
+                                <sup class="text-[9px] opacity-70">@sortOrd</sup>
+                            }
+                        }
+                        else { <span class="opacity-30">↕</span> }
+                    </span>
+                }
+
+                @* Group button *@
+                @if (ShowGroupPanel && col.Groupable)
+                {
+                    var gf = col.Field;
+                    var isGrouped = _activeGroups.Contains(gf);
+                    <button class="ml-1 text-xs @(isGrouped ? "text-primary" : "opacity-40 hover:opacity-100")"
+                            title="@(isGrouped ? "Remove group" : "Group by " + col.Title)"
+                            @onclick:stopPropagation="true"
+                            @onclick="() => ToggleGroup(gf)">≡</button>
+                }
+
+                @* Filter icon + menu *@
+                @if (col.Filterable)
+                {
+                    var filterCol = col;
+                    <button class="ml-1 @(hasMenuFilter ? "text-primary" : "opacity-40 hover:opacity-100")"
+                            title="Filter @col.Title"
+                            aria-label="Filter @col.Title"
+                            @onclick:stopPropagation="true"
+                            @onclick="() => OpenFilterMenu(filterCol)">
+                        <svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L13 10.414V15a1 1 0 01-.553.894l-4 2A1 1 0 017 17v-6.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                    @if (_filterMenuField == col.Field)
+                    {
+                        var fmf = col.Field;
+                        <div class="fixed inset-0 z-40" @onclick="CloseFilterMenu"></div>
+                        <div class="absolute top-full left-0 z-50 w-64 rounded-md border border-border bg-background shadow-xl"
+                             role="dialog" aria-label="@($"Filter {col.Title}")">
+                            @if (col.Sortable)
+                            {
+                                <div class="border-b border-border p-1 space-y-0.5">
+                                    <button class="w-full flex items-center gap-2 px-3 py-1.5 rounded text-sm hover:bg-muted text-left"
+                                            @onclick="() => MenuSortAsc(fmf)">
+                                        <span>↑</span> Sort A → Z
+                                    </button>
+                                    <button class="w-full flex items-center gap-2 px-3 py-1.5 rounded text-sm hover:bg-muted text-left"
+                                            @onclick="() => MenuSortDesc(fmf)">
+                                        <span>↓</span> Sort Z → A
+                                    </button>
+                                    @if (sortDir is not null)
+                                    {
+                                        <button class="w-full flex items-center gap-2 px-3 py-1.5 rounded text-sm hover:bg-muted text-left text-muted-foreground"
+                                                @onclick="() => MenuRemoveSort(fmf)">
+                                            Remove Sort
+                                        </button>
+                                    }
+                                </div>
+                            }
+                            <div class="p-3 space-y-2">
+                                <p class="text-xs font-medium text-muted-foreground">Show rows where:</p>
+                                @{
+                                    var curFilter = _menuFilters.TryGetValue(col.Field, out var ef) ? ef : new MenuFilter();
+                                }
+                                <select class="w-full rounded border border-input bg-background px-2 py-1 text-xs"
+                                        value="@curFilter.OperatorKey"
+                                        @onchange="e => OnMenuFilterOpChange(fmf, e)">
+                                    @foreach (var op in GetFilterOps(col))
+                                    {
+                                        <option value="@op.Key">@op.Label</option>
+                                    }
+                                </select>
+                                @if (!IsNullOp(curFilter.OperatorKey))
+                                {
+                                    <input class="w-full rounded border border-input bg-background px-2 py-1 text-xs"
+                                           type="@MenuInputType(col)"
+                                           placeholder="Value…"
+                                           value="@curFilter.Value"
+                                           @oninput="e => SetMenuFilterVal(fmf, e.Value?.ToString())" />
+                                }
+                                <div class="flex gap-2 pt-1">
+                                    <button class="flex-1 rounded bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium hover:bg-primary/90"
+                                            @onclick="() => ApplyMenuFilter(fmf)">Filter</button>
+                                    <button class="flex-1 rounded border border-input bg-background px-3 py-1.5 text-xs hover:bg-muted"
+                                            @onclick="() => ClearMenuFilter(fmf)">Clear</button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        }
+        @if (_commandColumn is not null || EditMode == EditMode.Row)
+        {
+            <div class="flex items-center px-4 py-3 text-sm font-semibold text-foreground" role="columnheader">
+                @(_commandColumn?.Title ?? "")
             </div>
         }
     </div>
 
-    @* Per-column filter inputs (shown when any column has Filterable=true) *@
-    @if (_columns.Any(c => c.Filterable))
+    @* ── Filter row ───────────────────────────────────────────────────────── *@
+    @if (ShowFilterRow && VisibleColumns.Any(c => c.Filterable))
     {
         <div class="ms-datagrid__filters grid border-b border-border bg-background" role="row"
              style="grid-template-columns: @_columnTemplate">
-            @foreach (var col in _columns)
+            @if (SelectionMode == SelectionMode.Multiple)
             {
-                <div class="px-3 py-1.5" role="columnheader" aria-label="@($"Filter {col.Title}")">
+                <div class="px-3 py-1.5" role="columnheader"></div>
+            }
+            @foreach (var col in VisibleColumns)
+            {
+                <div class="px-3 py-1.5" role="columnheader">
                     @if (col.Filterable)
                     {
                         <input type="search"
@@ -85,65 +308,61 @@
                     }
                 </div>
             }
+            @if (_commandColumn is not null || EditMode == EditMode.Row)
+            {
+                <div class="px-3 py-1.5" role="columnheader"></div>
+            }
         </div>
     }
 
-    @* Virtualized body *@
-    <div class="ms-datagrid__body relative" style="height: @BodyHeight; overflow-y: auto;">
+    @* ── Body ─────────────────────────────────────────────────────────────── *@
+    <div class="ms-datagrid__body relative"
+         style="@(Pageable || _activeGroups.Count > 0 ? "" : $"height:{BodyHeight};overflow-y:auto;")">
         @if (DataProvider is not null)
         {
-            <Virtualize ItemsProvider="@LoadServerRowsAsync"
-                        ItemSize="@RowHeight"
-                        OverscanCount="@OverscanCount"
-                        Context="row"
-                        @ref="_virtualizeRef">
-                <ItemContent>
-                    <div class="@RowClass(row) grid border-b border-border/50 transition-colors"
-                         role="row"
-                         tabindex="0"
-                         style="grid-template-columns: @_columnTemplate; min-height: @(RowHeight)px"
-                         @onclick="() => HandleRowClick(row)"
-                         @onkeydown="e => OnRowKeyDown(e, row)">
-                        @foreach (var col in _columns)
-                        {
-                            <div class="px-4 py-3 text-sm text-foreground truncate" role="gridcell">
-                                @if (col.CellTemplate is not null)
-                                {
-                                    @col.CellTemplate(row)
-                                }
-                                else
-                                {
-                                    @(col.GetValue(row)?.ToString() ?? "")
-                                }
-                            </div>
-                        }
-                    </div>
-                </ItemContent>
-                <Placeholder>
-                    <div class="grid animate-pulse border-b border-border/50"
-                         style="grid-template-columns: @_columnTemplate; height: @(RowHeight)px; align-items: center; padding: 0 1rem;">
-                        @foreach (var _ in _columns)
-                        {
-                            <div class="h-4 rounded bg-muted mx-1"></div>
-                        }
-                    </div>
-                </Placeholder>
-            </Virtualize>
-
-            @* Empty state overlay (Virtualize renders nothing when total=0) *@
-            @if (_hasData && _totalCount == 0 && !_isLoading)
+            @if (Pageable || _activeGroups.Count > 0)
             {
-                <div class="flex flex-col items-center justify-center py-16 text-muted-foreground select-none" role="status" aria-live="polite">
-                    <svg class="h-10 w-10 mb-3 opacity-25" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                              d="M3 10h18M3 14h18M7 4h10M7 20h10" />
-                    </svg>
-                    <p class="text-sm font-medium">No results found</p>
-                    @if (!string.IsNullOrEmpty(_state.SearchTerm) || _filterInputs.Any(f => !string.IsNullOrEmpty(f.Value)))
+                @if (_displayRows.Count > 0)
+                {
+                    @foreach (var dr in _displayRows)
                     {
-                        <p class="text-xs mt-1 opacity-70">Try adjusting your search or filters</p>
+                        @if (dr.IsGroup)
+                        {
+                            @RenderGroupHeader(dr.Group!)
+                        }
+                        else
+                        {
+                            @RenderDataRow(dr.Data!)
+                        }
                     }
-                </div>
+                }
+                else if (!_isLoading)
+                {
+                    @RenderEmptyState()
+                }
+            }
+            else
+            {
+                <Virtualize ItemsProvider="@LoadServerRowsAsync"
+                            ItemSize="@RowHeight"
+                            OverscanCount="@OverscanCount"
+                            Context="row"
+                            @ref="_virtualizeRef">
+                    <ItemContent>@RenderDataRow(row)</ItemContent>
+                    <Placeholder>
+                        <div class="grid animate-pulse border-b border-border/50"
+                             style="grid-template-columns: @_columnTemplate; height: @(RowHeight)px; align-items:center; padding:0 1rem;">
+                            @foreach (var _ in VisibleColumns)
+                            {
+                                <div class="h-4 rounded bg-muted mx-1"></div>
+                            }
+                        </div>
+                    </Placeholder>
+                </Virtualize>
+                @if (_hasData && _totalCount == 0 && !_isLoading)
+                {
+                    @RenderEmptyState()
+                }
             }
         }
         else
@@ -154,15 +373,39 @@
         }
     </div>
 
-    @* Footer *@
+    @* ── Footer / Pager ───────────────────────────────────────────────────── *@
     <div class="ms-datagrid__footer flex items-center justify-between border-t border-border px-4 py-2 text-sm text-muted-foreground">
         <span>
             @if (_hasData)
             {
-                @($"{_totalCount:N0} {(_totalCount == 1 ? "row" : "rows")}")
+                @if (SelectionMode == SelectionMode.Multiple && _selectedItems.Count > 0)
+                {
+                    @($"{_selectedItems.Count:N0} of {_totalCount:N0} selected")
+                }
+                else
+                {
+                    @($"{_totalCount:N0} {(_totalCount == 1 ? "row" : "rows")}")
+                }
             }
         </span>
-        @if (SelectedItem is not null)
+        @if (Pageable && _activeGroups.Count == 0 && _totalCount > 0)
+        {
+            <div class="flex items-center gap-1" role="navigation" aria-label="Pagination">
+                <button class="@PagerBtnBase" disabled="@(_currentPage == 0)" @onclick="() => GoToPage(0)">«</button>
+                <button class="@PagerBtnBase" disabled="@(_currentPage == 0)" @onclick="() => GoToPage(_currentPage - 1)">‹</button>
+                @foreach (var pg in PageNumbers)
+                {
+                    var p = pg;
+                    <button class="@(_currentPage == p ? "bg-primary text-primary-foreground border-primary" : "hover:bg-accent border-input") inline-flex items-center justify-center rounded w-7 h-7 text-xs border"
+                            aria-current="@(_currentPage == p ? "page" : null)"
+                            @onclick="() => GoToPage(p)">@(p + 1)</button>
+                }
+                <button class="@PagerBtnBase" disabled="@(_currentPage >= _lastPage)" @onclick="() => GoToPage(_currentPage + 1)">›</button>
+                <button class="@PagerBtnBase" disabled="@(_currentPage >= _lastPage)" @onclick="() => GoToPage(_lastPage)">»</button>
+                <span class="ml-2 text-xs">Page @(_currentPage + 1) of @(_lastPage + 1)</span>
+            </div>
+        }
+        else if (SelectedItem is not null && SelectionMode == SelectionMode.Single)
         {
             <span class="text-xs">1 row selected</span>
         }
@@ -170,122 +413,827 @@
 </div>
 
 @code {
+    // ── Parameters ────────────────────────────────────────────────────────
     [Parameter] public IGridDataProvider<TItem>? DataProvider { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public string? AriaLabel { get; set; }
     [Parameter] public string BodyHeight { get; set; } = "480px";
     [Parameter] public float RowHeight { get; set; } = 52f;
     [Parameter] public int OverscanCount { get; set; } = 10;
-    [Parameter] public EventCallback<byte[]> OnExported { get; set; }
+    [Parameter] public EventCallback<(byte[] Data, string Format)> OnExported { get; set; }
     [Parameter] public TItem? SelectedItem { get; set; }
     [Parameter] public EventCallback<TItem?> SelectedItemChanged { get; set; }
     [Parameter] public EventCallback<TItem> OnRowClick { get; set; }
+    [Parameter] public SelectionMode SelectionMode { get; set; } = SelectionMode.Single;
+    [Parameter] public IReadOnlyList<TItem> SelectedItems { get; set; } = [];
+    [Parameter] public EventCallback<IReadOnlyList<TItem>> SelectedItemsChanged { get; set; }
+    [Parameter] public bool Pageable { get; set; } = false;
+    [Parameter] public int PageSize { get; set; } = 25;
+    [Parameter] public bool ShowGroupPanel { get; set; } = false;
+    [Parameter] public bool ShowFilterRow { get; set; } = true;
+    [Parameter] public EditMode EditMode { get; set; } = EditMode.None;
+    [Parameter] public Func<TItem>? NewRowFactory { get; set; }
+    [Parameter] public EventCallback<TItem> OnRowSaved { get; set; }
+    [Parameter] public EventCallback<TItem> OnRowAdded { get; set; }
+    [Parameter] public EventCallback<TItem> OnRowDeleted { get; set; }
 
+    // ── Internal types ────────────────────────────────────────────────────
+    private sealed class DisplayItem
+    {
+        public TItem? Data { get; init; }
+        public GroupHeader? Group { get; init; }
+        public bool IsGroup => Group is not null;
+        public static DisplayItem FromData(TItem d) => new() { Data = d };
+        public static DisplayItem FromGroup(GroupHeader g) => new() { Group = g };
+    }
+
+    private sealed class MenuFilter
+    {
+        public string OperatorKey { get; set; } = "contains";
+        public string? Value { get; set; }
+    }
+
+    // ── State ─────────────────────────────────────────────────────────────
     private readonly List<MsDataGridColumn<TItem>> _columns = [];
+    private MsDataGridCommandColumn<TItem>? _commandColumn;
+    private readonly HashSet<string> _hiddenColumns = [];
     private readonly Dictionary<string, string> _filterInputs = [];
     private GridState _state = GridState.Default;
     private int _totalCount;
     private bool _isLoading;
     private bool _hasData;
     private Virtualize<TItem>? _virtualizeRef;
+    private bool _showColumnChooser;
+    private bool _showExportMenu;
+    private readonly HashSet<TItem> _selectedItems = [];
+    private bool _allSelected;
+    private int _currentPage;
+    private int _lastPage;
 
-    private string _columnTemplate => _columns.Count > 0
-        ? string.Join(" ", _columns.Select(c => c.Width ?? "1fr"))
-        : "1fr";
+    // Display rows (paged + grouped)
+    private readonly List<DisplayItem> _displayRows = [];
+    private List<TItem> _allItems = [];
 
-    internal void RegisterColumn(MsDataGridColumn<TItem> col)
-    {
-        if (!_columns.Contains(col))
+    // Grouping
+    private readonly List<string> _activeGroups = [];
+
+    // Filter menu
+    private string? _filterMenuField;
+    private readonly Dictionary<string, MenuFilter> _menuFilters = [];
+
+    // Editing
+    private TItem? _editingRow;
+    private readonly Dictionary<string, string> _rowEditBuffer = [];
+    private string? _editingCellField;
+    private string _cellEditValue = "";
+    // Batch: index in _displayRows → field edits
+    private readonly List<(TItem Row, Dictionary<string, string> Edits)> _batchEdits = [];
+
+    // ── Operator tables (per data type) ──────────────────────────────────
+    private static readonly (string Key, string Label)[] TextFilterOps =
+    [
+        ("contains",    "Contains"),
+        ("notcontains", "Does not contain"),
+        ("equals",      "Equals"),
+        ("notequals",   "Does not equal"),
+        ("startswith",  "Starts with"),
+        ("endswith",    "Ends with"),
+        ("isnull",      "Is empty"),
+        ("isnotnull",   "Is not empty"),
+    ];
+
+    private static readonly (string Key, string Label)[] NumberFilterOps =
+    [
+        ("equals",   "=  Equals"),
+        ("notequals","≠  Does not equal"),
+        ("gt",       ">  Greater than"),
+        ("lt",       "<  Less than"),
+        ("gte",      "≥  Greater than or equal"),
+        ("lte",      "≤  Less than or equal"),
+        ("isnull",   "Is empty"),
+        ("isnotnull","Is not empty"),
+    ];
+
+    private static readonly (string Key, string Label)[] DateFilterOps =
+    [
+        ("equals",   "On"),
+        ("notequals","Not on"),
+        ("gt",       "After"),
+        ("lt",       "Before"),
+        ("gte",      "On or after"),
+        ("lte",      "On or before"),
+        ("isnull",   "Is empty"),
+        ("isnotnull","Is not empty"),
+    ];
+
+    private static (string Key, string Label)[] GetFilterOps(MsDataGridColumn<TItem> col) =>
+        col.EditorType switch
         {
-            _columns.Add(col);
-            StateHasChanged();
+            EditorType.Number   => NumberFilterOps,
+            EditorType.Date     => DateFilterOps,
+            EditorType.DateTime => DateFilterOps,
+            _                   => TextFilterOps
+        };
+
+    private static bool IsNullOp(string op) => op is "isnull" or "isnotnull";
+    private static string MenuInputType(MsDataGridColumn<TItem> col) => col.EditorType switch
+    {
+        EditorType.Number   => "number",
+        EditorType.Date     => "date",
+        EditorType.DateTime => "datetime-local",
+        _                   => "text"
+    };
+
+    // ── Derived state ─────────────────────────────────────────────────────
+    private IEnumerable<MsDataGridColumn<TItem>> VisibleColumns =>
+        _columns.Where(c => !_hiddenColumns.Contains(c.Field));
+
+    private string _columnTemplate
+    {
+        get
+        {
+            var parts = new List<string>();
+            if (SelectionMode == SelectionMode.Multiple) parts.Add("40px");
+            parts.AddRange(VisibleColumns.Select(c => c.Width ?? "1fr"));
+            if (_commandColumn is not null || EditMode == EditMode.Row)
+                parts.Add(_commandColumn?.Width ?? "150px");
+            return parts.Count > 0 ? string.Join(" ", parts) : "1fr";
         }
     }
 
-    private SortDirection? GetSortState(string field)
-        => _state.Sort.FirstOrDefault(s => s.Field == field)?.Direction;
+    private IEnumerable<int> PageNumbers
+    {
+        get
+        {
+            const int window = 2;
+            var start = Math.Max(0, _currentPage - window);
+            var end = Math.Min(_lastPage, _currentPage + window);
+            for (var p = start; p <= end; p++) yield return p;
+        }
+    }
+
+    private const string PagerBtnBase =
+        "inline-flex items-center justify-center rounded w-7 h-7 text-xs border border-input hover:bg-accent disabled:opacity-40 disabled:pointer-events-none";
+
+    // ── Column registration ───────────────────────────────────────────────
+    internal void RegisterColumn(MsDataGridColumn<TItem> col)
+    {
+        if (_columns.Contains(col)) return;
+        _columns.Add(col);
+        if (!col.Visible) _hiddenColumns.Add(col.Field);
+        StateHasChanged();
+    }
+
+    internal void RegisterCommandColumn(MsDataGridCommandColumn<TItem> col)
+    {
+        _commandColumn = col;
+        StateHasChanged();
+    }
+
+    // ── Render helpers ────────────────────────────────────────────────────
+    private RenderFragment RenderGroupHeader(GroupHeader hdr) => __b =>
+    {
+        __b.OpenElement(0, "div");
+        __b.AddAttribute(1, "class",
+            "flex items-center gap-2 px-4 py-2 bg-muted/40 border-b border-border text-sm font-medium cursor-pointer hover:bg-muted/60 select-none");
+        __b.AddAttribute(2, "role", "row");
+        __b.AddAttribute(3, "onclick",
+            EventCallback.Factory.Create<Microsoft.AspNetCore.Components.Web.MouseEventArgs>(
+                this, _ => ToggleGroupCollapse(hdr)));
+        __b.OpenElement(4, "span");
+        __b.AddAttribute(5, "class", "text-xs opacity-60");
+        __b.AddContent(6, hdr.Collapsed ? "▶" : "▼");
+        __b.CloseElement();
+        __b.OpenElement(7, "span");
+        __b.AddAttribute(8, "class", "text-muted-foreground text-xs");
+        __b.AddContent(9, hdr.ColumnTitle + ": ");
+        __b.CloseElement();
+        __b.OpenElement(10, "span");
+        __b.AddContent(11, hdr.Value?.ToString() ?? "(blank)");
+        __b.CloseElement();
+        __b.OpenElement(12, "span");
+        __b.AddAttribute(13, "class", "ml-auto text-xs text-muted-foreground");
+        __b.AddContent(14, $"{hdr.Count} {(hdr.Count == 1 ? "item" : "items")}");
+        __b.CloseElement();
+        __b.CloseElement();
+    };
+
+    private RenderFragment RenderDataRow(TItem row) => __b =>
+    {
+        var isEditing = IsRowEditing(row);
+        var isSelected = IsSelected(row);
+        var clickable = OnRowClick.HasDelegate || SelectedItemChanged.HasDelegate
+                        || SelectionMode != SelectionMode.None;
+        var rowClass = isSelected
+            ? $"ms-datagrid__row--selected bg-primary/10 hover:bg-primary/15{(clickable ? " cursor-pointer" : "")}"
+            : $"ms-datagrid__row hover:bg-muted/30{(clickable ? " cursor-pointer" : "")}";
+
+        __b.OpenElement(0, "div");
+        __b.AddAttribute(1, "class", $"{rowClass} grid border-b border-border/50 transition-colors");
+        __b.AddAttribute(2, "role", "row");
+        __b.AddAttribute(3, "tabindex", "0");
+        __b.AddAttribute(4, "style",
+            $"grid-template-columns:{_columnTemplate};min-height:{RowHeight}px");
+        __b.AddAttribute(5, "onclick",
+            EventCallback.Factory.Create<Microsoft.AspNetCore.Components.Web.MouseEventArgs>(
+                this, _ => HandleRowClick(row)));
+        __b.AddAttribute(6, "onkeydown",
+            EventCallback.Factory.Create<Microsoft.AspNetCore.Components.Web.KeyboardEventArgs>(
+                this, e => OnRowKeyDown(e, row)));
+        int seq = 10;
+
+        // Checkbox
+        if (SelectionMode == SelectionMode.Multiple)
+        {
+            __b.OpenElement(seq++, "div");
+            __b.AddAttribute(seq++, "class", "flex items-center justify-center px-3");
+            __b.AddAttribute(seq++, "role", "gridcell");
+            __b.OpenElement(seq++, "input");
+            __b.AddAttribute(seq++, "type", "checkbox");
+            __b.AddAttribute(seq++, "class", "rounded");
+            __b.AddAttribute(seq++, "checked", isSelected);
+            __b.AddAttribute(seq++, "onchange",
+                EventCallback.Factory.Create<ChangeEventArgs>(this, _ => ToggleItemSelection(row)));
+            __b.AddEventStopPropagationAttribute(seq++, "onclick", true);
+            __b.CloseElement();
+            __b.CloseElement();
+        }
+
+        // Data cells
+        foreach (var col in VisibleColumns)
+        {
+            var cellStyle = col.CellStyleFunc?.Invoke(row);
+            var cellClass = col.CellClassFunc?.Invoke(row);
+            __b.OpenElement(seq++, "div");
+            __b.AddAttribute(seq++, "class",
+                string.IsNullOrEmpty(cellClass)
+                    ? "px-4 py-2 text-sm text-foreground truncate"
+                    : $"px-4 py-2 text-sm text-foreground truncate {cellClass}");
+            if (!string.IsNullOrEmpty(cellStyle))
+                __b.AddAttribute(seq++, "style", cellStyle);
+            __b.AddAttribute(seq++, "role", "gridcell");
+
+            var isCellEditMode = EditMode == EditMode.Cell && col.Editable;
+            var isThisCellEditing = isCellEditMode
+                && _editingRow is not null
+                && EqualityComparer<TItem>.Default.Equals(_editingRow, row)
+                && _editingCellField == col.Field;
+
+            if ((isEditing && EditMode != EditMode.Cell) && col.Editable)
+            {
+                // Row/Batch editing: show input
+                var editVal = GetEditValue(row, col);
+                __b.OpenElement(seq++, "input");
+                __b.AddAttribute(seq++, "class",
+                    "w-full rounded border border-input bg-background px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring");
+                __b.AddAttribute(seq++, "type", MenuInputType(col));
+                __b.AddAttribute(seq++, "value", editVal);
+                __b.AddAttribute(seq++, "oninput",
+                    EventCallback.Factory.Create<ChangeEventArgs>(this,
+                        e => SetEditValue(row, col.Field, e.Value?.ToString() ?? "")));
+                __b.AddEventStopPropagationAttribute(seq++, "onclick", true);
+                __b.CloseElement();
+            }
+            else if (isThisCellEditing)
+            {
+                // Cell edit: active input
+                __b.OpenElement(seq++, "input");
+                __b.AddAttribute(seq++, "class",
+                    "w-full rounded border border-input bg-background px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring");
+                __b.AddAttribute(seq++, "type", MenuInputType(col));
+                __b.AddAttribute(seq++, "value", _cellEditValue);
+                __b.AddAttribute(seq++, "oninput",
+                    EventCallback.Factory.Create<ChangeEventArgs>(this,
+                        e => _cellEditValue = e.Value?.ToString() ?? ""));
+                __b.AddAttribute(seq++, "onblur",
+                    EventCallback.Factory.Create<Microsoft.AspNetCore.Components.Web.FocusEventArgs>(
+                        this, async _ => await CommitCellEdit(row, col)));
+                __b.AddAttribute(seq++, "onkeydown",
+                    EventCallback.Factory.Create<Microsoft.AspNetCore.Components.Web.KeyboardEventArgs>(
+                        this, async e =>
+                        {
+                            if (e.Key == "Enter") await CommitCellEdit(row, col);
+                            else if (e.Key == "Escape") CancelCellEdit();
+                        }));
+                __b.AddEventStopPropagationAttribute(seq++, "onclick", true);
+                __b.CloseElement();
+            }
+            else if (isCellEditMode && _editingRow is null)
+            {
+                // Cell edit mode: display with click-to-edit hint
+                var capturedCol = col;
+                var capturedRow = row;
+                __b.OpenElement(seq++, "span");
+                __b.AddAttribute(seq++, "class", "cursor-text hover:underline underline-offset-2");
+                __b.AddAttribute(seq++, "title", "Click to edit");
+                __b.AddAttribute(seq++, "onclick",
+                    EventCallback.Factory.Create<Microsoft.AspNetCore.Components.Web.MouseEventArgs>(
+                        this, _ => StartCellEdit(capturedRow, capturedCol.Field)));
+                __b.AddEventStopPropagationAttribute(seq++, "onclick", true);
+                if (capturedCol.CellTemplate is not null)
+                    __b.AddContent(seq++, capturedCol.CellTemplate(row));
+                else
+                    __b.AddContent(seq++, capturedCol.GetValue(row)?.ToString() ?? "");
+                __b.CloseElement();
+            }
+            else
+            {
+                if (col.CellTemplate is not null)
+                    __b.AddContent(seq++, col.CellTemplate(row));
+                else
+                    __b.AddContent(seq++, col.GetValue(row)?.ToString() ?? "");
+            }
+
+            __b.CloseElement();
+        }
+
+        // Actions cell (command column or row editing save/cancel)
+        if (_commandColumn is not null || EditMode == EditMode.Row)
+        {
+            __b.OpenElement(seq++, "div");
+            __b.AddAttribute(seq++, "class", "flex items-center gap-1.5 px-3 py-2");
+            __b.AddAttribute(seq++, "role", "gridcell");
+
+            if (isEditing && EditMode == EditMode.Row)
+            {
+                __b.OpenElement(seq++, "button");
+                __b.AddAttribute(seq++, "class",
+                    "inline-flex items-center rounded px-2 py-1 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors");
+                __b.AddAttribute(seq++, "onclick",
+                    EventCallback.Factory.Create<Microsoft.AspNetCore.Components.Web.MouseEventArgs>(
+                        this, async _ => await SaveRowEdit(row)));
+                __b.AddEventStopPropagationAttribute(seq++, "onclick", true);
+                __b.AddContent(seq++, "Save");
+                __b.CloseElement();
+
+                __b.OpenElement(seq++, "button");
+                __b.AddAttribute(seq++, "class",
+                    "inline-flex items-center rounded px-2 py-1 text-xs border border-input hover:bg-muted transition-colors");
+                __b.AddAttribute(seq++, "onclick",
+                    EventCallback.Factory.Create<Microsoft.AspNetCore.Components.Web.MouseEventArgs>(
+                        this, _ => CancelRowEdit()));
+                __b.AddEventStopPropagationAttribute(seq++, "onclick", true);
+                __b.AddContent(seq++, "Cancel");
+                __b.CloseElement();
+            }
+            else if (_commandColumn is { } cmd)
+            {
+                if (cmd.CustomButtons is not null)
+                {
+                    __b.AddContent(seq++, cmd.CustomButtons(row));
+                }
+                else
+                {
+                    if ((cmd.OnEdit.HasDelegate && cmd.EditLabel is not null) || EditMode == EditMode.Row)
+                    {
+                        var editRow = row;
+                        __b.OpenElement(seq++, "button");
+                        __b.AddAttribute(seq++, "class",
+                            "inline-flex items-center rounded px-2 py-1 text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors");
+                        __b.AddAttribute(seq++, "onclick",
+                            EventCallback.Factory.Create<Microsoft.AspNetCore.Components.Web.MouseEventArgs>(
+                                this, async _ =>
+                                {
+                                    if (EditMode == EditMode.Row) StartRowEdit(editRow);
+                                    else await cmd.OnEdit.InvokeAsync(editRow);
+                                }));
+                        __b.AddEventStopPropagationAttribute(seq++, "onclick", true);
+                        __b.AddContent(seq++, cmd.EditLabel ?? "Edit");
+                        __b.CloseElement();
+                    }
+
+                    if (cmd.OnDelete.HasDelegate && cmd.DeleteLabel is not null)
+                    {
+                        var delRow = row;
+                        __b.OpenElement(seq++, "button");
+                        __b.AddAttribute(seq++, "class",
+                            "inline-flex items-center rounded px-2 py-1 text-xs font-medium bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors");
+                        __b.AddAttribute(seq++, "onclick",
+                            EventCallback.Factory.Create<Microsoft.AspNetCore.Components.Web.MouseEventArgs>(
+                                this, async _ =>
+                                {
+                                    await cmd.OnDelete.InvokeAsync(delRow);
+                                    await OnRowDeleted.InvokeAsync(delRow);
+                                }));
+                        __b.AddEventStopPropagationAttribute(seq++, "onclick", true);
+                        __b.AddContent(seq++, cmd.DeleteLabel);
+                        __b.CloseElement();
+                    }
+                }
+            }
+            else
+            {
+                var editRow = row;
+                __b.OpenElement(seq++, "button");
+                __b.AddAttribute(seq++, "class",
+                    "inline-flex items-center rounded px-2 py-1 text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors");
+                __b.AddAttribute(seq++, "onclick",
+                    EventCallback.Factory.Create<Microsoft.AspNetCore.Components.Web.MouseEventArgs>(
+                        this, _ => StartRowEdit(editRow)));
+                __b.AddEventStopPropagationAttribute(seq++, "onclick", true);
+                __b.AddContent(seq++, "Edit");
+                __b.CloseElement();
+            }
+
+            __b.CloseElement();
+        }
+
+        __b.CloseElement();
+    };
+
+    private RenderFragment RenderEmptyState() => __b =>
+    {
+        __b.OpenElement(0, "div");
+        __b.AddAttribute(1, "class", "flex flex-col items-center justify-center py-16 text-muted-foreground select-none");
+        __b.AddAttribute(2, "role", "status");
+        __b.AddAttribute(3, "aria-live", "polite");
+        __b.AddMarkupContent(4, """
+            <svg class="h-10 w-10 mb-3 opacity-25" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M3 14h18M7 4h10M7 20h10" />
+            </svg>
+        """);
+        __b.OpenElement(5, "p");
+        __b.AddAttribute(6, "class", "text-sm font-medium");
+        __b.AddContent(7, "No results found");
+        __b.CloseElement();
+        __b.CloseElement();
+    };
+
+    // ── Selection ─────────────────────────────────────────────────────────
+    private bool IsSelected(TItem row) =>
+        SelectionMode == SelectionMode.Multiple
+            ? _selectedItems.Contains(row)
+            : EqualityComparer<TItem>.Default.Equals(row, SelectedItem);
+
+    private void ToggleItemSelection(TItem row)
+    {
+        if (!_selectedItems.Remove(row)) _selectedItems.Add(row);
+        SyncAllSelectedState();
+        _ = SelectedItemsChanged.InvokeAsync([.. _selectedItems]);
+        StateHasChanged();
+    }
+
+    private void ToggleSelectAll(ChangeEventArgs e)
+    {
+        _allSelected = (bool)(e.Value ?? false);
+        var dataRows = _displayRows.Where(r => !r.IsGroup).Select(r => r.Data!);
+        if (_allSelected) foreach (var row in dataRows) _selectedItems.Add(row);
+        else _selectedItems.Clear();
+        _ = SelectedItemsChanged.InvokeAsync([.. _selectedItems]);
+        StateHasChanged();
+    }
+
+    private void SyncAllSelectedState()
+    {
+        var dataRows = _displayRows.Where(r => !r.IsGroup).Select(r => r.Data!).ToList();
+        _allSelected = dataRows.Count > 0 && dataRows.All(r => _selectedItems.Contains(r));
+    }
+
+    // ── Column visibility ─────────────────────────────────────────────────
+    private void ToggleColumnChooser() { _showColumnChooser = !_showColumnChooser; _showExportMenu = false; }
+    private void ToggleExportMenu()    { _showExportMenu = !_showExportMenu; _showColumnChooser = false; }
+
+    private void ToggleColumnVisibility(MsDataGridColumn<TItem> col, bool visible)
+    {
+        if (visible) _hiddenColumns.Remove(col.Field);
+        else _hiddenColumns.Add(col.Field);
+        StateHasChanged();
+    }
+
+    // ── Sort ──────────────────────────────────────────────────────────────
+    private SortDirection? GetSortState(string field) =>
+        _state.Sort.FirstOrDefault(s => s.Field == field)?.Direction;
+
+    private int GetSortOrder(string field)
+    {
+        var idx = _state.Sort.ToList().FindIndex(s => s.Field == field);
+        return idx >= 0 ? idx + 1 : 0;
+    }
 
     private static string? GetAriaSortValue(SortDirection? dir) => dir switch
     {
-        SortDirection.Ascending  => "ascending",
+        SortDirection.Ascending => "ascending",
         SortDirection.Descending => "descending",
-        _                        => null
+        _ => null
     };
 
-    private static string HeaderCellClass(MsDataGridColumn<TItem> col)
-        => col.Sortable ? "cursor-pointer select-none hover:bg-muted/60 flex items-center" : "flex items-center";
-
-    private string RowClass(TItem row)
-    {
-        var isSelected = SelectedItem is not null && EqualityComparer<TItem>.Default.Equals(row, SelectedItem);
-        var clickable = OnRowClick.HasDelegate || SelectedItemChanged.HasDelegate;
-        return isSelected
-            ? $"ms-datagrid__row--selected bg-primary/10 hover:bg-primary/15{(clickable ? " cursor-pointer" : "")}"
-            : $"ms-datagrid__row hover:bg-muted/30{(clickable ? " cursor-pointer" : "")}";
-    }
-
-    private void OnSortClicked(MsDataGridColumn<TItem> col)
+    private void OnSortClicked(MsDataGridColumn<TItem> col, Microsoft.AspNetCore.Components.Web.MouseEventArgs e)
     {
         if (!col.Sortable) return;
-        _state = _state.ToggleSort(col.Field);
-        _ = _virtualizeRef?.RefreshDataAsync();
+        _state = _state.ToggleSort(col.Field, e.ShiftKey);
+        RefreshData();
     }
 
+    private void MenuSortAsc(string field)  { ApplyMenuSort(field, false); _filterMenuField = null; }
+    private void MenuSortDesc(string field) { ApplyMenuSort(field, true);  _filterMenuField = null; }
+    private void MenuRemoveSort(string field) { RemoveSort(field); _filterMenuField = null; }
+
+    private void ApplyMenuSort(string field, bool descending)
+    {
+        var dir = descending ? SortDirection.Descending : SortDirection.Ascending;
+        var updated = _state.Sort.Where(s => s.Field != field).Append(new SortDescriptor(field, dir)).ToList();
+        _state = _state.WithSort(updated);
+        RefreshData();
+    }
+
+    private void RemoveSort(string field)
+    {
+        _state = _state.WithSort(_state.Sort.Where(s => s.Field != field).ToList());
+        RefreshData();
+    }
+
+    // ── Filter row ────────────────────────────────────────────────────────
     private void OnSearchInput(ChangeEventArgs e)
     {
         _state = _state.WithSearch(e.Value?.ToString());
-        _ = _virtualizeRef?.RefreshDataAsync();
+        _currentPage = 0;
+        RefreshData();
     }
 
     private void OnFilterInput(string field, string? value)
     {
-        if (string.IsNullOrEmpty(value))
-            _filterInputs.Remove(field);
-        else
-            _filterInputs[field] = value;
-
-        var descriptors = _filterInputs
-            .Select(kvp => new FilterDescriptor(kvp.Key, FilterOperator.Contains, kvp.Value))
-            .ToList();
-
-        _state = _state.WithFilters(descriptors);
-        _ = _virtualizeRef?.RefreshDataAsync();
+        if (string.IsNullOrEmpty(value)) _filterInputs.Remove(field);
+        else _filterInputs[field] = value;
+        ApplyAllFilters();
+        _currentPage = 0;
+        RefreshData();
     }
 
+    // ── Filter menu ───────────────────────────────────────────────────────
+    private void OpenFilterMenu(MsDataGridColumn<TItem> col)
+    {
+        if (_filterMenuField == col.Field)
+        {
+            _filterMenuField = null;
+        }
+        else
+        {
+            _filterMenuField = col.Field;
+            // Seed a type-appropriate default operator the first time the menu opens
+            if (!_menuFilters.ContainsKey(col.Field))
+                _menuFilters[col.Field] = new MenuFilter
+                {
+                    OperatorKey = col.EditorType is EditorType.Number
+                                                  or EditorType.Date
+                                                  or EditorType.DateTime
+                        ? "equals" : "contains"
+                };
+        }
+        StateHasChanged();
+    }
+
+    private void CloseFilterMenu() { _filterMenuField = null; StateHasChanged(); }
+
+    private void OnMenuFilterOpChange(string field, ChangeEventArgs e)
+    {
+        var ops = GetFilterOps(_columns.FirstOrDefault(c => c.Field == field)!);
+        var op = e.Value?.ToString() ?? ops[0].Key;
+        SetMenuFilterOp(field, op);
+    }
+
+    private void SetMenuFilterOp(string field, string op)
+    {
+        GetOrCreateMenuFilter(field).OperatorKey = op;
+        StateHasChanged();
+    }
+
+    private void SetMenuFilterVal(string field, string? val)
+    {
+        GetOrCreateMenuFilter(field).Value = val;
+        StateHasChanged();
+    }
+
+    private MenuFilter GetOrCreateMenuFilter(string field)
+    {
+        if (!_menuFilters.TryGetValue(field, out var mf)) _menuFilters[field] = mf = new MenuFilter();
+        return mf;
+    }
+
+    private void ApplyMenuFilter(string field)
+    {
+        _filterMenuField = null;
+        _currentPage = 0;
+        ApplyAllFilters();
+        RefreshData();
+    }
+
+    private void ClearMenuFilter(string field)
+    {
+        _menuFilters.Remove(field);
+        _filterMenuField = null;
+        _currentPage = 0;
+        ApplyAllFilters();
+        RefreshData();
+    }
+
+    private void ApplyAllFilters()
+    {
+        var descriptors = new List<FilterDescriptor>();
+        foreach (var (field, value) in _filterInputs)
+            if (!string.IsNullOrEmpty(value))
+                descriptors.Add(new FilterDescriptor(field, FilterOperator.Contains, value));
+
+        foreach (var (field, mf) in _menuFilters)
+        {
+            if (string.IsNullOrEmpty(mf.Value) && !IsNullOp(mf.OperatorKey)) continue;
+            var op = mf.OperatorKey switch
+            {
+                "contains"    => FilterOperator.Contains,
+                "notcontains" => FilterOperator.NotEquals,
+                "equals"      => FilterOperator.Equals,
+                "notequals"   => FilterOperator.NotEquals,
+                "startswith"  => FilterOperator.StartsWith,
+                "endswith"    => FilterOperator.EndsWith,
+                "gt"          => FilterOperator.GreaterThan,
+                "lt"          => FilterOperator.LessThan,
+                "gte"         => FilterOperator.GreaterThanOrEqual,
+                "lte"         => FilterOperator.LessThanOrEqual,
+                "isnull"      => FilterOperator.IsNull,
+                _             => FilterOperator.IsNotNull
+            };
+            descriptors.Add(new FilterDescriptor(field, op, mf.Value));
+        }
+        _state = _state.WithFilters(descriptors);
+    }
+
+    // ── Grouping ──────────────────────────────────────────────────────────
+    private void ToggleGroup(string field)
+    {
+        if (_activeGroups.Contains(field)) _activeGroups.Remove(field);
+        else _activeGroups.Add(field);
+        _currentPage = 0;
+        RefreshData();
+    }
+
+    private void RemoveGroup(string field) { _activeGroups.Remove(field); RefreshData(); }
+    private void ClearGroups() { _activeGroups.Clear(); RefreshData(); }
+
+    private void ToggleGroupCollapse(GroupHeader hdr)
+    {
+        hdr.Collapsed = !hdr.Collapsed;
+        RebuildGroupDisplay();
+        StateHasChanged();
+    }
+
+    private void RebuildGroupDisplay()
+    {
+        _displayRows.Clear();
+        if (_activeGroups.Count == 0)
+        {
+            foreach (var item in _allItems) _displayRows.Add(DisplayItem.FromData(item));
+            return;
+        }
+
+        var groupField = _activeGroups[0];
+        var colTitle = _columns.FirstOrDefault(c => c.Field == groupField)?.Title ?? groupField;
+        var grouped = _allItems
+            .GroupBy(item => _columns.FirstOrDefault(c => c.Field == groupField)?.GetValue(item))
+            .OrderBy(g => g.Key?.ToString());
+
+        foreach (var g in grouped)
+        {
+            var hdr = new GroupHeader
+            {
+                Field = groupField,
+                ColumnTitle = colTitle,
+                Value = g.Key,
+                Count = g.Count()
+            };
+            _displayRows.Add(DisplayItem.FromGroup(hdr));
+            if (!hdr.Collapsed)
+                foreach (var item in g) _displayRows.Add(DisplayItem.FromData(item));
+        }
+    }
+
+    // ── Editing ───────────────────────────────────────────────────────────
+    private bool IsRowEditing(TItem row) =>
+        _editingRow is not null && EqualityComparer<TItem>.Default.Equals(_editingRow, row);
+
+    private string GetEditValue(TItem row, MsDataGridColumn<TItem> col)
+    {
+        var batchEntry = _batchEdits.FirstOrDefault(e => EqualityComparer<TItem>.Default.Equals(e.Row, row));
+        if (batchEntry.Edits?.TryGetValue(col.Field, out var bv) == true) return bv;
+        if (_rowEditBuffer.TryGetValue(col.Field, out var rv)) return rv;
+        return col.GetValue(row)?.ToString() ?? "";
+    }
+
+    private void SetEditValue(TItem row, string field, string value)
+    {
+        if (EditMode == EditMode.Batch)
+        {
+            var idx = _batchEdits.FindIndex(e => EqualityComparer<TItem>.Default.Equals(e.Row, row));
+            if (idx < 0) { _batchEdits.Add((row, [])); idx = _batchEdits.Count - 1; }
+            _batchEdits[idx].Edits[field] = value;
+        }
+        else
+        {
+            _rowEditBuffer[field] = value;
+        }
+    }
+
+    private void StartRowEdit(TItem row)
+    {
+        _editingRow = row;
+        _rowEditBuffer.Clear();
+        foreach (var col in _columns.Where(c => c.Editable))
+            _rowEditBuffer[col.Field] = col.GetValue(row)?.ToString() ?? "";
+        StateHasChanged();
+    }
+
+    private async Task SaveRowEdit(TItem row)
+    {
+        foreach (var col in _columns.Where(c => c.Editable && c.ValueSetter is not null))
+            if (_rowEditBuffer.TryGetValue(col.Field, out var v)) col.SetValue(row, v);
+        _editingRow = default;
+        _rowEditBuffer.Clear();
+        await OnRowSaved.InvokeAsync(row);
+        StateHasChanged();
+    }
+
+    private void CancelRowEdit() { _editingRow = default; _rowEditBuffer.Clear(); StateHasChanged(); }
+
+    private void StartCellEdit(TItem row, string field)
+    {
+        var col = _columns.FirstOrDefault(c => c.Field == field);
+        _editingRow = row;
+        _editingCellField = field;
+        _cellEditValue = col?.GetValue(row)?.ToString() ?? "";
+        StateHasChanged();
+    }
+
+    private async Task CommitCellEdit(TItem row, MsDataGridColumn<TItem> col)
+    {
+        col.SetValue(row, _cellEditValue);
+        _editingRow = default;
+        _editingCellField = null;
+        await OnRowSaved.InvokeAsync(row);
+        StateHasChanged();
+    }
+
+    private void CancelCellEdit() { _editingRow = default; _editingCellField = null; StateHasChanged(); }
+
+    private async Task SaveBatchEdits()
+    {
+        foreach (var (row, edits) in _batchEdits)
+        {
+            foreach (var col in _columns.Where(c => c.Editable && c.ValueSetter is not null))
+                if (edits.TryGetValue(col.Field, out var v)) col.SetValue(row, v);
+            await OnRowSaved.InvokeAsync(row);
+        }
+        _batchEdits.Clear();
+        StateHasChanged();
+    }
+
+    private void CancelBatchEdits() { _batchEdits.Clear(); StateHasChanged(); }
+
+    private async Task AddRow()
+    {
+        if (NewRowFactory is null) return;
+        var newItem = NewRowFactory();
+        _displayRows.Insert(0, DisplayItem.FromData(newItem));
+        _totalCount++;
+        await OnRowAdded.InvokeAsync(newItem);
+        StartRowEdit(newItem);
+    }
+
+    // ── Row interaction ───────────────────────────────────────────────────
     private async Task HandleRowClick(TItem row)
     {
+        if (EditMode == EditMode.Cell) return;
+        if (SelectionMode == SelectionMode.Multiple) { ToggleItemSelection(row); return; }
         SelectedItem = row;
         await SelectedItemChanged.InvokeAsync(row);
         await OnRowClick.InvokeAsync(row);
         StateHasChanged();
     }
 
-    private void OnRowKeyDown(KeyboardEventArgs e, TItem row)
+    private void OnRowKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e, TItem row)
     {
-        if (e.Key is "Enter" or " ")
-            _ = HandleRowClick(row);
+        if (e.Key is "Enter" or " ") _ = HandleRowClick(row);
+    }
+
+    // ── Data loading ──────────────────────────────────────────────────────
+    private void RefreshData()
+    {
+        if (Pageable || _activeGroups.Count > 0) _ = LoadPageAsync();
+        else _ = _virtualizeRef?.RefreshDataAsync();
     }
 
     private async ValueTask<ItemsProviderResult<TItem>> LoadServerRowsAsync(ItemsProviderRequest request)
     {
         if (DataProvider is null) return new([], 0);
-
         _isLoading = true;
         StateHasChanged();
-
         try
         {
             var result = await DataProvider.GetDataAsync(new GridRequest(
                 new PageDescriptor(request.StartIndex, request.Count),
-                _state.Sort,
-                _state.Filters,
-                _state.SearchTerm), request.CancellationToken);
+                _state.Sort, _state.Filters, _state.SearchTerm), request.CancellationToken);
 
             _totalCount = result.TotalCount;
             _hasData = true;
             _isLoading = false;
             StateHasChanged();
-
             return new(result.Items, result.TotalCount);
         }
         catch (OperationCanceledException)
@@ -295,21 +1243,87 @@
         }
     }
 
-    private async Task ExportToExcel()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && (Pageable || _activeGroups.Count > 0) && DataProvider is not null && !_hasData)
+            await LoadPageAsync();
+    }
+
+    private async Task LoadPageAsync()
     {
         if (DataProvider is null) return;
+        _hasData = true;
+        _isLoading = true;
+        StateHasChanged();
+        try
+        {
+            if (_activeGroups.Count > 0)
+            {
+                var result = await DataProvider.GetDataAsync(new GridRequest(
+                    new PageDescriptor(0, 10_000),
+                    _state.Sort, _state.Filters, _state.SearchTerm));
+                _allItems = result.Items.ToList();
+                _totalCount = result.TotalCount;
+                RebuildGroupDisplay();
+            }
+            else
+            {
+                var result = await DataProvider.GetDataAsync(new GridRequest(
+                    new PageDescriptor(_currentPage * PageSize, PageSize),
+                    _state.Sort, _state.Filters, _state.SearchTerm));
+                _totalCount = result.TotalCount;
+                _lastPage = _totalCount > 0 ? (_totalCount - 1) / PageSize : 0;
+                _displayRows.Clear();
+                foreach (var item in result.Items) _displayRows.Add(DisplayItem.FromData(item));
+                SyncAllSelectedState();
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
 
+    private async Task GoToPage(int page)
+    {
+        _currentPage = Math.Clamp(page, 0, _lastPage);
+        await LoadPageAsync();
+    }
+
+    public Task RefreshAsync()
+    {
+        _hasData = false;
+        _currentPage = 0;
+        if (Pageable || _activeGroups.Count > 0) return LoadPageAsync();
+        _ = _virtualizeRef?.RefreshDataAsync();
+        return Task.CompletedTask;
+    }
+
+    // ── Export ────────────────────────────────────────────────────────────
+    private void ExportExcel() { _showExportMenu = false; _ = ExportData(ExportFormat.Excel); }
+    private void ExportCsv()   { _showExportMenu = false; _ = ExportData(ExportFormat.Csv); }
+    private void ExportJson()  { _showExportMenu = false; _ = ExportData(ExportFormat.Json); }
+
+    private enum ExportFormat { Excel, Csv, Json }
+
+    private async Task ExportData(ExportFormat format)
+    {
+        if (DataProvider is null) return;
         var result = await DataProvider.GetDataAsync(new GridRequest(
             new PageDescriptor(0, int.MaxValue),
-            _state.Sort,
-            _state.Filters,
-            _state.SearchTerm));
+            _state.Sort, _state.Filters, _state.SearchTerm));
 
-        var colDefs = _columns.Select(c => new ColumnDefinition(
-            c.Title,
-            item => c.GetValue((TItem)item!)));
+        var colDefs = VisibleColumns.Select(c => new ColumnDefinition(
+            c.Title, item => c.GetValue((TItem)item!)));
 
-        var bytes = GridExporter.ExportToExcel(result.Items, colDefs);
-        await OnExported.InvokeAsync(bytes);
+        var (data, fmt) = format switch
+        {
+            ExportFormat.Csv  => (GridExporter.ExportToCsv(result.Items, colDefs), "csv"),
+            ExportFormat.Json => (GridExporter.ExportToJson(result.Items, colDefs), "json"),
+            _                 => (GridExporter.ExportToExcel(result.Items, colDefs), "xlsx")
+        };
+
+        await OnExported.InvokeAsync((data, fmt));
     }
 }

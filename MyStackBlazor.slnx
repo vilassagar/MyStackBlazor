@@ -5,6 +5,7 @@
     <Project Path="src/MyStackBlazor.Security/MyStackBlazor.Security.csproj" />
     <Project Path="src/MyStackBlazor.Accessibility/MyStackBlazor.Accessibility.csproj" />
     <Project Path="src/MyStackBlazor.DataGrid/MyStackBlazor.DataGrid.csproj" />
+    <Project Path="src/MyStackBlazor.Calendar/MyStackBlazor.Calendar.csproj" />
     <Project Path="src/MyStackBlazor.Localization/MyStackBlazor.Localization.csproj" />
   </Folder>
   <Folder Name="/tests/">

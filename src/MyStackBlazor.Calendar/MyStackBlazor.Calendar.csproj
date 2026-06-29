@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PackageId>MyStackBlazor.Calendar</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Vilas Sagar</Authors>
+    <Company>MyStackBlazor</Company>
+    <Product>MyStackBlazor Calendar</Product>
+    <Description>Full-featured calendar and scheduler component for MyStackBlazor. Supports Day, Week, WorkWeek, Month, Year, Agenda, and Timeline views. Includes recurring events, multi-person calendars, category filtering, mini-calendar sidebar, and add/edit/delete dialogs. Works with Blazor WASM, Blazor Server, and .NET MAUI Blazor Hybrid.</Description>
+    <PackageTags>blazor;calendar;scheduler;fullcalendar;recurring;agenda;timeline;workweek;dotnet</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageOutputPath>..\..\..\nupkg</PackageOutputPath>
+    <Copyright>Copyright © 2025 Vilas Sagar</Copyright>
+    <NeutralLanguage>en</NeutralLanguage>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <IncludeContentInPack>true</IncludeContentInPack>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.7" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MyStackBlazor.Core\MyStackBlazor.Core.csproj" />
+  </ItemGroup>
+
+</Project>

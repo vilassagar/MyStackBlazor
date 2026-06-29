@@ -1,4 +1,5 @@
 @page "/data"
+@using MyStackBlazor.DataGrid.Models
 
 <PageTitle>Data Controls — MyStackBlazor Demo</PageTitle>
 
@@ -102,27 +103,27 @@
 </DemoSection>
 
 <!-- MsDataGrid: infinite-scroll virtualized server-side grid -->
-<DemoSection Title="MsDataGrid"
-             Description="Infinite-scroll, server-side data grid. Virtualized rows via &lt;Virtualize&gt; — only visible rows are rendered. Supports sortable/filterable columns, global search, row selection, and Excel export."
+<DemoSection Title="MsDataGrid — Infinite Scroll"
+             Description="Virtual-scroll server-side grid: only visible rows are rendered. Click a header to sort; Shift+click a second header for multi-column sort (numbered badge shows priority). Use the Columns button to show or hide any column. Export downloads all rows as .xlsx."
              Code="@_gridCode">
     <div class="w-full">
         <MsDataGrid TItem="Product"
                     DataProvider="_productProvider"
                     AriaLabel="Products data grid"
-                    BodyHeight="460px"
+                    BodyHeight="400px"
                     OverscanCount="8"
                     SelectedItem="_selectedProduct"
                     SelectedItemChanged="p => _selectedProduct = p"
                     OnExported="HandleExport">
-            <MsDataGridColumn Field="Id" Title="ID" Width="72px" Sortable="true" />
-            <MsDataGridColumn Field="Name" Title="Product Name" Sortable="true" Filterable="true" />
-            <MsDataGridColumn Field="Category" Title="Category" Width="160px" Sortable="true" Filterable="true" />
-            <MsDataGridColumn Field="Price" Title="Price" Width="110px" Sortable="true">
+            <MsDataGridColumn Field="Id"       Title="ID"           Width="72px"  Sortable="true" />
+            <MsDataGridColumn Field="Name"     Title="Product Name"              Sortable="true" Filterable="true" />
+            <MsDataGridColumn Field="Category" Title="Category"     Width="160px" Sortable="true" Filterable="true" />
+            <MsDataGridColumn Field="Price"    Title="Price"        Width="110px" Sortable="true">
                 <CellTemplate Context="p">
                     <span class="font-mono tabular-nums">@p.Price.ToString("C")</span>
                 </CellTemplate>
             </MsDataGridColumn>
-            <MsDataGridColumn Field="InStock" Title="Stock" Width="100px" Sortable="true">
+            <MsDataGridColumn Field="InStock"  Title="Stock"        Width="100px" Sortable="true">
                 <CellTemplate Context="p">
                     <StackBadge Variant="@(p.InStock ? "default" : "secondary")">
                         @(p.InStock ? "In Stock" : "Out")
@@ -140,6 +141,359 @@
         {
             <p class="mt-1 text-xs text-muted-foreground">@_exportMessage</p>
         }
+    </div>
+</DemoSection>
+
+<!-- MsDataGrid: Pagination -->
+<DemoSection Title="MsDataGrid — Pagination"
+             Description="Set Pageable=true and PageSize to switch from infinite scroll to a numbered pager. The footer shows a windowed page list with first / prev / next / last navigation."
+             Code="@_gridPageCode">
+    <div class="w-full">
+        <MsDataGrid TItem="Product"
+                    DataProvider="_productProvider"
+                    AriaLabel="Products paged grid"
+                    Pageable="true"
+                    PageSize="6"
+                    SelectedItem="_pagedProduct"
+                    SelectedItemChanged="p => _pagedProduct = p">
+            <MsDataGridColumn Field="Id"       Title="ID"       Width="72px"  Sortable="true" />
+            <MsDataGridColumn Field="Name"     Title="Name"                   Sortable="true" Filterable="true" />
+            <MsDataGridColumn Field="Category" Title="Category" Width="160px" Sortable="true" Filterable="true" />
+            <MsDataGridColumn Field="Price"    Title="Price"    Width="110px" Sortable="true">
+                <CellTemplate Context="p">
+                    <span class="font-mono tabular-nums">@p.Price.ToString("C")</span>
+                </CellTemplate>
+            </MsDataGridColumn>
+            <MsDataGridColumn Field="InStock"  Title="Stock"    Width="100px" Sortable="true">
+                <CellTemplate Context="p">
+                    <StackBadge Variant="@(p.InStock ? "default" : "secondary")">
+                        @(p.InStock ? "In Stock" : "Out")
+                    </StackBadge>
+                </CellTemplate>
+            </MsDataGridColumn>
+        </MsDataGrid>
+        @if (_pagedProduct is not null)
+        {
+            <p class="mt-2 text-sm text-muted-foreground">
+                Selected: <strong>@_pagedProduct.Name</strong>
+            </p>
+        }
+    </div>
+</DemoSection>
+
+<!-- MsDataGrid: Multi-Row Selection -->
+<DemoSection Title="MsDataGrid — Multi-Row Selection"
+             Description="SelectionMode.Multiple adds a checkbox column and a select-all header checkbox. Click any row or its checkbox to toggle it. SelectedItems and SelectedItemsChanged track the full selection set."
+             Code="@_gridSelectCode">
+    <div class="w-full">
+        <MsDataGrid TItem="Product"
+                    DataProvider="_productProvider"
+                    AriaLabel="Products multi-select grid"
+                    Pageable="true"
+                    PageSize="6"
+                    SelectionMode="SelectionMode.Multiple"
+                    SelectedItems="_multiSelected"
+                    SelectedItemsChanged="items => _multiSelected = items">
+            <MsDataGridColumn Field="Id"       Title="ID"       Width="72px"  Sortable="true" />
+            <MsDataGridColumn Field="Name"     Title="Name"                   Sortable="true" Filterable="true" />
+            <MsDataGridColumn Field="Category" Title="Category" Width="160px" Sortable="true" />
+            <MsDataGridColumn Field="Price"    Title="Price"    Width="110px" Sortable="true">
+                <CellTemplate Context="p">
+                    <span class="font-mono tabular-nums">@p.Price.ToString("C")</span>
+                </CellTemplate>
+            </MsDataGridColumn>
+            <MsDataGridColumn Field="InStock"  Title="Stock"    Width="100px" Sortable="true">
+                <CellTemplate Context="p">
+                    <StackBadge Variant="@(p.InStock ? "default" : "secondary")">
+                        @(p.InStock ? "In Stock" : "Out")
+                    </StackBadge>
+                </CellTemplate>
+            </MsDataGridColumn>
+        </MsDataGrid>
+        <p class="mt-2 text-sm text-muted-foreground">
+            @if (_multiSelected.Count > 0)
+            {
+                <span><strong>@_multiSelected.Count</strong> row(s) selected —
+                    @string.Join(", ", _multiSelected.Take(3).Select(p => p.Name))
+                    @(_multiSelected.Count > 3 ? $" +{_multiSelected.Count - 3} more" : "")
+                </span>
+            }
+            else
+            {
+                <span>Click rows or checkboxes to select. Use the header checkbox to select/deselect the page.</span>
+            }
+        </p>
+    </div>
+</DemoSection>
+
+<!-- MsDataGrid: Command Column -->
+<DemoSection Title="MsDataGrid — Command Column"
+             Description="MsDataGridCommandColumn appends an actions cell to every row. Built-in EditLabel / DeleteLabel buttons fire OnEdit / OnDelete callbacks. Swap in CustomButtons for fully custom actions."
+             Code="@_gridCmdCode">
+    <div class="w-full">
+        <MsDataGrid TItem="Product"
+                    DataProvider="_productProvider"
+                    AriaLabel="Products command grid"
+                    Pageable="true"
+                    PageSize="6">
+            <MsDataGridColumn Field="Id"       Title="ID"       Width="72px"  Sortable="true" />
+            <MsDataGridColumn Field="Name"     Title="Name"                   Sortable="true" Filterable="true" />
+            <MsDataGridColumn Field="Category" Title="Category" Width="160px" Sortable="true" />
+            <MsDataGridColumn Field="Price"    Title="Price"    Width="110px" Sortable="true">
+                <CellTemplate Context="p">
+                    <span class="font-mono tabular-nums">@p.Price.ToString("C")</span>
+                </CellTemplate>
+            </MsDataGridColumn>
+            <MsDataGridCommandColumn Title="Actions"
+                                     EditLabel="Edit"
+                                     DeleteLabel="Delete"
+                                     OnEdit="_onEditProduct"
+                                     OnDelete="_onDeleteProduct" />
+        </MsDataGrid>
+        <p class="mt-2 text-sm text-muted-foreground min-h-[1.5rem]">
+            @if (_lastAction is not null)
+            {
+                <span>Last action: <strong>@_lastAction</strong></span>
+            }
+            else
+            {
+                <span>Click Edit or Delete on any row.</span>
+            }
+        </p>
+    </div>
+</DemoSection>
+
+<!-- MsDataGrid: Conditional Formatting + Column Chooser -->
+<DemoSection Title="MsDataGrid — Conditional Formatting &amp; Column Chooser"
+             Description="CellStyleFunc returns an inline style string per row (e.g. red text for high prices). CellClassFunc returns extra CSS classes. The Columns toolbar button opens a dropdown to toggle any column; columns marked Visible=false start hidden."
+             Code="@_gridFmtCode">
+    <div class="w-full">
+        <MsDataGrid TItem="Product"
+                    DataProvider="_productProvider"
+                    AriaLabel="Products formatting grid"
+                    Pageable="true"
+                    PageSize="7">
+            <MsDataGridColumn Field="Id"       Title="ID"       Width="72px"  Sortable="true" />
+            <MsDataGridColumn Field="Name"     Title="Name"                   Sortable="true" Filterable="true"
+                              Tooltip="Product display name" />
+            <MsDataGridColumn Field="Category" Title="Category" Width="160px" Sortable="true" Filterable="true" />
+            @* Price: red + bold when > $400, monospaced otherwise *@
+            <MsDataGridColumn Field="Price"    Title="Price"    Width="120px" Sortable="true"
+                              CellStyleFunc="_priceStyle"
+                              CellClassFunc="_priceClass">
+                <CellTemplate Context="p">
+                    @p.Price.ToString("C")
+                </CellTemplate>
+            </MsDataGridColumn>
+            @* Stock: green text when in stock, muted when out *@
+            <MsDataGridColumn Field="InStock"  Title="Stock"    Width="100px" Sortable="true"
+                              CellClassFunc="_stockClass">
+                <CellTemplate Context="p">
+                    <StackBadge Variant="@(p.InStock ? "default" : "secondary")">
+                        @(p.InStock ? "In Stock" : "Out")
+                    </StackBadge>
+                </CellTemplate>
+            </MsDataGridColumn>
+            @* Hidden by default — visible via Columns button *@
+            <MsDataGridColumn Field="Id"       Title="SKU (hidden by default)" Width="160px"
+                              Sortable="false" Visible="false" />
+        </MsDataGrid>
+        <p class="mt-2 text-xs text-muted-foreground">
+            Prices above $400 are highlighted. Click <strong>Columns</strong> in the toolbar — "SKU (hidden by default)" starts unchecked.
+        </p>
+    </div>
+</DemoSection>
+
+<!-- MsDataGrid: Grouping -->
+<DemoSection Title="MsDataGrid — Grouping"
+             Description="ShowGroupPanel reveals a drag-target bar above the header. Click the ≡ icon on any Groupable column header to group by it. Group rows show the value, item count, and a ▶/▼ toggle to collapse/expand."
+             Code="@_gridGroupCode">
+    <div class="w-full">
+        <MsDataGrid TItem="Product"
+                    DataProvider="_productProvider"
+                    AriaLabel="Products grouping grid"
+                    ShowGroupPanel="true"
+                    ShowFilterRow="false"
+                    Pageable="true"
+                    PageSize="50">
+            <MsDataGridColumn Field="Id"       Title="ID"       Width="72px"  Sortable="true" />
+            <MsDataGridColumn Field="Name"     Title="Name"                   Sortable="true" />
+            <MsDataGridColumn Field="Category" Title="Category" Width="160px" Sortable="true" Groupable="true" />
+            <MsDataGridColumn Field="Price"    Title="Price"    Width="110px" Sortable="true">
+                <CellTemplate Context="p">
+                    <span class="font-mono tabular-nums">@p.Price.ToString("C")</span>
+                </CellTemplate>
+            </MsDataGridColumn>
+            <MsDataGridColumn Field="InStock"  Title="Stock"    Width="100px" Sortable="true" Groupable="true">
+                <CellTemplate Context="p">
+                    <StackBadge Variant="@(p.InStock ? "default" : "secondary")">
+                        @(p.InStock ? "In Stock" : "Out")
+                    </StackBadge>
+                </CellTemplate>
+            </MsDataGridColumn>
+        </MsDataGrid>
+        <p class="mt-2 text-xs text-muted-foreground">
+            Click <strong>≡</strong> on the Category or Stock header to group. Click a group row to collapse/expand it.
+        </p>
+    </div>
+</DemoSection>
+
+<!-- MsDataGrid: Filter Menu -->
+<DemoSection Title="MsDataGrid — Filter Menu"
+             Description="When Filterable=true on a column the header shows a funnel icon. Clicking it opens a per-column panel with Sort A→Z / Sort Z→A shortcuts and a filter form. Pick an operator (Contains, Equals, Starts with, Greater than…) and type a value to filter without leaving the header."
+             Code="@_gridFilterMenuCode">
+    <div class="w-full">
+        <MsDataGrid TItem="Product"
+                    DataProvider="_productProvider"
+                    AriaLabel="Products filter menu grid"
+                    ShowFilterRow="false"
+                    Pageable="true"
+                    PageSize="8">
+            <MsDataGridColumn Field="Id"       Title="ID"       Width="72px"  Sortable="true" />
+            <MsDataGridColumn Field="Name"     Title="Name"                   Sortable="true" Filterable="true" />
+            <MsDataGridColumn Field="Category" Title="Category" Width="160px" Sortable="true" Filterable="true" />
+            <MsDataGridColumn Field="Price"    Title="Price"    Width="110px" Sortable="true" Filterable="true"
+                              EditorType="EditorType.Number">
+                <CellTemplate Context="p">
+                    <span class="font-mono tabular-nums">@p.Price.ToString("C")</span>
+                </CellTemplate>
+            </MsDataGridColumn>
+            <MsDataGridColumn Field="InStock"  Title="Stock"    Width="100px" Sortable="true">
+                <CellTemplate Context="p">
+                    <StackBadge Variant="@(p.InStock ? "default" : "secondary")">
+                        @(p.InStock ? "In Stock" : "Out")
+                    </StackBadge>
+                </CellTemplate>
+            </MsDataGridColumn>
+        </MsDataGrid>
+        <p class="mt-2 text-xs text-muted-foreground">
+            Click the funnel icon on Name, Category, or Price. Active filters are shown with a highlighted icon.
+        </p>
+    </div>
+</DemoSection>
+
+<!-- MsDataGrid: Row Editing -->
+<DemoSection Title="MsDataGrid — Row Editing"
+             Description="EditMode.Row puts Save / Cancel buttons in each row's action cell. Click Edit to enter edit mode for that row; editable cells become inputs. ValueSetter is called on save to write the string value back to your model. NewRowFactory + Add Row inserts a blank row at the top."
+             Code="@_gridRowEditCode">
+    <div class="w-full">
+        <MsDataGrid TItem="EditableProduct"
+                    DataProvider="_editProvider"
+                    AriaLabel="Row edit grid"
+                    EditMode="EditMode.Row"
+                    NewRowFactory="_newEditableProduct"
+                    OnRowSaved="_onEditableSaved"
+                    OnRowAdded="_onEditableAdded"
+                    Pageable="true"
+                    PageSize="6">
+            <MsDataGridColumn Field="Id"       Title="ID"       Width="72px" />
+            <MsDataGridColumn Field="Name"     Title="Name"     Editable="true" ValueSetter="_setName"     Sortable="true" />
+            <MsDataGridColumn Field="Category" Title="Category" Editable="true" ValueSetter="_setCategory" Width="160px" />
+            <MsDataGridColumn Field="Price"    Title="Price"    Editable="true" ValueSetter="_setPrice"
+                              EditorType="EditorType.Number" Width="110px">
+                <CellTemplate Context="p">
+                    <span class="font-mono tabular-nums">@p.Price.ToString("C")</span>
+                </CellTemplate>
+            </MsDataGridColumn>
+        </MsDataGrid>
+        <p class="mt-2 text-sm text-muted-foreground min-h-[1.5rem]">
+            @if (_editMessage is not null)
+            { <span>@_editMessage</span> }
+            else
+            { <span>Click Edit on any row, or Add Row to insert a new entry.</span> }
+        </p>
+    </div>
+</DemoSection>
+
+<!-- MsDataGrid: Cell Editing -->
+<DemoSection Title="MsDataGrid — Cell Editing"
+             Description="EditMode.Cell lets users click any editable cell to edit it directly in place. The cell switches to an input; press Enter or click away to commit, Escape to cancel."
+             Code="@_gridCellEditCode">
+    <div class="w-full">
+        <MsDataGrid TItem="EditableProduct"
+                    DataProvider="_cellEditProvider"
+                    AriaLabel="Cell edit grid"
+                    EditMode="EditMode.Cell"
+                    OnRowSaved="_onEditableSaved"
+                    Pageable="true"
+                    PageSize="6">
+            <MsDataGridColumn Field="Id"       Title="ID"       Width="72px" />
+            <MsDataGridColumn Field="Name"     Title="Name"     Editable="true" ValueSetter="_setName"     Sortable="true" />
+            <MsDataGridColumn Field="Category" Title="Category" Editable="true" ValueSetter="_setCategory" Width="160px" />
+            <MsDataGridColumn Field="Price"    Title="Price"    Editable="true" ValueSetter="_setPrice"
+                              EditorType="EditorType.Number" Width="110px">
+                <CellTemplate Context="p">
+                    <span class="font-mono tabular-nums">@p.Price.ToString("C")</span>
+                </CellTemplate>
+            </MsDataGridColumn>
+        </MsDataGrid>
+        <p class="mt-2 text-xs text-muted-foreground">
+            Click any Name, Category, or Price cell to edit in place. Enter commits, Escape cancels.
+        </p>
+    </div>
+</DemoSection>
+
+<!-- MsDataGrid: Batch Editing -->
+<DemoSection Title="MsDataGrid — Batch Editing"
+             Description="EditMode.Batch renders all editable cells as inputs at once. Changes are buffered until you click Save All (shows pending count) or Discard in the toolbar."
+             Code="@_gridBatchEditCode">
+    <div class="w-full">
+        <MsDataGrid TItem="EditableProduct"
+                    DataProvider="_batchProvider"
+                    AriaLabel="Batch edit grid"
+                    EditMode="EditMode.Batch"
+                    OnRowSaved="_onEditableSaved"
+                    Pageable="true"
+                    PageSize="5">
+            <MsDataGridColumn Field="Id"       Title="ID"       Width="72px" />
+            <MsDataGridColumn Field="Name"     Title="Name"     Editable="true" ValueSetter="_setName"     Sortable="true" />
+            <MsDataGridColumn Field="Category" Title="Category" Editable="true" ValueSetter="_setCategory" Width="160px" />
+            <MsDataGridColumn Field="Price"    Title="Price"    Editable="true" ValueSetter="_setPrice"
+                              EditorType="EditorType.Number" Width="110px">
+                <CellTemplate Context="p">
+                    <span class="font-mono tabular-nums">@p.Price.ToString("C")</span>
+                </CellTemplate>
+            </MsDataGridColumn>
+        </MsDataGrid>
+        <p class="mt-2 text-xs text-muted-foreground">
+            Edit any cells — the toolbar shows <strong>Save All (N)</strong>. Click Save All to commit or Discard to revert.
+        </p>
+    </div>
+</DemoSection>
+
+<!-- MsDataGrid: Export -->
+<DemoSection Title="MsDataGrid — Export (Excel / CSV / JSON)"
+             Description="The Export button in the toolbar opens a dropdown with Excel (.xlsx), CSV (.csv), and JSON (.json) options. OnExported receives (byte[] Data, string Format) — use it to trigger a file download. All matching rows across all pages are exported."
+             Code="@_gridExportCode">
+    <div class="w-full">
+        <MsDataGrid TItem="Product"
+                    DataProvider="_productProvider"
+                    AriaLabel="Products export grid"
+                    Pageable="true"
+                    PageSize="6"
+                    OnExported="_onExported">
+            <MsDataGridColumn Field="Id"       Title="ID"       Width="72px"  Sortable="true" />
+            <MsDataGridColumn Field="Name"     Title="Name"                   Sortable="true" Filterable="true" />
+            <MsDataGridColumn Field="Category" Title="Category" Width="160px" Sortable="true" Filterable="true" />
+            <MsDataGridColumn Field="Price"    Title="Price"    Width="110px" Sortable="true">
+                <CellTemplate Context="p">
+                    <span class="font-mono tabular-nums">@p.Price.ToString("C")</span>
+                </CellTemplate>
+            </MsDataGridColumn>
+            <MsDataGridColumn Field="InStock"  Title="Stock"    Width="100px" Sortable="true">
+                <CellTemplate Context="p">
+                    <StackBadge Variant="@(p.InStock ? "default" : "secondary")">
+                        @(p.InStock ? "In Stock" : "Out")
+                    </StackBadge>
+                </CellTemplate>
+            </MsDataGridColumn>
+        </MsDataGrid>
+        <p class="mt-2 text-sm text-muted-foreground min-h-[1.5rem]">
+            @if (_exportMessage is not null)
+            { <span>@_exportMessage</span> }
+            else
+            { <span>Click the Export button and choose a format.</span> }
+        </p>
     </div>
 </DemoSection>
 
@@ -236,10 +590,72 @@
 
     private readonly MockProductProvider _productProvider = new();
     private Product? _selectedProduct;
+    private Product? _pagedProduct;
+    private IReadOnlyList<Product> _multiSelected = [];
+    private string? _lastAction;
     private string? _exportMessage;
+    private string? _editMessage;
 
-    private void HandleExport(byte[] bytes)
-        => _exportMessage = $"Export ready — {bytes.Length:N0} bytes ({_productProvider.TotalCount:N0} rows)";
+    // Editing demo providers + delegates
+    private readonly MockEditableProductProvider _editProvider = new();
+    private readonly MockEditableProductProvider _cellEditProvider = new();
+    private readonly MockEditableProductProvider _batchProvider = new();
+    private static int _editableNextId = 100;
+    private Func<EditableProduct> _newEditableProduct =>
+        () => new EditableProduct { Id = ++_editableNextId, Name = "New Product", Category = "Electronics", Price = 0m, InStock = true };
+    private Action<EditableProduct> _onEditableSaved =>
+        p => _editMessage = $"Saved: {p.Name} — ${p.Price:F2}";
+    private Action<EditableProduct> _onEditableAdded =>
+        p => _editMessage = $"Row added: {p.Name}";
+    private Action<(byte[] Data, string Format)> _onExported =>
+        e => _exportMessage = $"Exported {e.Data.Length:N0} bytes as .{e.Format}";
+
+    // Editable column ValueSetters (defined in code to avoid Razor string-literal issues)
+    private static readonly Action<EditableProduct, string> _setName     = (p, v) => p.Name = v;
+    private static readonly Action<EditableProduct, string> _setCategory = (p, v) => p.Category = v;
+    private static readonly Action<EditableProduct, string> _setPrice    = (p, v) => { if (decimal.TryParse(v, out var d)) p.Price = d; };
+
+    // Conditional formatting delegates (defined in code to avoid quote-escaping issues in Razor attributes)
+    private readonly Func<Product, string?> _priceStyle =
+        p => p.Price > 400m ? "color:oklch(0.577 0.245 27.325);font-weight:600" : null;
+    private readonly Func<Product, string?> _priceClass =
+        p => p.Price > 400m ? "tabular-nums" : "font-mono tabular-nums";
+    private readonly Func<Product, string?> _stockClass =
+        p => p.InStock ? "text-green-600" : "text-muted-foreground";
+    private Action<Product> _onEditProduct => p => _lastAction = $"Edit: {p.Name}";
+    private Action<Product> _onDeleteProduct => p => _lastAction = $"Delete: {p.Name}";
+
+    private void HandleExport((byte[] Data, string Format) export)
+        => _exportMessage = $"Export ready — {export.Data.Length:N0} bytes (.{export.Format}, {_productProvider.TotalCount:N0} rows)";
+
+    class EditableProduct
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+        public string Category { get; set; } = "";
+        public decimal Price { get; set; }
+        public bool InStock { get; set; }
+    }
+
+    sealed class MockEditableProductProvider : IGridDataProvider<EditableProduct>
+    {
+        private static readonly string[] Categories = ["Electronics", "Clothing", "Books", "Sports", "Home & Garden"];
+
+        private readonly List<EditableProduct> _items = Enumerable.Range(1, 20).Select(i => new EditableProduct
+        {
+            Id = i,
+            Name = $"Product {i:00}",
+            Category = Categories[i % Categories.Length],
+            Price = Math.Round(10m + (i * 37m % 490m), 2),
+            InStock = i % 3 != 0
+        }).ToList();
+
+        public ValueTask<GridDataResult<EditableProduct>> GetDataAsync(GridRequest request, CancellationToken ct = default)
+        {
+            var page = _items.Skip(request.Page.StartIndex).Take(request.Page.Count).ToList();
+            return ValueTask.FromResult(new GridDataResult<EditableProduct>(page, _items.Count));
+        }
+    }
 
     sealed class MockProductProvider : IGridDataProvider<Product>
     {
@@ -417,5 +833,185 @@
                 </div>
             </ItemTemplate>
         </StackVirtualList>
+        """;
+
+    private const string _gridPageCode = """
+        // Switch from infinite-scroll to a numbered pager with Pageable + PageSize
+        <MsDataGrid TItem="Product"
+                    DataProvider="_provider"
+                    Pageable="true"
+                    PageSize="6"
+                    SelectedItem="_selected"
+                    SelectedItemChanged="p => _selected = p">
+            <MsDataGridColumn Field="Id"       Title="ID"       Width="72px" Sortable="true" />
+            <MsDataGridColumn Field="Name"     Title="Name"     Sortable="true" Filterable="true" />
+            <MsDataGridColumn Field="Category" Title="Category" Sortable="true" Filterable="true" />
+            <MsDataGridColumn Field="Price"    Title="Price"    Sortable="true" />
+        </MsDataGrid>
+        """;
+
+    private const string _gridSelectCode = """
+        // SelectionMode.Multiple adds a checkbox column and select-all header
+        <MsDataGrid TItem="Product"
+                    DataProvider="_provider"
+                    Pageable="true" PageSize="6"
+                    SelectionMode="SelectionMode.Multiple"
+                    SelectedItems="_multiSelected"
+                    SelectedItemsChanged="items => _multiSelected = items">
+            <MsDataGridColumn Field="Name"     Title="Name"     Sortable="true" />
+            <MsDataGridColumn Field="Category" Title="Category" Sortable="true" />
+            <MsDataGridColumn Field="Price"    Title="Price"    Sortable="true" />
+        </MsDataGrid>
+
+        @code {
+            IReadOnlyList<Product> _multiSelected = [];
+        }
+        """;
+
+    private const string _gridCmdCode = """
+        // MsDataGridCommandColumn appends Edit / Delete buttons to every row
+        <MsDataGrid TItem="Product" DataProvider="_provider" Pageable="true" PageSize="6">
+            <MsDataGridColumn Field="Name"     Title="Name"     Sortable="true" />
+            <MsDataGridColumn Field="Category" Title="Category" Sortable="true" />
+            <MsDataGridColumn Field="Price"    Title="Price"    Sortable="true" />
+            <MsDataGridCommandColumn Title="Actions"
+                                     OnEdit="p => Edit(p)"
+                                     OnDelete="p => Delete(p)" />
+        </MsDataGrid>
+
+        @* Custom buttons instead of built-in Edit/Delete: *@
+        <MsDataGridCommandColumn>
+            <CustomButtons Context="p">
+                <button @onclick="() => Preview(p)">Preview</button>
+            </CustomButtons>
+        </MsDataGridCommandColumn>
+        """;
+
+    private const string _gridFmtCode = """
+        // CellStyleFunc → inline style per row value
+        // CellClassFunc → extra CSS classes per row value
+        // Visible="false" → column starts hidden; reveal via the Columns toolbar button
+
+        @code {
+            Func<Product, string?> priceStyle = p =>
+                p.Price > 400m ? "color:red;font-weight:600" : null;
+            Func<Product, string?> priceClass = p =>
+                p.Price > 400m ? "tabular-nums" : "font-mono tabular-nums";
+            Func<Product, string?> stockClass = p =>
+                p.InStock ? "text-green-600" : "text-muted-foreground";
+        }
+
+        <MsDataGrid TItem="Product" DataProvider="_provider" Pageable="true" PageSize="7">
+            <MsDataGridColumn Field="Name"    Title="Name"    Sortable="true" Tooltip="Product display name" />
+            <MsDataGridColumn Field="Price"   Title="Price"   Sortable="true"
+                              CellStyleFunc="priceStyle" CellClassFunc="priceClass" />
+            <MsDataGridColumn Field="InStock" Title="Stock"   Sortable="true"
+                              CellClassFunc="stockClass" />
+            @* starts hidden — toggle via Columns button *@
+            <MsDataGridColumn Field="Id"      Title="SKU"     Visible="false" />
+        </MsDataGrid>
+        """;
+
+    private const string _gridGroupCode = """
+        // ShowGroupPanel reveals the group bar above headers.
+        // Groupable="true" on a column adds the ≡ group icon to its header.
+        // Click ≡ to group, click again to ungroup. Group rows are collapsible.
+
+        <MsDataGrid TItem="Product" DataProvider="_provider"
+                    ShowGroupPanel="true" ShowFilterRow="false"
+                    Pageable="true" PageSize="50">
+            <MsDataGridColumn Field="Id"       Title="ID"   Width="72px" />
+            <MsDataGridColumn Field="Name"     Title="Name" Sortable="true" />
+            <MsDataGridColumn Field="Category" Title="Category" Sortable="true" Groupable="true" />
+            <MsDataGridColumn Field="Price"    Title="Price"    Sortable="true" />
+            <MsDataGridColumn Field="InStock"  Title="Stock"    Sortable="true" Groupable="true" />
+        </MsDataGrid>
+        """;
+
+    private const string _gridFilterMenuCode = """
+        // Filterable="true" adds a funnel icon to the column header.
+        // Clicking the icon opens a menu with sort shortcuts + operator filter.
+        // Operators: Contains, Equals, Starts with, Ends with, Greater/Less than, Is empty, etc.
+        // EditorType on a column controls the input type in the filter menu.
+
+        <MsDataGrid TItem="Product" DataProvider="_provider"
+                    ShowFilterRow="false" Pageable="true" PageSize="8">
+            <MsDataGridColumn Field="Name"     Title="Name"     Sortable="true" Filterable="true" />
+            <MsDataGridColumn Field="Category" Title="Category" Sortable="true" Filterable="true" />
+            <MsDataGridColumn Field="Price"    Title="Price"    Sortable="true" Filterable="true"
+                              EditorType="EditorType.Number" />
+        </MsDataGrid>
+        """;
+
+    private const string _gridRowEditCode = """
+        // EditMode.Row: each row gets an Edit button in the action cell.
+        // Editable="true" on a column shows an input when editing.
+        // ValueSetter writes the edited string back to the model property.
+        // NewRowFactory creates a blank item; Add Row inserts it at the top.
+
+        @code {
+            static readonly Action<Product, string> setName = (p, v) => p.Name = v;
+            static readonly Action<Product, string> setPrice =
+                (p, v) => { if (decimal.TryParse(v, out var d)) p.Price = d; };
+        }
+
+        <MsDataGrid TItem="Product" DataProvider="_provider"
+                    EditMode="EditMode.Row"
+                    NewRowFactory="() => new Product()"
+                    OnRowSaved="p => Save(p)" Pageable="true" PageSize="6">
+            <MsDataGridColumn Field="Id"    Title="ID"    Width="72px" />
+            <MsDataGridColumn Field="Name"  Title="Name"  Editable="true" ValueSetter="setName" />
+            <MsDataGridColumn Field="Price" Title="Price" Editable="true" ValueSetter="setPrice"
+                              EditorType="EditorType.Number" />
+        </MsDataGrid>
+        """;
+
+    private const string _gridCellEditCode = """
+        // EditMode.Cell: click any editable cell to edit it in place.
+        // Enter / click away commits. Escape cancels.
+
+        <MsDataGrid TItem="Product" DataProvider="_provider"
+                    EditMode="EditMode.Cell" OnRowSaved="p => Save(p)"
+                    Pageable="true" PageSize="6">
+            <MsDataGridColumn Field="Name"  Title="Name"  Editable="true" ValueSetter="setName" />
+            <MsDataGridColumn Field="Price" Title="Price" Editable="true" ValueSetter="setPrice"
+                              EditorType="EditorType.Number" />
+        </MsDataGrid>
+        """;
+
+    private const string _gridBatchEditCode = """
+        // EditMode.Batch: all editable cells show inputs immediately.
+        // Changes are buffered. Toolbar shows Save All (N) / Discard buttons.
+
+        <MsDataGrid TItem="Product" DataProvider="_provider"
+                    EditMode="EditMode.Batch" OnRowSaved="p => Save(p)"
+                    Pageable="true" PageSize="5">
+            <MsDataGridColumn Field="Name"  Title="Name"  Editable="true" ValueSetter="setName" />
+            <MsDataGridColumn Field="Price" Title="Price" Editable="true" ValueSetter="setPrice"
+                              EditorType="EditorType.Number" />
+        </MsDataGrid>
+        """;
+
+    private const string _gridExportCode = """
+        // Export button in toolbar opens Excel / CSV / JSON dropdown.
+        // OnExported receives (byte[] Data, string Format) for all matching rows.
+        // Use JSInterop or a download helper to trigger a browser file download.
+
+        @inject IJSRuntime JS
+
+        <MsDataGrid TItem="Product" DataProvider="_provider"
+                    OnExported="HandleExport" Pageable="true" PageSize="6">
+            <MsDataGridColumn Field="Name"     Title="Name"     Sortable="true" Filterable="true" />
+            <MsDataGridColumn Field="Category" Title="Category" Sortable="true" Filterable="true" />
+            <MsDataGridColumn Field="Price"    Title="Price"    Sortable="true" />
+        </MsDataGrid>
+
+        @code {
+            async Task HandleExport((byte[] Data, string Format) export)
+            {
+                var base64 = Convert.ToBase64String(export.Data);
+                await JS.InvokeVoidAsync("downloadFile", $"export.{export.Format}", base64);
+            }
+        }
         """;
 }

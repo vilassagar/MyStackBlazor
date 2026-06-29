@@ -4,38 +4,40 @@
 
 <h1 class="text-3xl font-bold mb-1">Calendar</h1>
 <p class="text-muted-foreground mb-6">
-    Full-featured calendar: Day, Week, Month, Year, Agenda, and Timeline views.
-    Individual vs Department focus, people/calendar checkboxes, category filter, search, and recurring events.
+    Full-featured calendar from the separate <code>MyStackBlazor.Calendar</code> package.
+    Day, Week, <strong>Work Week</strong>, Month, Year, Agenda, and Timeline views.
+    Recurring events, multi-person calendars, category filter, live search, and add/edit/delete.
 </p>
 
 <!-- Feature chips -->
 <div class="mb-6 flex flex-wrap gap-2">
     @foreach (var f in new[]
     {
-        "Day / Week / Month / Year / Agenda / Timeline views",
+        "Day / Week / Work Week / Month / Year / Agenda / Timeline",
         "Individual & Department focus modes",
         "People/calendar checkboxes", "Category sidebar filter", "Live search",
         "Recurring events (Daily/Weekly/Monthly/Yearly)",
         "Multi-day spanning events", "All-day events",
         "Click to add", "Edit & delete",
-        "Assignee calendar field", "Current-time indicator"
+        "Assignee calendar field", "Current-time indicator",
+        "Separate NuGet package — install only what you need"
     })
     {
         <span class="rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground">@f</span>
     }
 </div>
 
-<!-- Calendar component -->
+<!-- Calendar component from MyStackBlazor.Calendar package -->
 <div class="h-[860px] rounded-xl border overflow-hidden shadow-sm">
-    <StackMsCalendar Events="_events"
-                People="_people"
-                ShowMiniCalendar="true"
-                AllowAdd="true"
-                DefaultView="CalendarViewMode.Month"
-                DefaultFocus="FocusMode.Department"
-                OnEventAdd="HandleAdd"
-                OnEventEdit="HandleEdit"
-                OnEventDelete="HandleDelete" />
+    <StackCalendar Events="_events"
+                   People="_people"
+                   ShowMiniCalendar="true"
+                   AllowAdd="true"
+                   DefaultView="MyStackBlazor.Calendar.Models.CalendarViewMode.Month"
+                   DefaultFocus="MyStackBlazor.Calendar.Models.FocusMode.Department"
+                   OnEventAdd="HandleAdd"
+                   OnEventEdit="HandleEdit"
+                   OnEventDelete="HandleDelete" />
 </div>
 
 <!-- Event log -->
@@ -53,21 +55,21 @@
 }
 
 <!-- Code snippet -->
-<DemoSection Title="Usage" Description="Pass People list for multi-calendar support. Use FocusMode to switch between Individual and Department views." Code="@_code" Class="mt-8">
+<DemoSection Title="Usage" Description="Install MyStackBlazor.Calendar from NuGet. Pass a list of CalendarEvent and optionally CalendarPerson for multi-calendar support." Code="@_code" Class="mt-8">
     <p class="text-sm text-muted-foreground">See CalendarPage.razor for the full working example.</p>
 </DemoSection>
 
 @code {
     // ── People (team calendars) ────────────────────────────────────────────
-    private readonly CalendarPerson _alice  = new() { Id = "alice",  Name = "Alice Chen",    Color = "blue"   };
-    private readonly CalendarPerson _bob    = new() { Id = "bob",    Name = "Sam Rivera",    Color = "green"  };
-    private readonly CalendarPerson _carol  = new() { Id = "carol",  Name = "Taylor Blake",  Color = "orange" };
-    private readonly CalendarPerson _dave   = new() { Id = "dave",   Name = "Casey Wright",  Color = "purple" };
-    private readonly CalendarPerson _eve    = new() { Id = "eve",    Name = "Jayce Li",      Color = "yellow" };
+    private readonly MyStackBlazor.Calendar.Models.CalendarPerson _alice  = new() { Id = "alice",  Name = "Alice Chen",    Color = "blue"   };
+    private readonly MyStackBlazor.Calendar.Models.CalendarPerson _bob    = new() { Id = "bob",    Name = "Sam Rivera",    Color = "green"  };
+    private readonly MyStackBlazor.Calendar.Models.CalendarPerson _carol  = new() { Id = "carol",  Name = "Taylor Blake",  Color = "orange" };
+    private readonly MyStackBlazor.Calendar.Models.CalendarPerson _dave   = new() { Id = "dave",   Name = "Casey Wright",  Color = "purple" };
+    private readonly MyStackBlazor.Calendar.Models.CalendarPerson _eve    = new() { Id = "eve",    Name = "Jayce Li",      Color = "yellow" };
 
-    private List<CalendarPerson> _people = [];
-    private List<CalendarEvent> _events  = [];
-    private readonly List<string> _log   = [];
+    private List<MyStackBlazor.Calendar.Models.CalendarPerson> _people = [];
+    private List<MyStackBlazor.Calendar.Models.CalendarEvent>  _events = [];
+    private readonly List<string> _log = [];
 
     private static readonly DateTime _today      = DateTime.Today;
     private static readonly DateTime _monday     = ThisMonday(DateTime.Today);
@@ -82,7 +84,7 @@
         AddEvent("Daily Stand-up",
             _monday.AddHours(9).AddMinutes(30), _monday.AddHours(9).AddMinutes(45),
             color: "blue", category: "Work", location: "Google Meet",
-            recurrenceType: RecurrenceType.Weekly, recurrenceInterval: 1,
+            recurrenceType: MyStackBlazor.Calendar.Models.RecurrenceType.Weekly, recurrenceInterval: 1,
             recurrenceEndDate: _today.AddMonths(3));
 
         AddEvent("Manager 1:1",
@@ -90,13 +92,13 @@
             new DateTime(_today.Year, _today.Month, 15).AddHours(15),
             color: "purple", category: "Work",
             description: "Monthly check-in.",
-            recurrenceType: RecurrenceType.Monthly, recurrenceInterval: 1,
+            recurrenceType: MyStackBlazor.Calendar.Models.RecurrenceType.Monthly, recurrenceInterval: 1,
             recurrenceEndDate: _today.AddYears(1));
 
         AddEvent("Gym Session",
             _today.Date.AddHours(7), _today.Date.AddHours(8).AddMinutes(30),
             color: "teal", category: "Health", location: "FitLife Gym",
-            recurrenceType: RecurrenceType.Daily, recurrenceInterval: 2,
+            recurrenceType: MyStackBlazor.Calendar.Models.RecurrenceType.Daily, recurrenceInterval: 2,
             recurrenceEndDate: _today.AddMonths(3));
 
         AddEvent("Sprint Planning",
@@ -118,7 +120,7 @@
             _nextMonth1, _nextMonth1,
             allDay: true, color: "yellow", category: "Reminder",
             description: "Transfer ₹25,000 to landlord before 5 PM.",
-            recurrenceType: RecurrenceType.Monthly, recurrenceInterval: 1);
+            recurrenceType: MyStackBlazor.Calendar.Models.RecurrenceType.Monthly, recurrenceInterval: 1);
 
         // ── Alice's events ─────────────────────────────────────────────────
         AddEvent("Annual Engineering Kickoff",
@@ -135,7 +137,7 @@
             _monday.AddDays(1).AddHours(14), _monday.AddDays(1).AddHours(15),
             color: "blue", category: "Work",
             personId: _alice.Id,
-            recurrenceType: RecurrenceType.Weekly, recurrenceInterval: 1,
+            recurrenceType: MyStackBlazor.Calendar.Models.RecurrenceType.Weekly, recurrenceInterval: 1,
             recurrenceEndDate: _today.AddMonths(2));
 
         // ── Sam's events ───────────────────────────────────────────────────
@@ -193,11 +195,11 @@
         bool allDay = false, string color = "blue",
         string? category = null, string? location = null, string? description = null,
         string? personId = null,
-        RecurrenceType recurrenceType = RecurrenceType.None,
+        MyStackBlazor.Calendar.Models.RecurrenceType recurrenceType = MyStackBlazor.Calendar.Models.RecurrenceType.None,
         int recurrenceInterval = 1,
         DateTime? recurrenceEndDate = null)
     {
-        _events.Add(new CalendarEvent
+        _events.Add(new MyStackBlazor.Calendar.Models.CalendarEvent
         {
             Title              = title,
             Start              = start,
@@ -214,13 +216,13 @@
         });
     }
 
-    private void HandleAdd(CalendarEvent e)
+    private void HandleAdd(MyStackBlazor.Calendar.Models.CalendarEvent e)
         => _log.Add($"Added \"{e.Title}\" on {e.Start:MMM d}");
 
-    private void HandleEdit(CalendarEvent e)
+    private void HandleEdit(MyStackBlazor.Calendar.Models.CalendarEvent e)
         => _log.Add($"Updated \"{e.Title}\"");
 
-    private void HandleDelete(CalendarEvent e)
+    private void HandleDelete(MyStackBlazor.Calendar.Models.CalendarEvent e)
         => _log.Add($"Deleted \"{e.Title}\"");
 
     private static DateTime ThisMonday(DateTime d)
@@ -236,17 +238,22 @@
         => new DateTime(d.Year, d.Month, 1).AddMonths(1);
 
     private const string _code = """
-        <!-- Multi-calendar with people + focus modes -->
+        <!-- Install: dotnet add package MyStackBlazor.Calendar -->
+        <!-- Program.cs: builder.Services.AddMyStackBlazorCalendar() -->
+
+        @using MyStackBlazor.Calendar
+        @using MyStackBlazor.Calendar.Models
+
         <div class="h-[800px] rounded-xl border overflow-hidden">
             <StackCalendar Events="_events"
-                        People="_people"
-                        ShowMiniCalendar="true"
-                        AllowAdd="true"
-                        DefaultView="CalendarViewMode.Month"
-                        DefaultFocus="FocusMode.Department"
-                        OnEventAdd="HandleAdd"
-                        OnEventEdit="HandleEdit"
-                        OnEventDelete="HandleDelete" />
+                           People="_people"
+                           ShowMiniCalendar="true"
+                           AllowAdd="true"
+                           DefaultView="CalendarViewMode.WorkWeek"
+                           DefaultFocus="FocusMode.Department"
+                           OnEventAdd="HandleAdd"
+                           OnEventEdit="HandleEdit"
+                           OnEventDelete="HandleDelete" />
         </div>
 
         @code {
@@ -254,17 +261,13 @@
             [
                 new() { Id = "alice", Name = "Alice Chen",   Color = "blue"   },
                 new() { Id = "bob",   Name = "Sam Rivera",   Color = "green"  },
-                new() { Id = "carol", Name = "Taylor Blake", Color = "orange" },
             ];
 
             private List<CalendarEvent> _events =
             [
-                // My own event (no PersonId)
-                new() { Title = "Team Standup", Start = DateTime.Today.AddHours(9), End = DateTime.Today.AddHours(9).AddMinutes(30), Color = "blue", Category = "Work" },
-                // Alice's event
-                new() { Title = "Design Review", Start = DateTime.Today.AddHours(14), End = DateTime.Today.AddHours(15), Color = "blue", PersonId = "alice" },
-                // Recurring (weekly)
-                new() { Title = "Weekly Retrospective", Start = DateTime.Today.AddHours(16), End = DateTime.Today.AddHours(17), Color = "indigo",
+                new() { Title = "Team Standup",  Start = DateTime.Today.AddHours(9),  End = DateTime.Today.AddHours(9).AddMinutes(30), Color = "blue",   Category = "Work" },
+                new() { Title = "Design Review", Start = DateTime.Today.AddHours(14), End = DateTime.Today.AddHours(15),               Color = "blue",   PersonId = "alice" },
+                new() { Title = "Weekly Retro",  Start = DateTime.Today.AddHours(16), End = DateTime.Today.AddHours(17),               Color = "indigo",
                         RecurrenceType = RecurrenceType.Weekly, RecurrenceInterval = 1, RecurrenceEndDate = DateTime.Today.AddMonths(3) },
             ];
         }

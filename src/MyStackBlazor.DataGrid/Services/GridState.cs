@@ -19,17 +19,35 @@ public sealed class GridState
     public GridState WithSearch(string? term)
         => new() { Sort = Sort, Filters = Filters, SearchTerm = term };
 
-    public GridState ToggleSort(string field)
+    /// <summary>
+    /// Toggle sort on <paramref name="field"/>.
+    /// When <paramref name="addToExisting"/> is true (Shift+click), the sort is appended to the
+    /// existing multi-sort list instead of replacing it.
+    /// </summary>
+    public GridState ToggleSort(string field, bool addToExisting = false)
     {
         var existing = Sort.FirstOrDefault(s => s.Field == field);
         List<SortDescriptor> updated;
 
         if (existing is null)
-            updated = [new SortDescriptor(field, SortDirection.Ascending)];
+        {
+            updated = addToExisting
+                ? [.. Sort, new SortDescriptor(field, SortDirection.Ascending)]
+                : [new SortDescriptor(field, SortDirection.Ascending)];
+        }
         else if (existing.Direction == SortDirection.Ascending)
-            updated = [new SortDescriptor(field, SortDirection.Descending)];
+        {
+            var desc = new SortDescriptor(field, SortDirection.Descending);
+            updated = addToExisting
+                ? Sort.Select(s => s.Field == field ? desc : s).ToList()
+                : [desc];
+        }
         else
-            updated = Sort.Where(s => s.Field != field).ToList();
+        {
+            updated = addToExisting
+                ? Sort.Where(s => s.Field != field).ToList()
+                : [];
+        }
 
         return WithSort(updated);
     }
