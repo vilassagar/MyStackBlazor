@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.1](https://github.com/vilassagar/MyStackBlazor/compare/v1.3.0...v1.3.1) (2026-07-12)
+
+
+### Bug Fixes
+
+* correct stale Switch unchecked-state test assertion ([2d7531c](https://github.com/vilassagar/MyStackBlazor/commit/2d7531c24d8e8bea7e1faaed3a8732fe2629ea6a))
+
 ## [1.2.2] - 2026-06-20
 
 ### Bug Fixes
