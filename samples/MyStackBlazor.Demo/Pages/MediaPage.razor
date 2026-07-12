@@ -1,0 +1,131 @@
+@page "/media"
+
+<PageTitle>Video &amp; Media — MyStackBlazor Demo</PageTitle>
+
+<h1 class="text-3xl font-bold mb-1">Video &amp; Media</h1>
+<p class="text-muted-foreground mb-6">
+    <code>StackVideo</code> — a Tailwind-styled HTML5 video player with custom controls: play/pause, seek with
+    buffered indicator, volume, playback speed, captions, Picture-in-Picture, fullscreen, and keyboard shortcuts
+    (Space/K play, ←/→ seek, ↑/↓ volume, M mute, F fullscreen). Built entirely on the native
+    <code>&lt;video&gt;</code> element — no external JS dependency required for static files or natively-supported HLS.
+</p>
+
+<div class="mb-6 flex flex-wrap gap-2">
+    @foreach (var f in new[]
+    {
+        "Custom Tailwind controls", "Seek with buffered range", "Volume + mute",
+        "Playback speed menu", "Captions/subtitles toggle", "Picture-in-Picture",
+        "Fullscreen", "Keyboard shortcuts", "Live stream badge", "Poster image",
+        "Multi-source format fallback", "HLS (native + pluggable engine hook)"
+    })
+    {
+        <span class="rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground">@f</span>
+    }
+</div>
+
+<!-- Basic playback -->
+<DemoSection Title="Basic playback"
+             Description="A single source with a poster image. Click the video or the center button to play."
+             Code="@_basicCode">
+    <div class="w-full max-w-xl">
+        <StackVideo Src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+                    Poster="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg"
+                    Title="Big Buck Bunny" />
+    </div>
+</DemoSection>
+
+<!-- Autoplay, loop, muted -->
+<DemoSection Title="Autoplay, loop &amp; muted"
+             Description="Browsers only allow autoplay when the video starts muted."
+             Code="@_autoplayCode">
+    <div class="w-full max-w-xl">
+        <StackVideo Src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
+                    Autoplay Loop Muted
+                    Title="For Bigger Blazes (autoplay demo)" />
+    </div>
+</DemoSection>
+
+<!-- Captions -->
+<DemoSection Title="Captions / subtitles"
+             Description="Text tracks render via the native <track> element; the CC button toggles them on and off."
+             Code="@_captionsCode">
+    <div class="w-full max-w-xl">
+        <StackVideo Src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4"
+                    Title="For Bigger Joyrides (captions demo)"
+                    Tracks="_tracks" />
+    </div>
+</DemoSection>
+
+<!-- Live badge -->
+<DemoSection Title="Live mode"
+             Description="Set Live to hide the seek bar/duration and show a LIVE badge, for streaming a live source."
+             Code="@_liveCode">
+    <div class="w-full max-w-xl">
+        <StackVideo Src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4"
+                    Title="Live demo" Live />
+    </div>
+</DemoSection>
+
+<!-- HLS -->
+<DemoSection Title="HLS stream"
+             Description="Plays natively in browsers that support HLS (e.g. Safari/iOS). Elsewhere, register window.MyStackBlazorMediaEngine to attach hls.js without this library bundling it."
+             Code="@_hlsCode">
+    <div class="w-full max-w-xl">
+        <StackVideo Sources="_hlsSources" Title="Apple HLS example stream" />
+    </div>
+</DemoSection>
+
+@code {
+    private readonly List<VideoTrack> _tracks =
+    [
+        new(
+            Src: "data:text/vtt;charset=utf-8," + Uri.EscapeDataString("""
+                WEBVTT
+
+                00:00:00.000 --> 00:00:04.000
+                Captions rendered via the native <track> element.
+
+                00:00:04.000 --> 00:00:08.000
+                No external JS dependency required.
+                """),
+            SrcLang: "en",
+            Label: "English",
+            Default: true)
+    ];
+
+    private readonly List<VideoSource> _hlsSources =
+    [
+        new("https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8",
+            "application/vnd.apple.mpegurl")
+    ];
+
+    private const string _basicCode = """
+        <StackVideo Src="video.mp4" Poster="poster.jpg" Title="Big Buck Bunny" />
+        """;
+
+    private const string _autoplayCode = """
+        <StackVideo Src="video.mp4" Autoplay Loop Muted Title="Autoplay demo" />
+        """;
+
+    private const string _captionsCode = """
+        <StackVideo Src="video.mp4" Title="Captions demo" Tracks="_tracks" />
+
+        private readonly List<VideoTrack> _tracks =
+        [
+            new(Src: "captions-en.vtt", SrcLang: "en", Label: "English", Default: true)
+        ];
+        """;
+
+    private const string _liveCode = """
+        <StackVideo Src="live-stream-url" Title="Live demo" Live />
+        """;
+
+    private const string _hlsCode = """
+        <StackVideo Sources="_hlsSources" Title="HLS stream" />
+
+        private readonly List<VideoSource> _hlsSources =
+        [
+            new("stream.m3u8", "application/vnd.apple.mpegurl")
+        ];
+        """;
+}

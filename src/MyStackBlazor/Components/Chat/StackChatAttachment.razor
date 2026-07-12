@@ -1,0 +1,57 @@
+@namespace MyStackBlazor.Components.Chat
+
+<div class="@($"group relative flex items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs {Class}".Trim())"
+     @attributes="AdditionalAttributes">
+    @if (IsImage)
+    {
+        <img src="@Attachment.Url" alt="@Attachment.Name" class="h-8 w-8 shrink-0 rounded object-cover" />
+    }
+    else
+    {
+        <svg class="h-8 w-8 shrink-0 rounded bg-muted p-1.5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+        </svg>
+    }
+
+    <div class="min-w-0">
+        <p class="truncate font-medium text-foreground" title="@Attachment.Name">@Attachment.Name</p>
+        @if (Attachment.SizeBytes.HasValue)
+        {
+            <p class="text-muted-foreground">@FormatSize(Attachment.SizeBytes.Value)</p>
+        }
+    </div>
+
+    @if (Removable)
+    {
+        <button type="button"
+                class="ml-1 shrink-0 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                aria-label="Remove @Attachment.Name"
+                @onclick="() => OnRemove.InvokeAsync(Attachment)">
+            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+        </button>
+    }
+</div>
+
+@code {
+    [EditorRequired, Parameter] public ChatAttachment Attachment { get; set; } = null!;
+    [Parameter] public bool Removable { get; set; }
+    [Parameter] public EventCallback<ChatAttachment> OnRemove { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool IsImage =>
+        !string.IsNullOrEmpty(Attachment.Url) &&
+        Attachment.ContentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true;
+
+    private static string FormatSize(long bytes)
+    {
+        string[] units = ["B", "KB", "MB", "GB"];
+        double size = bytes;
+        int i = 0;
+        while (size >= 1024 && i < units.Length - 1) { size /= 1024; i++; }
+        return $"{size:0.#} {units[i]}";
+    }
+}

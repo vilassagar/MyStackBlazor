@@ -1,4 +1,5 @@
 @page "/forms"
+@using System.ComponentModel.DataAnnotations
 
 <PageTitle>Form Controls — MyStackBlazor Demo</PageTitle>
 
@@ -400,6 +401,41 @@
     </div>
 </DemoSection>
 
+<!-- Validation -->
+<DemoSection Title="Validation"
+             Description="EditForm + DataAnnotationsValidator, with StackValidationSummary for form-level errors and StackValidationMessage for per-field errors."
+             Code="@_validationCode">
+    <EditForm Model="_signupModel" OnValidSubmit="HandleValidSubmit" OnInvalidSubmit="HandleInvalidSubmit" class="w-full max-w-sm space-y-4">
+        <DataAnnotationsValidator />
+        <StackValidationSummary />
+
+        <div class="space-y-1.5">
+            <label class="text-sm font-medium" for="signup-name">Full name</label>
+            <StackInput Id="signup-name" @bind-Value="_signupModel.FullName" Placeholder="Jane Doe" />
+            <StackValidationMessage For="@(() => _signupModel.FullName)" />
+        </div>
+
+        <div class="space-y-1.5">
+            <label class="text-sm font-medium" for="signup-email">Email</label>
+            <StackInput Id="signup-email" Type="email" @bind-Value="_signupModel.Email" Placeholder="jane@example.com" />
+            <StackValidationMessage For="@(() => _signupModel.Email)" />
+        </div>
+
+        <div class="space-y-1.5">
+            <label class="text-sm font-medium" for="signup-age">Age</label>
+            <StackNumericInput Id="signup-age" @bind-Value="_signupModel.Age" Min="1" Max="120" Step="1" />
+            <StackValidationMessage For="@(() => _signupModel.Age)" />
+        </div>
+
+        <StackButton Type="submit">Create account</StackButton>
+
+        @if (_signupSubmitted)
+        {
+            <p class="text-sm text-green-600 dark:text-green-400">Account created for <strong>@_signupModel.FullName</strong>.</p>
+        }
+    </EditForm>
+</DemoSection>
+
 @code {
     private string? _name;
     private string? _email;
@@ -640,6 +676,49 @@
         @if (_selectedMonthYear.HasValue)
         {
             <p>Selected: @_selectedMonthYear.Value.ToString("MMMM yyyy")</p>
+        }
+        """;
+
+    // ── Validation demo ─────────────────────────────────────────────────────
+    private readonly SignupModel _signupModel = new();
+    private bool _signupSubmitted;
+
+    private void HandleValidSubmit() => _signupSubmitted = true;
+    private void HandleInvalidSubmit() => _signupSubmitted = false;
+
+    private sealed class SignupModel
+    {
+        [Required(ErrorMessage = "Full name is required.")]
+        [StringLength(50, ErrorMessage = "Name must be 50 characters or fewer.")]
+        public string? FullName { get; set; }
+
+        [Required(ErrorMessage = "Email is required.")]
+        [EmailAddress(ErrorMessage = "Enter a valid email address.")]
+        public string? Email { get; set; }
+
+        [Range(1, 120, ErrorMessage = "Age must be between 1 and 120.")]
+        public double? Age { get; set; }
+    }
+
+    private const string _validationCode = """
+        <EditForm Model="_signupModel" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
+            <StackValidationSummary />
+
+            <StackInput @bind-Value="_signupModel.FullName" Placeholder="Jane Doe" />
+            <StackValidationMessage For="@(() => _signupModel.FullName)" />
+
+            <StackInput Type="email" @bind-Value="_signupModel.Email" />
+            <StackValidationMessage For="@(() => _signupModel.Email)" />
+
+            <StackButton Type="submit">Create account</StackButton>
+        </EditForm>
+
+        public class SignupModel
+        {
+            [Required] public string? FullName { get; set; }
+            [Required, EmailAddress] public string? Email { get; set; }
+            [Range(1, 120)] public double? Age { get; set; }
         }
         """;
 }

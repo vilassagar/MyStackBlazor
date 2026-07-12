@@ -1,0 +1,78 @@
+@namespace MyStackBlazor.Components.Chat
+@inject IJSRuntime JS
+
+<div class="relative">
+    <div @ref="_containerEl"
+         class="@($"flex flex-col gap-4 overflow-y-auto {Class}".Trim())"
+         @onscroll="HandleScroll"
+         @attributes="AdditionalAttributes">
+        @ChildContent
+    </div>
+
+    @if (_hasNewMessages)
+    {
+        <button type="button"
+                class="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium shadow-md hover:bg-accent"
+                @onclick="ScrollToBottomClick">
+            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="19 12 12 19 5 12" /><line x1="12" y1="19" x2="12" y2="5" />
+            </svg>
+            New messages
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    /// <summary>When true (default), sticks to the bottom as new messages arrive if the user hasn't scrolled up.</summary>
+    [Parameter] public bool AutoScroll { get; set; } = true;
+    [Parameter] public double StickToBottomThreshold { get; set; } = 80;
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private ElementReference _containerEl;
+    private bool _hasNewMessages;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try { await JS.InvokeVoidAsync("MyStackBlazor.chatScrollToBottom", _containerEl, false); } catch { }
+            return;
+        }
+
+        if (!AutoScroll) return;
+
+        try
+        {
+            var nearBottom = await JS.InvokeAsync<bool>("MyStackBlazor.chatIsNearBottom", _containerEl, StickToBottomThreshold);
+            if (nearBottom)
+            {
+                await JS.InvokeVoidAsync("MyStackBlazor.chatScrollToBottom", _containerEl, true);
+                if (_hasNewMessages) { _hasNewMessages = false; StateHasChanged(); }
+            }
+            else if (!_hasNewMessages)
+            {
+                _hasNewMessages = true;
+                StateHasChanged();
+            }
+        }
+        catch { }
+    }
+
+    private async Task HandleScroll()
+    {
+        try
+        {
+            var nearBottom = await JS.InvokeAsync<bool>("MyStackBlazor.chatIsNearBottom", _containerEl, StickToBottomThreshold);
+            if (nearBottom && _hasNewMessages) { _hasNewMessages = false; StateHasChanged(); }
+        }
+        catch { }
+    }
+
+    private async Task ScrollToBottomClick()
+    {
+        await JS.InvokeVoidAsync("MyStackBlazor.chatScrollToBottom", _containerEl, true);
+        _hasNewMessages = false;
+    }
+}

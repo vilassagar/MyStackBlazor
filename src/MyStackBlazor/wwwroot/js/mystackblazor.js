@@ -258,5 +258,94 @@ window.MyStackBlazor = {
             input.files = dt.files;
             input.dispatchEvent(new Event('change', { bubbles: true }));
         });
+    },
+
+    // ----------------------------------------------------------------
+    //  Media player — imperative HTMLMediaElement control
+    // ----------------------------------------------------------------
+    mediaPlay(el) { return el?.play?.(); },
+
+    mediaPause(el) { el?.pause?.(); },
+
+    mediaSeek(el, seconds) { if (el) el.currentTime = seconds; },
+
+    mediaSetVolume(el, volume) { if (el) el.volume = volume; },
+
+    mediaSetMuted(el, muted) { if (el) el.muted = muted; },
+
+    mediaSetPlaybackRate(el, rate) { if (el) el.playbackRate = rate; },
+
+    mediaGetBufferedEnd(el) {
+        if (!el || !el.buffered || el.buffered.length === 0) return 0;
+        return el.buffered.end(el.buffered.length - 1);
+    },
+
+    mediaGetPlaybackState(el) {
+        if (!el) return { currentTime: 0, duration: 0, bufferedEnd: 0, paused: true, ended: false };
+        const d = el.duration;
+        return {
+            currentTime: el.currentTime || 0,
+            duration: isFinite(d) ? d : 0,
+            bufferedEnd: this.mediaGetBufferedEnd(el),
+            paused: el.paused,
+            ended: el.ended
+        };
+    },
+
+    mediaSetCaptionsEnabled(el, enabled) {
+        if (!el || !el.textTracks) return;
+        for (let i = 0; i < el.textTracks.length; i++) {
+            el.textTracks[i].mode = enabled ? 'showing' : 'hidden';
+        }
+    },
+
+    mediaCanPlayNativeHls(el) {
+        return !!(el && el.canPlayType && el.canPlayType('application/vnd.apple.mpegurl'));
+    },
+
+    // Extensibility hook: consumers can set window.MyStackBlazorMediaEngine = (videoEl, src) => {...}
+    // to attach hls.js/dash.js for browsers without native HLS/DASH support, without this
+    // library bundling those dependencies itself.
+    mediaAttachCustomEngine(el, src) {
+        if (typeof window.MyStackBlazorMediaEngine === 'function') {
+            window.MyStackBlazorMediaEngine(el, src);
+            return true;
+        }
+        return false;
+    },
+
+    mediaRequestFullscreen(el) {
+        const target = el?.parentElement ?? el;
+        return target?.requestFullscreen?.();
+    },
+
+    mediaExitFullscreen() {
+        if (document.fullscreenElement) return document.exitFullscreen();
+    },
+
+    mediaIsFullscreen(el) {
+        const target = el?.parentElement ?? el;
+        return !!document.fullscreenElement && document.fullscreenElement === target;
+    },
+
+    mediaRequestPip(el) { return el?.requestPictureInPicture?.(); },
+
+    mediaExitPip() {
+        if (document.pictureInPictureElement) return document.exitPictureInPicture();
+    },
+
+    mediaSupportsPip(el) { return !!(document.pictureInPictureEnabled && el && !el.disablePictureInPicture); },
+
+    // ----------------------------------------------------------------
+    //  Chat message list — stick-to-bottom auto-scroll
+    // ----------------------------------------------------------------
+    chatIsNearBottom(el, threshold) {
+        if (!el) return true;
+        return (el.scrollHeight - el.scrollTop - el.clientHeight) <= (threshold ?? 80);
+    },
+
+    chatScrollToBottom(el, smooth) {
+        if (!el) return;
+        el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
     }
 };

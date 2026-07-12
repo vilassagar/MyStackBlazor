@@ -1,0 +1,121 @@
+@namespace MyStackBlazor.Components.Chat
+@inject IJSRuntime JS
+@using MyStackBlazor.Components.Common
+
+@if (Role == ChatRole.System)
+{
+    <div class="@($"mx-auto max-w-md rounded-md bg-muted px-3 py-1.5 text-center text-xs text-muted-foreground {Class}".Trim())" @attributes="AdditionalAttributes">
+        @Content
+    </div>
+}
+else
+{
+    <div class="@($"flex w-full {(IsUser ? "justify-end" : "justify-start")} {Class}".Trim())" @attributes="AdditionalAttributes">
+        <div class="flex max-w-[80%] gap-2.5 @(IsUser ? "flex-row-reverse" : "flex-row")">
+            @if (ShowAvatar)
+            {
+                <StackAvatar Src="@AvatarSrc" Initials="@AvatarInitials" Size="sm" Class="mt-0.5 shrink-0" />
+            }
+
+            <div class="group flex flex-col gap-1 @(IsUser ? "items-end" : "items-start")">
+                @if (!string.IsNullOrEmpty(SenderName) || Timestamp.HasValue)
+                {
+                    <div class="flex items-center gap-1.5 px-1 text-xs text-muted-foreground">
+                        @if (!string.IsNullOrEmpty(SenderName))
+                        {
+                            <span class="font-medium">@SenderName</span>
+                        }
+                        @if (Timestamp.HasValue)
+                        {
+                            <span>@Timestamp.Value.ToString("t")</span>
+                        }
+                    </div>
+                }
+
+                @if (Attachments is { Count: > 0 })
+                {
+                    <div class="flex flex-wrap gap-1.5 @(IsUser ? "justify-end" : "justify-start")">
+                        @foreach (var a in Attachments)
+                        {
+                            <StackChatAttachment Attachment="a" />
+                        }
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(Content) || ChildContent is not null)
+                {
+                    <div class="rounded-2xl px-3.5 py-2 text-sm leading-relaxed @BubbleClass">
+                        @if (ChildContent is not null)
+                        {
+                            @ChildContent
+                        }
+                        else
+                        {
+                            <span class="whitespace-pre-wrap break-words">@Content</span>
+                        }
+                        @if (IsStreaming)
+                        {
+                            <span class="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse rounded-sm bg-current align-text-bottom" aria-hidden="true"></span>
+                        }
+                    </div>
+                }
+
+                @if (ShowCopyAction && !IsStreaming && !string.IsNullOrEmpty(Content))
+                {
+                    <button type="button"
+                            class="flex items-center gap-1 rounded px-1 py-0.5 text-xs text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+                            aria-label="Copy message"
+                            @onclick="CopyContent">
+                        @if (_copied)
+                        {
+                            <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+                            <span>Copied</span>
+                        }
+                        else
+                        {
+                            <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" /></svg>
+                            <span>Copy</span>
+                        }
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public ChatRole Role { get; set; } = ChatRole.Assistant;
+    [Parameter] public string? Content { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? SenderName { get; set; }
+    [Parameter] public DateTime? Timestamp { get; set; }
+    [Parameter] public string? AvatarSrc { get; set; }
+    [Parameter] public string? AvatarInitials { get; set; }
+    [Parameter] public bool ShowAvatar { get; set; } = true;
+    [Parameter] public bool IsStreaming { get; set; }
+    [Parameter] public bool ShowCopyAction { get; set; } = true;
+    [Parameter] public IReadOnlyList<ChatAttachment>? Attachments { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool _copied;
+
+    private bool IsUser => Role == ChatRole.User;
+
+    private string BubbleClass => Role switch
+    {
+        ChatRole.User => "bg-primary text-primary-foreground rounded-br-sm",
+        _              => "bg-muted text-foreground rounded-bl-sm",
+    };
+
+    private async Task CopyContent()
+    {
+        if (string.IsNullOrEmpty(Content)) return;
+        await JS.InvokeVoidAsync("MyStackBlazor.copyToClipboard", Content);
+        _copied = true;
+        StateHasChanged();
+        await Task.Delay(1500);
+        _copied = false;
+        StateHasChanged();
+    }
+}

@@ -14,6 +14,8 @@
 - [Layout](#layout)
 - [Data Display](#data-display)
 - [Charts](#charts)
+- [Video / Media](#video--media)
+- [Chat / AI Elements](#chat--ai-elements)
 - [Overlays](#overlays)
 - [Enterprise Packages](#enterprise-packages)
 - [Missing — Requires External Library](#missing--requires-external-library)
@@ -96,6 +98,8 @@
 | ✅ | **Switch** | `Components/Form/Switch.razor` | Toggle on/off switch |
 | ✅ | **Textarea** | `Components/Form/Textarea.razor` | Multi-line text input |
 | ✅ | **TimePicker** | `Components/Form/TimePicker.razor` | Hour / minute / AM-PM selector |
+| 🆕 | **ValidationSummary** | `Components/Form/ValidationSummary.razor` | Aggregated `EditContext` error list; Tailwind alert styling |
+| 🆕 | **ValidationMessage** | `Components/Form/ValidationMessage.razor` | Standalone per-field error message (generic, works outside `FormField`) |
 
 ---
 
@@ -150,6 +154,36 @@
 | 🆕 | **PieChart** | `Components/Charts/PieChart.razor` | Pie or donut; percentage labels; center label; hover tooltip |
 
 **Shared models** (`Components/Charts/ChartModels.cs`): `ChartSeries`, `ChartSegment`, `GaugeThreshold`
+
+---
+
+## Video / Media
+
+> Built on the native `<video>` element — zero bundled JS dependencies. Custom Tailwind controls layered on top.
+
+| Status | Component | File | Notes |
+|--------|-----------|------|-------|
+| 🆕 | **Video** | `Components/Media/Video.razor` | Play/pause, seek with buffered range, volume, playback speed, captions toggle, Picture-in-Picture, fullscreen, keyboard shortcuts. Supports multi-`<source>` format fallback, static files, and native HLS (Safari/iOS); non-native browsers can register `window.MyStackBlazorMediaEngine` to plug in hls.js/dash.js without this library bundling it. `Live` mode hides the seek bar and shows a LIVE badge. |
+
+**Shared models** (`Components/Media/MediaModels.cs`): `VideoSource`, `VideoTrack`
+
+⚠️ True protected/DRM media (EME) is out of scope — pair with a dedicated player (Shaka Player, video.js) for DRM-gated content.
+
+---
+
+## Chat / AI Elements
+
+> Presentational only, in the spirit of shadcn/ui's AI Elements — bring your own model/streaming backend.
+
+| Status | Component | File | Notes |
+|--------|-----------|------|-------|
+| 🆕 | **ChatMessage** | `Components/Chat/ChatMessage.razor` | Role-aware bubble (user/assistant/system), avatar, sender/timestamp, streaming cursor, copy-to-clipboard action, attachments |
+| 🆕 | **ChatMessageList** | `Components/Chat/ChatMessageList.razor` | Sticks to the bottom as messages arrive; shows a "New messages" button instead of forcing scroll when the user has scrolled up |
+| 🆕 | **ChatAttachment** | `Components/Chat/ChatAttachment.razor` | Image thumbnail or generic file chip, optional removable "x" for compose previews |
+
+**Shared models** (`Components/Chat/ChatModels.cs`): `ChatRole`, `ChatAttachment`
+
+Full AI chat (model calls, streaming transport) still needs your own backend/SDK — see [AI / Interactivity (Advanced)](#-ai--interactivity-advanced) below.
 
 ---
 
@@ -236,10 +270,12 @@ Basic charts (Line, Bar, Pie, Gauge) are now built-in — see [Charts](#charts) 
 | Map | [Blazor Leaflet](https://github.com/rungwiroon/BlazorLeaflet) or [Radzen Map](https://blazor.radzen.com/map) |
 
 ### 🤖 AI / Interactivity (Advanced)
+Presentational chat UI (message bubbles, streaming cursor, auto-scroll, attachments) is now built-in — see [Chat / AI Elements](#chat--ai-elements) above. Wiring it to an actual model/backend is still on you.
+
 | Component | Notes |
 |-----------|-------|
 | AIPrompt / InlineAIPrompt | Requires Anthropic / OpenAI API integration |
-| Chat | Requires SignalR or streaming API |
+| Chat transport (streaming) | Requires SignalR, SSE, or a streaming API — `ChatMessage.IsStreaming` just renders the cursor |
 | SmartPasteButton | Requires AI backend |
 | SpeechToTextButton | Requires `window.SpeechRecognition` Web API |
 

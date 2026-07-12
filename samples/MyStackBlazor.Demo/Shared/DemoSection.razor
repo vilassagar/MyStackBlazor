@@ -1,6 +1,6 @@
 @namespace MyStackBlazor.Demo.Shared
 
-<div class="rounded-lg border bg-card overflow-hidden mb-6 @Class">
+<div class="rounded-lg border bg-card mb-6 @Class">
     <div class="px-6 py-5">
         <h3 class="font-semibold mb-0.5">@Title</h3>
         @if (!string.IsNullOrEmpty(Description))
@@ -13,7 +13,7 @@
     </div>
     @if (!string.IsNullOrEmpty(Code))
     {
-        <details class="border-t">
+        <details class="border-t rounded-b-lg overflow-hidden">
             <summary class="px-6 py-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground select-none">
                 Show code
             </summary>

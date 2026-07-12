@@ -1,0 +1,57 @@
+@namespace MyStackBlazor.Components.Form
+@typeparam TValue
+@implements IDisposable
+@using System.Linq.Expressions
+
+@if (_messages.Count > 0)
+{
+    <p class="@($"mt-1 text-sm font-medium text-destructive {Class}".Trim())" role="alert" @attributes="AdditionalAttributes">
+        @string.Join(" ", _messages)
+    </p>
+}
+
+@code {
+    [CascadingParameter] private EditContext? EditContext { get; set; }
+
+    [EditorRequired, Parameter] public Expression<Func<TValue>> For { get; set; } = null!;
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private FieldIdentifier _fieldId;
+    private List<string> _messages = [];
+
+    protected override void OnInitialized()
+    {
+        if (EditContext is null)
+            throw new InvalidOperationException(
+                $"{nameof(StackValidationMessage<TValue>)} requires a cascading {nameof(EditContext)}. Place it inside an <EditForm>.");
+
+        _fieldId = FieldIdentifier.Create(For);
+        EditContext.OnValidationStateChanged += OnValidationChanged;
+        RefreshMessages();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (EditContext is not null)
+        {
+            _fieldId = FieldIdentifier.Create(For);
+            RefreshMessages();
+        }
+    }
+
+    private void OnValidationChanged(object? sender, ValidationStateChangedEventArgs _)
+    {
+        RefreshMessages();
+        StateHasChanged();
+    }
+
+    private void RefreshMessages() =>
+        _messages = EditContext!.GetValidationMessages(_fieldId).ToList();
+
+    public void Dispose()
+    {
+        if (EditContext is not null)
+            EditContext.OnValidationStateChanged -= OnValidationChanged;
+    }
+}

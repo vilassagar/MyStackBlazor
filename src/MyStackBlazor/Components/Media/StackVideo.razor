@@ -1,0 +1,474 @@
+@namespace MyStackBlazor.Components.Media
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+@using System.Globalization
+
+<div class="@($"group relative w-full aspect-video overflow-hidden rounded-lg bg-black outline-none {Class}".Trim())"
+     tabindex="0"
+     role="region"
+     aria-roledescription="video player"
+     aria-label="@(Title ?? "Video player")"
+     @onkeydown="HandleKeyDown"
+     @attributes="AdditionalAttributes">
+
+    <video @ref="_videoEl"
+           class="block h-full w-full cursor-pointer"
+           poster="@Poster"
+           preload="metadata"
+           loop="@Loop"
+           autoplay="@Autoplay"
+           muted="@_isMuted"
+           playsinline
+           aria-label="@(Title ?? "Video")"
+           @onplay="HandlePlay"
+           @onpause="HandlePause"
+           @onended="HandleEnded"
+           @onloadedmetadata="HandleLoadedMetadata"
+           @onwaiting="HandleWaiting"
+           @onplaying="HandlePlaying"
+           @oncanplay="HandleCanPlay"
+           @onerror="HandleError"
+           @onclick="TogglePlay">
+        @if (Sources is { Count: > 0 })
+        {
+            @foreach (var s in Sources)
+            {
+                <source src="@s.Src" type="@s.Type" />
+            }
+        }
+        else if (!string.IsNullOrEmpty(Src))
+        {
+            <source src="@Src" />
+        }
+        @if (Tracks is { Count: > 0 })
+        {
+            @foreach (var t in Tracks)
+            {
+                <track src="@t.Src" srclang="@t.SrcLang" label="@t.Label" kind="@t.Kind" default="@t.Default" />
+            }
+        }
+        Your browser does not support the video tag.
+    </video>
+
+    @* Loading spinner *@
+    @if (_isLoading && !_hasError)
+    {
+        <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <svg class="h-10 w-10 animate-spin text-white/85" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+        </div>
+    }
+
+    @* Error state *@
+    @if (_hasError)
+    {
+        <div class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/85 px-4 text-center text-white">
+            <svg class="h-8 w-8 text-white/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <p class="text-sm">Unable to load this video.</p>
+        </div>
+    }
+
+    @* Needs an external streaming engine (HLS/DASH) hint *@
+    @if (_needsExternalEngine && !_hasError)
+    {
+        <div class="absolute inset-x-0 top-0 bg-amber-500/90 px-3 py-1.5 text-center text-xs font-medium text-amber-950">
+            This browser can't play this stream natively. Register <code class="font-mono">window.MyStackBlazorMediaEngine</code> (e.g. hls.js) to enable it.
+        </div>
+    }
+
+    @* Live badge *@
+    @if (Live && !_hasError)
+    {
+        <span class="absolute left-3 top-3 flex items-center gap-1.5 rounded bg-black/60 px-2 py-1 text-xs font-semibold text-white">
+            <span class="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" aria-hidden="true"></span> LIVE
+        </span>
+    }
+
+    @* Big center play button *@
+    @if (!_isPlaying && !_isLoading && !_hasError)
+    {
+        <button type="button"
+                class="absolute inset-0 flex items-center justify-center"
+                aria-label="Play"
+                @onclick="TogglePlay">
+            <span class="flex h-16 w-16 items-center justify-center rounded-full bg-black/50 text-white transition-transform hover:scale-105 hover:bg-black/60">
+                <svg class="h-7 w-7 translate-x-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M8 5v14l11-7z" />
+                </svg>
+            </span>
+        </button>
+    }
+
+    @if (ShowControls)
+    {
+        <div class="absolute inset-x-0 bottom-0 flex flex-col gap-1.5 bg-gradient-to-t from-black/85 to-transparent px-3 pb-2 pt-8 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 @(!_isPlaying ? "opacity-100" : "")">
+            @if (!Live)
+            {
+                <input type="range" min="0" max="@Math.Max(_duration, 0.1).ToString(CultureInfo.InvariantCulture)" step="0.1"
+                       value="@_currentTime.ToString(CultureInfo.InvariantCulture)"
+                       class="h-1.5 w-full cursor-pointer appearance-none rounded-full accent-white"
+                       style="@SeekTrackStyle"
+                       aria-label="Seek"
+                       @oninput="OnSeekInput" />
+            }
+
+            <div class="flex items-center gap-2 text-white">
+                <button type="button" class="rounded p-1 hover:bg-white/10" aria-label="@(_isPlaying ? "Pause" : "Play")" @onclick="TogglePlay">
+                    @if (_isPlaying)
+                    {
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" /><rect x="14" y="5" width="4" height="14" /></svg>
+                    }
+                    else
+                    {
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+                    }
+                </button>
+
+                <button type="button" class="rounded p-1 hover:bg-white/10" aria-label="@(_isMuted ? "Unmute" : "Mute")" @onclick="ToggleMute">
+                    @if (_isMuted || _volume == 0)
+                    {
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" stroke="none" /><line x1="23" y1="9" x2="17" y2="15" /><line x1="17" y1="9" x2="23" y2="15" /></svg>
+                    }
+                    else
+                    {
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" stroke="none" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /><path d="M18.5 5.5a9 9 0 0 1 0 13" /></svg>
+                    }
+                </button>
+
+                <input type="range" min="0" max="1" step="0.05"
+                       value="@_volume.ToString(CultureInfo.InvariantCulture)"
+                       class="hidden h-1.5 w-16 cursor-pointer appearance-none rounded-full accent-white sm:block"
+                       aria-label="Volume"
+                       @oninput="OnVolumeInput" />
+
+                @if (!Live)
+                {
+                    <span class="text-xs tabular-nums text-white/90">@FormatTime(_currentTime) / @FormatTime(_duration)</span>
+                }
+
+                <span class="flex-1"></span>
+
+                @if (Tracks is { Count: > 0 })
+                {
+                    <button type="button"
+                            class="rounded px-1.5 py-0.5 text-xs font-semibold hover:bg-white/10 @(_captionsOn ? "bg-white/20" : "text-white/70")"
+                            aria-pressed="@_captionsOn" aria-label="Toggle captions"
+                            @onclick="ToggleCaptions">CC</button>
+                }
+
+                <div class="relative">
+                    <button type="button" class="rounded px-1.5 py-0.5 text-xs font-medium hover:bg-white/10" aria-haspopup="true" aria-expanded="@_showRateMenu" @onclick="() => _showRateMenu = !_showRateMenu">
+                        @_playbackRate.ToString("0.##", CultureInfo.InvariantCulture)x
+                    </button>
+                    @if (_showRateMenu)
+                    {
+                        <div class="absolute bottom-full right-0 mb-1 w-16 overflow-hidden rounded-md bg-neutral-900/95 py-1 text-xs shadow-lg" role="menu">
+                            @foreach (var r in PlaybackRates)
+                            {
+                                var rate = r;
+                                <button type="button" role="menuitem"
+                                        class="block w-full px-2 py-1 text-left hover:bg-white/10 @(rate == _playbackRate ? "font-semibold text-white" : "text-white/75")"
+                                        @onclick="() => SetRate(rate)">
+                                    @rate.ToString("0.##", CultureInfo.InvariantCulture)x
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+
+                @if (_pipSupported)
+                {
+                    <button type="button" class="rounded p-1 hover:bg-white/10" aria-label="Picture in picture" @onclick="TogglePip">
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <rect x="2" y="4" width="20" height="16" rx="1.5" /><rect x="12" y="12" width="8" height="6" rx="1" fill="currentColor" stroke="none" />
+                        </svg>
+                    </button>
+                }
+
+                <button type="button" class="rounded p-1 hover:bg-white/10" aria-label="@(_isFullscreen ? "Exit fullscreen" : "Fullscreen")" @onclick="ToggleFullscreen">
+                    @if (_isFullscreen)
+                    {
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" /><line x1="14" y1="10" x2="21" y2="3" /><line x1="3" y1="21" x2="10" y2="14" /></svg>
+                    }
+                    else
+                    {
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" /></svg>
+                    }
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Shorthand for a single-source video. Prefer <see cref="Sources"/> to give the browser format fallbacks.</summary>
+    [Parameter] public string? Src { get; set; }
+    [Parameter] public IReadOnlyList<VideoSource>? Sources { get; set; }
+    [Parameter] public IReadOnlyList<VideoTrack>? Tracks { get; set; }
+    [Parameter] public string? Poster { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public bool Autoplay { get; set; }
+    [Parameter] public bool Loop { get; set; }
+    [Parameter] public bool Muted { get; set; }
+    /// <summary>Hides the seek bar/duration and shows a LIVE badge for live streams.</summary>
+    [Parameter] public bool Live { get; set; }
+    [Parameter] public bool ShowControls { get; set; } = true;
+    [Parameter] public IReadOnlyList<double> PlaybackRates { get; set; } = [0.5, 0.75, 1, 1.25, 1.5, 2];
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public EventCallback OnPlay { get; set; }
+    [Parameter] public EventCallback OnPause { get; set; }
+    [Parameter] public EventCallback OnEnded { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private ElementReference _videoEl;
+
+    private bool _isPlaying;
+    private bool _isLoading = true;
+    private bool _hasError;
+    private bool _needsExternalEngine;
+    private bool _isMuted;
+    private bool _isFullscreen;
+    private bool _isPip;
+    private bool _pipSupported;
+    private bool _captionsOn;
+    private bool _showRateMenu;
+    private double _currentTime;
+    private double _duration;
+    private double _bufferedEnd;
+    private double _volume = 1;
+    private double _playbackRate = 1;
+    private CancellationTokenSource? _pollCts;
+
+    protected override void OnInitialized() => _isMuted = Muted;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        try
+        {
+            _pipSupported = await JS.InvokeAsync<bool>("MyStackBlazor.mediaSupportsPip", _videoEl);
+        }
+        catch { /* SSR prerender: no JS yet */ }
+
+        var primary = Sources is { Count: > 0 } ? Sources[0] : (Src is not null ? new VideoSource(Src) : null);
+        if (primary is not null && IsHlsOrDash(primary) && (Sources?.Count ?? 1) == 1)
+        {
+            try
+            {
+                var nativeHls = await JS.InvokeAsync<bool>("MyStackBlazor.mediaCanPlayNativeHls", _videoEl);
+                if (!nativeHls)
+                {
+                    var attached = await JS.InvokeAsync<bool>("MyStackBlazor.mediaAttachCustomEngine", _videoEl, primary.Src);
+                    if (!attached)
+                    {
+                        _needsExternalEngine = true;
+                        StateHasChanged();
+                    }
+                }
+            }
+            catch { }
+        }
+    }
+
+    private static bool IsHlsOrDash(VideoSource s) =>
+        s.Type is "application/vnd.apple.mpegurl" or "application/x-mpegURL" or "application/dash+xml"
+        || s.Src.EndsWith(".m3u8", StringComparison.OrdinalIgnoreCase)
+        || s.Src.EndsWith(".mpd", StringComparison.OrdinalIgnoreCase);
+
+    private async Task HandlePlay()
+    {
+        _isPlaying = true;
+        StartPolling();
+        await OnPlay.InvokeAsync();
+    }
+
+    private async Task HandlePause()
+    {
+        _isPlaying = false;
+        StopPolling();
+        await OnPause.InvokeAsync();
+    }
+
+    private async Task HandleEnded()
+    {
+        _isPlaying = false;
+        StopPolling();
+        await OnEnded.InvokeAsync();
+    }
+
+    private void HandleWaiting() => _isLoading = true;
+    private void HandlePlaying() => _isLoading = false;
+    private void HandleCanPlay() => _isLoading = false;
+
+    private void HandleError()
+    {
+        _hasError = true;
+        _isLoading = false;
+        StopPolling();
+    }
+
+    private async Task HandleLoadedMetadata()
+    {
+        _isLoading = false;
+        try
+        {
+            var state = await JS.InvokeAsync<MediaPlaybackState>("MyStackBlazor.mediaGetPlaybackState", _videoEl);
+            _duration = state.Duration;
+            _currentTime = state.CurrentTime;
+        }
+        catch { }
+    }
+
+    private async Task TogglePlay()
+    {
+        if (_hasError) return;
+        if (_isPlaying) await JS.InvokeVoidAsync("MyStackBlazor.mediaPause", _videoEl);
+        else await JS.InvokeVoidAsync("MyStackBlazor.mediaPlay", _videoEl);
+    }
+
+    private async Task ToggleMute()
+    {
+        _isMuted = !_isMuted;
+        await JS.InvokeVoidAsync("MyStackBlazor.mediaSetMuted", _videoEl, _isMuted);
+    }
+
+    private async Task OnSeekInput(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var t))
+        {
+            _currentTime = t;
+            await JS.InvokeVoidAsync("MyStackBlazor.mediaSeek", _videoEl, t);
+        }
+    }
+
+    private async Task OnVolumeInput(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var v))
+        {
+            _volume = v;
+            if (v > 0) _isMuted = false;
+            await JS.InvokeVoidAsync("MyStackBlazor.mediaSetVolume", _videoEl, v);
+            await JS.InvokeVoidAsync("MyStackBlazor.mediaSetMuted", _videoEl, _isMuted);
+        }
+    }
+
+    private async Task SetRate(double rate)
+    {
+        _playbackRate = rate;
+        _showRateMenu = false;
+        await JS.InvokeVoidAsync("MyStackBlazor.mediaSetPlaybackRate", _videoEl, rate);
+    }
+
+    private async Task ToggleCaptions()
+    {
+        _captionsOn = !_captionsOn;
+        await JS.InvokeVoidAsync("MyStackBlazor.mediaSetCaptionsEnabled", _videoEl, _captionsOn);
+    }
+
+    private async Task ToggleFullscreen()
+    {
+        if (_isFullscreen) await JS.InvokeVoidAsync("MyStackBlazor.mediaExitFullscreen");
+        else await JS.InvokeVoidAsync("MyStackBlazor.mediaRequestFullscreen", _videoEl);
+        _isFullscreen = !_isFullscreen;
+    }
+
+    private async Task TogglePip()
+    {
+        if (_isPip) await JS.InvokeVoidAsync("MyStackBlazor.mediaExitPip");
+        else await JS.InvokeVoidAsync("MyStackBlazor.mediaRequestPip", _videoEl);
+        _isPip = !_isPip;
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case " " or "k": await TogglePlay(); break;
+            case "m": await ToggleMute(); break;
+            case "f": await ToggleFullscreen(); break;
+            case "ArrowRight" when !Live:
+                _currentTime = Math.Min(_currentTime + 5, _duration);
+                await JS.InvokeVoidAsync("MyStackBlazor.mediaSeek", _videoEl, _currentTime);
+                break;
+            case "ArrowLeft" when !Live:
+                _currentTime = Math.Max(_currentTime - 5, 0);
+                await JS.InvokeVoidAsync("MyStackBlazor.mediaSeek", _videoEl, _currentTime);
+                break;
+            case "ArrowUp":
+                _volume = Math.Min(_volume + 0.1, 1);
+                await JS.InvokeVoidAsync("MyStackBlazor.mediaSetVolume", _videoEl, _volume);
+                break;
+            case "ArrowDown":
+                _volume = Math.Max(_volume - 0.1, 0);
+                await JS.InvokeVoidAsync("MyStackBlazor.mediaSetVolume", _videoEl, _volume);
+                break;
+        }
+    }
+
+    private void StartPolling()
+    {
+        StopPolling();
+        _pollCts = new CancellationTokenSource();
+        _ = PollLoop(_pollCts.Token);
+    }
+
+    private void StopPolling()
+    {
+        _pollCts?.Cancel();
+        _pollCts?.Dispose();
+        _pollCts = null;
+    }
+
+    private async Task PollLoop(CancellationToken token)
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(250));
+            while (await timer.WaitForNextTickAsync(token))
+            {
+                var state = await JS.InvokeAsync<MediaPlaybackState>("MyStackBlazor.mediaGetPlaybackState", _videoEl);
+                _currentTime = state.CurrentTime;
+                _duration = state.Duration;
+                _bufferedEnd = state.BufferedEnd;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (ObjectDisposedException) { }
+        catch (JSDisconnectedException) { }
+    }
+
+    private string SeekTrackStyle
+    {
+        get
+        {
+            var pct = _duration > 0 ? Math.Clamp(_currentTime / _duration * 100, 0, 100) : 0;
+            var bufPct = _duration > 0 ? Math.Clamp(_bufferedEnd / _duration * 100, 0, 100) : 0;
+            return FormattableString.Invariant(
+                $"background: linear-gradient(to right, white {pct:0.##}%, rgba(255,255,255,.45) {pct:0.##}% {bufPct:0.##}%, rgba(255,255,255,.25) {bufPct:0.##}%)");
+        }
+    }
+
+    private static string FormatTime(double seconds)
+    {
+        if (double.IsNaN(seconds) || seconds < 0) seconds = 0;
+        var ts = TimeSpan.FromSeconds(seconds);
+        return ts.Hours > 0 ? ts.ToString(@"h\:mm\:ss") : ts.ToString(@"m\:ss");
+    }
+
+    private record MediaPlaybackState(double CurrentTime, double Duration, double BufferedEnd, bool Paused, bool Ended);
+
+    public async ValueTask DisposeAsync()
+    {
+        StopPolling();
+        if (_isFullscreen)
+        {
+            try { await JS.InvokeVoidAsync("MyStackBlazor.mediaExitFullscreen"); } catch { }
+        }
+    }
+}

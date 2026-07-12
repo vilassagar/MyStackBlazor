@@ -1,0 +1,204 @@
+@page "/chat"
+
+<PageTitle>Chat &amp; AI Elements — MyStackBlazor Demo</PageTitle>
+
+<h1 class="text-3xl font-bold mb-1">Chat &amp; AI Elements</h1>
+<p class="text-muted-foreground mb-6">
+    Presentational building blocks for chat and AI interfaces, in the same spirit as shadcn/ui's AI Elements —
+    <code>StackChatMessage</code> (bubble), <code>StackChatMessageList</code> (stick-to-bottom scroller), and
+    <code>StackChatAttachment</code> (file/image chip). Bring your own backend/streaming source; these only render.
+</p>
+
+<div class="mb-6 flex flex-wrap gap-2">
+    @foreach (var f in new[]
+    {
+        "User / assistant / system roles", "Avatars", "Timestamps", "Streaming cursor",
+        "Copy-to-clipboard action", "File & image attachments", "Removable attachment chips",
+        "Auto stick-to-bottom scrolling", "\"New messages\" indicator when scrolled up"
+    })
+    {
+        <span class="rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground">@f</span>
+    }
+</div>
+
+<!-- Basic conversation -->
+<DemoSection Title="Message bubbles"
+             Description="Role-aware bubbles: user (right, primary color), assistant (left, muted, with avatar), system (centered)."
+             Code="@_basicCode">
+    <div class="flex w-full max-w-xl flex-col gap-4">
+        <StackChatMessage Role="ChatRole.System" Content="Conversation started" />
+        <StackChatMessage Role="ChatRole.User" Content="Can you add a chat UI to MyStackBlazor?" Timestamp="DateTime.Now.AddMinutes(-2)" />
+        <StackChatMessage Role="ChatRole.Assistant" Content="Done — StackChatMessage, StackChatMessageList, and StackChatAttachment are ready to use." AvatarInitials="AI" SenderName="Assistant" Timestamp="DateTime.Now.AddMinutes(-1)" />
+    </div>
+</DemoSection>
+
+<!-- Streaming -->
+<DemoSection Title="Streaming response"
+             Description="Set IsStreaming to show an animated cursor while content arrives token-by-token from your model."
+             Code="@_streamingCode">
+    <div class="flex w-full max-w-xl flex-col gap-4">
+        @foreach (var m in _streamMessages)
+        {
+            <StackChatMessage Role="m.Role" Content="@m.Content" IsStreaming="m.IsStreaming" AvatarInitials="@(m.Role == ChatRole.Assistant ? "AI" : "You")" />
+        }
+        <div>
+            <StackButton OnClick="SimulateStreaming" Disabled="_streaming" Size="sm">
+                @(_streaming ? "Streaming…" : "Simulate streaming reply")
+            </StackButton>
+        </div>
+    </div>
+</DemoSection>
+
+<!-- Attachments -->
+<DemoSection Title="Attachments"
+             Description="StackChatAttachment renders an image thumbnail or a generic file chip, with an optional remove button for a compose preview."
+             Code="@_attachmentCode">
+    <div class="w-full max-w-xl space-y-4">
+        <StackChatMessage Role="ChatRole.User" Content="Here's the mockup and the spec doc." Attachments="_demoAttachments" Timestamp="DateTime.Now" />
+
+        <div class="space-y-1.5">
+            <p class="text-sm font-medium">Compose preview (removable)</p>
+            <div class="flex flex-wrap gap-1.5">
+                @foreach (var a in _composeAttachments)
+                {
+                    <StackChatAttachment Attachment="a" Removable OnRemove="RemoveComposeAttachment" />
+                }
+                @if (_composeAttachments.Count == 0)
+                {
+                    <p class="text-xs text-muted-foreground">All attachments removed.</p>
+                }
+            </div>
+        </div>
+    </div>
+</DemoSection>
+
+<!-- Auto-scroll -->
+<DemoSection Title="Auto-scrolling message list"
+             Description='StackChatMessageList sticks to the bottom as messages arrive. Scroll up, then add a message — a "New messages" button appears instead of yanking your scroll position.'
+             Code="@_scrollCode">
+    <div class="w-full max-w-xl space-y-2">
+        <StackChatMessageList Class="h-72 rounded-lg border p-4">
+            @foreach (var m in _scrollMessages)
+            {
+                <StackChatMessage Role="m.Role" Content="@m.Content" Timestamp="m.Timestamp" AvatarInitials="@(m.Role == ChatRole.Assistant ? "AI" : "You")" ShowCopyAction="false" />
+            }
+        </StackChatMessageList>
+        <StackButton OnClick="AddScrollMessage" Size="sm" Variant="outline">Add message</StackButton>
+    </div>
+</DemoSection>
+
+@code {
+    private sealed class ChatEntry
+    {
+        public ChatRole Role { get; set; }
+        public string Content { get; set; } = "";
+        public DateTime Timestamp { get; set; } = DateTime.Now;
+        public bool IsStreaming { get; set; }
+    }
+
+    // ── Streaming demo ───────────────────────────────────────────────────
+    private readonly List<ChatEntry> _streamMessages =
+    [
+        new() { Role = ChatRole.User, Content = "Summarize the new Chat components in one sentence." }
+    ];
+    private bool _streaming;
+
+    private async Task SimulateStreaming()
+    {
+        if (_streaming) return;
+        _streaming = true;
+        const string full = "StackChatMessage, StackChatMessageList, and StackChatAttachment give you Tailwind-styled chat building blocks with zero required backend.";
+        var entry = new ChatEntry { Role = ChatRole.Assistant, Content = "", IsStreaming = true };
+        _streamMessages.Add(entry);
+        StateHasChanged();
+
+        foreach (var word in full.Split(' '))
+        {
+            entry.Content += (entry.Content.Length > 0 ? " " : "") + word;
+            StateHasChanged();
+            await Task.Delay(60);
+        }
+
+        entry.IsStreaming = false;
+        _streaming = false;
+        StateHasChanged();
+    }
+
+    // ── Attachments demo ─────────────────────────────────────────────────
+    private const string _placeholderThumb =
+        "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%233b82f6'/%3E%3C/svg%3E";
+
+    private readonly List<ChatAttachment> _demoAttachments =
+    [
+        new("mockup.png", _placeholderThumb, "image/png", 88_000),
+        new("design-spec.pdf", ContentType: "application/pdf", SizeBytes: 245_000),
+    ];
+
+    private readonly List<ChatAttachment> _composeAttachments =
+    [
+        new("screenshot.png", _placeholderThumb, "image/png", 62_000),
+        new("notes.txt", ContentType: "text/plain", SizeBytes: 1_200),
+    ];
+
+    private void RemoveComposeAttachment(ChatAttachment a) => _composeAttachments.Remove(a);
+
+    // ── Auto-scroll demo ─────────────────────────────────────────────────
+    private readonly List<ChatEntry> _scrollMessages = SeedMessages();
+
+    private static List<ChatEntry> SeedMessages()
+    {
+        var list = new List<ChatEntry>();
+        for (var i = 1; i <= 10; i++)
+        {
+            list.Add(new ChatEntry
+            {
+                Role = i % 2 == 0 ? ChatRole.Assistant : ChatRole.User,
+                Content = $"Message #{i} — sample content for scroll testing.",
+                Timestamp = DateTime.Now.AddMinutes(-10 + i),
+            });
+        }
+        return list;
+    }
+
+    private void AddScrollMessage() =>
+        _scrollMessages.Add(new ChatEntry { Role = ChatRole.Assistant, Content = $"New message at {DateTime.Now:T}", Timestamp = DateTime.Now });
+
+    // ── Code snippets ────────────────────────────────────────────────────
+    private const string _basicCode = """
+        <StackChatMessage Role="ChatRole.System" Content="Conversation started" />
+        <StackChatMessage Role="ChatRole.User" Content="Can you add a chat UI?" Timestamp="DateTime.Now" />
+        <StackChatMessage Role="ChatRole.Assistant" Content="Done." AvatarInitials="AI" SenderName="Assistant" />
+        """;
+
+    private const string _streamingCode = """
+        <StackChatMessage Role="ChatRole.Assistant" Content="@partialText" IsStreaming="true" />
+
+        foreach (var word in fullText.Split(' '))
+        {
+            partialText += " " + word;
+            StateHasChanged();
+            await Task.Delay(60);
+        }
+        """;
+
+    private const string _attachmentCode = """
+        <StackChatMessage Role="ChatRole.User" Content="Here's the file." Attachments="_attachments" />
+
+        <StackChatAttachment Attachment="a" Removable OnRemove="Remove" />
+
+        private readonly List<ChatAttachment> _attachments =
+        [
+            new("mockup.png", url, "image/png", 88_000),
+            new("spec.pdf", ContentType: "application/pdf", SizeBytes: 245_000),
+        ];
+        """;
+
+    private const string _scrollCode = """
+        <StackChatMessageList Class="h-72 rounded-lg border p-4">
+            @foreach (var m in _messages)
+            {
+                <StackChatMessage Role="m.Role" Content="@m.Content" Timestamp="m.Timestamp" />
+            }
+        </StackChatMessageList>
+        """;
+}

@@ -1,0 +1,73 @@
+@namespace MyStackBlazor.Components.Form
+@implements IDisposable
+
+@if (_messages.Count > 0)
+{
+    <div class="@($"flex gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive {Class}".Trim())"
+         role="alert"
+         aria-live="polite"
+         @attributes="AdditionalAttributes">
+        @if (ShowIcon)
+        {
+            <svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+        }
+        <div class="space-y-1">
+            @if (!string.IsNullOrEmpty(HeaderText))
+            {
+                <p class="font-medium">@HeaderText</p>
+            }
+            <ul class="list-disc space-y-0.5 pl-4">
+                @foreach (var msg in _messages)
+                {
+                    <li>@msg</li>
+                }
+            </ul>
+        </div>
+    </div>
+}
+
+@code {
+    [CascadingParameter] private EditContext? EditContext { get; set; }
+
+    /// <summary>When set, only shows model-level errors (those not associated with a specific field) — mirrors the stock Blazor ValidationSummary.</summary>
+    [Parameter] public object? Model { get; set; }
+    [Parameter] public string? HeaderText { get; set; } = "Please correct the following errors:";
+    [Parameter] public bool ShowIcon { get; set; } = true;
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private List<string> _messages = [];
+
+    protected override void OnInitialized()
+    {
+        if (EditContext is null)
+            throw new InvalidOperationException(
+                $"{nameof(StackValidationSummary)} requires a cascading {nameof(EditContext)}. Place it inside an <EditForm>.");
+
+        EditContext.OnValidationStateChanged += OnValidationChanged;
+        RefreshMessages();
+    }
+
+    private void OnValidationChanged(object? sender, ValidationStateChangedEventArgs _)
+    {
+        RefreshMessages();
+        StateHasChanged();
+    }
+
+    private void RefreshMessages()
+    {
+        if (EditContext is null) return;
+        _messages = (Model is not null
+                ? EditContext.GetValidationMessages(new FieldIdentifier(Model, string.Empty))
+                : EditContext.GetValidationMessages())
+            .ToList();
+    }
+
+    public void Dispose()
+    {
+        if (EditContext is not null)
+            EditContext.OnValidationStateChanged -= OnValidationChanged;
+    }
+}
