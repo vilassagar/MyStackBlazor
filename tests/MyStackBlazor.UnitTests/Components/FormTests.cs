@@ -40,7 +40,7 @@ public class SwitchTests : TestContext
     public void Switch_Unchecked_AppliesTintClass()
     {
         var cut = RenderComponent<Switch>(p => p.Add(s => s.Checked, false));
-        cut.Find("[role=switch]").ClassName.Should().Contain("bg-primary/15");
+        cut.Find("[role=switch]").ClassName.Should().Contain("bg-muted");
     }
 
     [Fact]
