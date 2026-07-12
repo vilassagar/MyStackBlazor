@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <PackageId>MyStackBlazor.Accessibility</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.3.0</Version>
     <Authors>Vilas Sagar</Authors>
     <Description>WCAG 2.2 accessibility helpers for MyStackBlazor: ARIA binding base class, focus management, keyboard navigation utilities.</Description>
     <PackageTags>blazor;accessibility;wcag;aria;a11y</PackageTags>
