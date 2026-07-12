@@ -1,0 +1,26 @@
+@namespace MyStackBlazor.Components.Common
+@inject IJSRuntime JS
+
+@* Renders nothing — loads Src via a dynamically injected <script> tag on first render. *@
+
+@code {
+    [Parameter, EditorRequired] public string Src { get; set; } = "";
+    [Parameter] public bool Async { get; set; } = true;
+    [Parameter] public bool Defer { get; set; }
+    [Parameter] public EventCallback OnLoaded { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || string.IsNullOrEmpty(Src)) return;
+
+        try
+        {
+            await JS.InvokeVoidAsync("MyStackBlazor.loadScript", Src, Async, Defer);
+            await OnLoaded.InvokeAsync();
+        }
+        catch
+        {
+            // Script failed to load or JS interop unavailable (e.g. prerendering) — safe to ignore.
+        }
+    }
+}

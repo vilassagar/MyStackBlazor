@@ -1,0 +1,67 @@
+@namespace MyStackBlazor.Components.Common
+
+<div class="@ComputedClass" @attributes="AdditionalAttributes">
+    <div class="flex gap-3">
+        <span class="mt-0.5 flex-shrink-0 @IconClass">
+            @switch (Variant)
+            {
+                case "Tip":
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 18h6m-5 3h4m-4.5-3v-1.5a3.5 3.5 0 10-4-5.75A6 6 0 1015.5 16.5V18" />
+                    </svg>
+                    break;
+                case "Warning":
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                    </svg>
+                    break;
+                case "Danger":
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                    </svg>
+                    break;
+                default:
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                    </svg>
+                    break;
+            }
+        </span>
+        <div class="min-w-0 flex-1 text-sm">
+            @if (!string.IsNullOrEmpty(Title))
+            {
+                <p class="mb-1 font-semibold">@Title</p>
+            }
+            <div>@ChildContent</div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Title { get; set; }
+    /// <summary>Info, Tip, Warning, or Danger.</summary>
+    [Parameter] public string Variant { get; set; } = "Info";
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private const string BaseClass = "w-full rounded-md border-l-4 p-4";
+
+    private string ComputedClass => $"{BaseClass} {VariantClass} {Class}".Trim();
+
+    private string VariantClass => Variant switch
+    {
+        "Tip"     => "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+        "Warning" => "border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+        "Danger"  => "border-destructive bg-destructive/10 text-destructive",
+        _         => "border-blue-500 bg-blue-500/10 text-blue-700 dark:text-blue-400",
+    };
+
+    private string IconClass => Variant switch
+    {
+        "Tip"     => "text-emerald-500",
+        "Warning" => "text-amber-500",
+        "Danger"  => "text-destructive",
+        _         => "text-blue-500",
+    };
+}

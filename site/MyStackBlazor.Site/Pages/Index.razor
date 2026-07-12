@@ -1,0 +1,177 @@
+@page "/"
+
+<PageTitle>MyStackBlazor — 200+ Blazor UI components built with Tailwind CSS</PageTitle>
+
+<!-- Hero -->
+<section class="hero-gradient border-b">
+    <div class="max-w-5xl mx-auto px-6 py-24 text-center">
+        <span class="inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground mb-6">
+            .NET 10 · Tailwind CSS v4 · WASM, Server &amp; MAUI
+        </span>
+        <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight mb-6">
+            Build Blazor apps<br class="hidden sm:block" /> with <span class="text-primary">200+ components</span>
+        </h1>
+        <p class="text-lg text-muted-foreground max-w-2xl mx-auto mb-10">
+            MyStackBlazor is a free, open-source component library for Blazor — forms, data grids, charts,
+            overlays, navigation, and full page blocks, all styled with Tailwind CSS and themeable out of the box.
+        </p>
+        <div class="flex flex-wrap items-center justify-center gap-3 mb-10">
+            <a href="docs" class="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground px-6 py-3 text-sm font-medium hover:opacity-90 transition-opacity">
+                Get Started
+            </a>
+            <a href="https://github.com/vilassagar/MyStackBlazor" target="_blank" rel="noopener"
+               class="inline-flex items-center justify-center rounded-md border bg-card px-6 py-3 text-sm font-medium hover:bg-accent transition-colors">
+                View on GitHub
+            </a>
+        </div>
+        <div class="mx-auto max-w-md rounded-lg border bg-card text-left overflow-hidden">
+            <div class="flex items-center justify-between px-4 py-2 border-b text-xs text-muted-foreground">
+                <span>Install</span>
+                <button type="button" class="rounded-md border px-2 py-0.5 hover:bg-accent hover:text-accent-foreground transition-colors" @onclick="CopyInstallCommand">
+                    @(_copied ? "Copied!" : "Copy")
+                </button>
+            </div>
+            <pre class="px-4 py-3 text-sm overflow-x-auto m-0"><code>dotnet add package MyStackBlazor</code></pre>
+        </div>
+    </div>
+</section>
+
+<!-- Stats -->
+<section class="border-b">
+    <div class="max-w-5xl mx-auto px-6 py-12 grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
+        <div>
+            <p class="text-3xl font-bold text-primary">200+</p>
+            <p class="text-sm text-muted-foreground mt-1">Components</p>
+        </div>
+        <div>
+            <p class="text-3xl font-bold text-primary">7</p>
+            <p class="text-sm text-muted-foreground mt-1">NuGet packages</p>
+        </div>
+        <div>
+            <p class="text-3xl font-bold text-primary">3</p>
+            <p class="text-sm text-muted-foreground mt-1">Hosting models</p>
+        </div>
+        <div>
+            <p class="text-3xl font-bold text-primary">MIT</p>
+            <p class="text-sm text-muted-foreground mt-1">Licensed</p>
+        </div>
+    </div>
+</section>
+
+<!-- Feature grid -->
+<section class="max-w-5xl mx-auto px-6 py-20">
+    <div class="text-center mb-12">
+        <h2 class="text-3xl font-bold mb-3">Everything you need, in one library</h2>
+        <p class="text-muted-foreground max-w-xl mx-auto">
+            From simple buttons to enterprise data grids — one consistent design system, fully themeable with CSS variables.
+        </p>
+    </div>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        @foreach (var feature in _features)
+        {
+            <div class="rounded-lg border bg-card p-6">
+                <div class="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center mb-4">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="@feature.IconPath" />
+                    </svg>
+                </div>
+                <h3 class="font-semibold mb-1.5">@feature.Title</h3>
+                <p class="text-sm text-muted-foreground">@feature.Description</p>
+            </div>
+        }
+    </div>
+</section>
+
+<!-- Code teaser -->
+<section class="border-t bg-muted/30">
+    <div class="max-w-5xl mx-auto px-6 py-20 grid md:grid-cols-2 gap-10 items-center">
+        <div>
+            <h2 class="text-3xl font-bold mb-4">Drop it in, style it your way</h2>
+            <p class="text-muted-foreground mb-6">
+                Every component is a plain Razor tag with predictable parameters — two-way binding, Tailwind
+                utility overrides via <code class="text-xs bg-muted px-1.5 py-0.5 rounded">Class</code>, and
+                design tokens you can restyle globally in one place.
+            </p>
+            <a href="docs/forms" class="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+                Browse form components →
+            </a>
+        </div>
+        <div class="rounded-lg border bg-card overflow-hidden">
+            <pre class="px-6 py-5 text-sm overflow-x-auto m-0"><code>&lt;StackInput @@bind-Value="_name" Placeholder="Jane Doe" /&gt;
+
+&lt;StackButton Variant="default" OnClick="Save"&gt;
+    Save
+&lt;/StackButton&gt;
+
+&lt;MsDataGrid TItem="Product" Items="_products" Pageable PageSize="10"&gt;
+    &lt;MsDataGridColumn TItem="Product" Field="@@nameof(Product.Name)" Sortable /&gt;
+    &lt;MsDataGridColumn TItem="Product" Field="@@nameof(Product.Price)" Sortable /&gt;
+&lt;/MsDataGrid&gt;</code></pre>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="max-w-5xl mx-auto px-6 py-20 text-center">
+    <h2 class="text-3xl font-bold mb-4">Ready to build?</h2>
+    <p class="text-muted-foreground mb-8 max-w-xl mx-auto">
+        Explore the full component catalog, copy working examples, and ship your next Blazor app faster.
+    </p>
+    <div class="flex flex-wrap items-center justify-center gap-3">
+        <a href="docs" class="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground px-6 py-3 text-sm font-medium hover:opacity-90 transition-opacity">
+            Browse the Docs
+        </a>
+        <a href="https://www.nuget.org/packages/MyStackBlazor" target="_blank" rel="noopener"
+           class="inline-flex items-center justify-center rounded-md border bg-card px-6 py-3 text-sm font-medium hover:bg-accent transition-colors">
+            View on NuGet
+        </a>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="border-t">
+    <div class="max-w-5xl mx-auto px-6 py-10 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
+        <span>© @DateTime.Now.Year MyStackBlazor. MIT Licensed.</span>
+        <div class="flex items-center gap-4">
+            <a href="docs" class="hover:text-foreground transition-colors">Docs</a>
+            <a href="https://github.com/vilassagar/MyStackBlazor" target="_blank" rel="noopener" class="hover:text-foreground transition-colors">GitHub</a>
+            <a href="https://www.nuget.org/packages/MyStackBlazor" target="_blank" rel="noopener" class="hover:text-foreground transition-colors">NuGet</a>
+        </div>
+    </div>
+</footer>
+
+@code {
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    private bool _copied;
+
+    private sealed record Feature(string Title, string Description, string IconPath);
+
+    private readonly List<Feature> _features =
+    [
+        new("Forms", "Inputs, selects, date/time pickers, currency, OTP, file upload, and full validation support.",
+            "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"),
+        new("Data Grid", "Sorting, filtering, grouping, virtualization, editing, frozen columns, and Excel export.",
+            "M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"),
+        new("Charts", "Bar, line, pie, doughnut, radar, polar area, scatter, and gauge — pure SVG, no dependencies.",
+            "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"),
+        new("Overlays", "Dialogs, drawers, sheets, popovers, tooltips, toasts, and a service-driven confirm dialog.",
+            "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"),
+        new("Navigation", "Tabs, breadcrumbs, sidebars, menus, steppers, and pagination.",
+            "M4 6h16M4 12h16M4 18h16"),
+        new("Theming", "Light &amp; dark mode out of the box, driven by CSS custom properties you control.",
+            "M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"),
+    ];
+
+    private async Task CopyInstallCommand()
+    {
+        _copied = await JS.InvokeAsync<bool>("MyStackBlazorSite.copyText", "dotnet add package MyStackBlazor");
+        StateHasChanged();
+        if (_copied)
+        {
+            await Task.Delay(1500);
+            _copied = false;
+            StateHasChanged();
+        }
+    }
+}

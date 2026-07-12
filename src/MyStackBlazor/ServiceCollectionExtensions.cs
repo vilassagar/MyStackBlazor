@@ -19,6 +19,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<ThemeService>();
         services.AddScoped<ToastService>();
+        services.AddScoped<DialogService>();
         services.AddScoped<MsStyleLoader>();
         return services;
     }

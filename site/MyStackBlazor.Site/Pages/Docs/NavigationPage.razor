@@ -1,0 +1,399 @@
+@page "/docs/navigation"
+@inject ToastService Toast
+
+<PageTitle>Navigation — MyStackBlazor Docs</PageTitle>
+
+<h1 class="text-3xl font-bold mb-1">Navigation</h1>
+<p class="text-muted-foreground mb-8">Breadcrumbs, dropdowns, toolbars, app bars, FAB, steppers, and wizards.</p>
+
+<!-- Breadcrumb -->
+<CodeSample Title="Breadcrumb"
+             Description="Navigational trail. The last BreadcrumbItem should have IsCurrentPage set."
+             Code="@_breadcrumbCode">
+    <StackBreadcrumb>
+        <StackBreadcrumbItem Href="/">Home</StackBreadcrumbItem>
+        <StackBreadcrumbItem Href="/components">Components</StackBreadcrumbItem>
+        <StackBreadcrumbItem IsCurrentPage ShowSeparator="false">Navigation</StackBreadcrumbItem>
+    </StackBreadcrumb>
+</CodeSample>
+
+<!-- DropdownMenu -->
+<CodeSample Title="Dropdown Menu"
+             Description="Click the trigger to open. Items close the menu on click. Supports Icon, Shortcut, Disabled, and Destructive."
+             Code="@_dropdownCode">
+    <div class="flex flex-wrap gap-4">
+        <StackDropdownMenu>
+            <Trigger>
+                <StackButton Variant="outline">
+                    Options
+                    <svg class="ml-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </StackButton>
+            </Trigger>
+            <Content>
+                <StackDropdownMenuItem Shortcut="⌘P" OnClick="@(() => Toast.Show("Profile clicked"))">
+                    <Icon>
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                    </Icon>
+                    <ChildContent>Profile</ChildContent>
+                </StackDropdownMenuItem>
+                <StackDropdownMenuItem Shortcut="⌘," OnClick="@(() => Toast.Show("Settings clicked"))">
+                    <Icon>
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </Icon>
+                    <ChildContent>Settings</ChildContent>
+                </StackDropdownMenuItem>
+                <StackDropdownMenuItem Disabled>Billing (coming soon)</StackDropdownMenuItem>
+                <StackDropdownMenuItem Destructive Shortcut="⇧⌘Q" OnClick="@(() => Toast.Show("Logged out", "Bye!", "destructive"))">
+                    Log out
+                </StackDropdownMenuItem>
+            </Content>
+        </StackDropdownMenu>
+
+        <StackDropdownMenu Align="end">
+            <Trigger>
+                <StackButton Size="icon" Variant="ghost" AriaLabel="More actions">
+                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                        <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                    </svg>
+                </StackButton>
+            </Trigger>
+            <Content>
+                <StackDropdownMenuItem OnClick="@(() => Toast.Show("Copied!"))">Copy link</StackDropdownMenuItem>
+                <StackDropdownMenuItem OnClick="@(() => Toast.Show("Shared!"))">Share</StackDropdownMenuItem>
+                <StackDropdownMenuItem Destructive>Delete</StackDropdownMenuItem>
+            </Content>
+        </StackDropdownMenu>
+    </div>
+</CodeSample>
+
+<!-- Toolbar -->
+<CodeSample Title="Toolbar"
+             Description="Horizontal toolbar container. Pair with ButtonGroup, ToggleButton, and Separator."
+             Code="@_toolbarCode">
+    <div class="w-full max-w-lg">
+        <StackToolbar Class="rounded-md border p-1 bg-background">
+            <StackButtonGroup>
+                <StackButton Size="icon" Variant="ghost" AriaLabel="Bold">
+                    <svg class="h-4 w-4 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 4h8a4 4 0 010 8H6zM6 12h9a4 4 0 010 8H6z" /></svg>
+                </StackButton>
+                <StackButton Size="icon" Variant="ghost" AriaLabel="Italic">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 4h-9M14 20H5M15 4L9 20" /></svg>
+                </StackButton>
+                <StackButton Size="icon" Variant="ghost" AriaLabel="Underline">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v8a5 5 0 0010 0V4M5 20h14" /></svg>
+                </StackButton>
+            </StackButtonGroup>
+            <StackSeparator Orientation="vertical" Class="h-6 mx-1" />
+            <StackButtonGroup>
+                <StackButton Size="icon" Variant="ghost" AriaLabel="Align left">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h10M4 18h14" /></svg>
+                </StackButton>
+                <StackButton Size="icon" Variant="ghost" AriaLabel="Align center">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M7 12h10M5 18h14" /></svg>
+                </StackButton>
+                <StackButton Size="icon" Variant="ghost" AriaLabel="Align right">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M10 12h10M6 18h14" /></svg>
+                </StackButton>
+            </StackButtonGroup>
+        </StackToolbar>
+    </div>
+</CodeSample>
+
+<!-- AppBar -->
+<CodeSample Title="App Bar"
+             Description="Sticky top header with StartContent and EndContent slots."
+             Code="@_appBarCode">
+    <div class="w-full max-w-2xl rounded-lg border overflow-hidden">
+        <StackAppBar>
+            <StartContent>
+                <div class="flex items-center gap-2">
+                    <span class="font-bold text-primary">MyStack</span><span class="font-bold">Blazor</span>
+                </div>
+            </StartContent>
+            <EndContent>
+                <div class="flex items-center gap-2">
+                    <StackButton Variant="ghost" Size="sm">Docs</StackButton>
+                    <StackButton Size="sm">Sign in</StackButton>
+                </div>
+            </EndContent>
+        </StackAppBar>
+        <div class="p-6 text-sm text-muted-foreground">Page content goes here.</div>
+    </div>
+</CodeSample>
+
+<!-- FloatingActionButton -->
+<CodeSample Title="Floating Action Button"
+             Description="Fixed-position circular button. Set Position to choose corner."
+             Code="@_fabCode">
+    <div class="relative w-full h-32 rounded-lg border bg-muted/30 overflow-hidden">
+        <p class="p-4 text-sm text-muted-foreground">Container simulating a page area</p>
+        <div class="absolute bottom-3 right-3">
+            <StackFloatingActionButton Position="bottom-right" OnClick="@(() => Toast.Show("FAB clicked!"))">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+            </StackFloatingActionButton>
+        </div>
+    </div>
+</CodeSample>
+
+<!-- Stepper -->
+<CodeSample Title="Stepper"
+             Description="Multi-step workflow with linear progression. Set Vertical for a sidebar layout."
+             Code="@_stepperCode">
+    <div class="w-full max-w-lg">
+        <StackStepper ShowNavigation Linear OnComplete="@(() => Toast.Show("All steps complete!", "Done", "success"))">
+            <StackStepperStep Title="Account" Description="Basic details">
+                <div class="space-y-3 py-2">
+                    <StackInput Placeholder="Email address" Type="email" />
+                    <StackInput Placeholder="Display name" />
+                </div>
+            </StackStepperStep>
+            <StackStepperStep Title="Profile" Description="About you">
+                <div class="space-y-3 py-2">
+                    <StackTextarea Placeholder="Short bio…" Rows="3" />
+                    <StackSelect Placeholder="Country">
+                        <option value="in">India</option>
+                        <option value="us">United States</option>
+                        <option value="uk">United Kingdom</option>
+                    </StackSelect>
+                </div>
+            </StackStepperStep>
+            <StackStepperStep Title="Confirm" Description="Review and submit">
+                <p class="text-sm text-muted-foreground py-2">Review your details and click <strong>Finish</strong> to complete setup.</p>
+            </StackStepperStep>
+        </StackStepper>
+    </div>
+</CodeSample>
+
+<!-- Wizard -->
+<CodeSample Title="Wizard"
+             Description="Tab-style multi-step form. Similar to Stepper but with a horizontal header."
+             Code="@_wizardCode">
+    <div class="w-full max-w-lg">
+        <StackWizard ShowNavigation OnFinish="@(() => Toast.Show("Wizard finished!", "Complete", "success"))">
+            <StackWizardStep Title="Choose plan">
+                <div class="py-3">
+                    <StackRadioGroup @bind-Value="_wizPlan">
+                        <StackRadioGroupItem Value="free" Label="Free — $0/month" Id="wiz-free" />
+                        <StackRadioGroupItem Value="pro" Label="Pro — $9/month" Id="wiz-pro" />
+                    </StackRadioGroup>
+                </div>
+            </StackWizardStep>
+            <StackWizardStep Title="Payment">
+                <div class="space-y-3 py-3">
+                    <StackInput Placeholder="Card number" />
+                    <div class="flex gap-2">
+                        <StackInput Placeholder="MM/YY" Class="w-24" />
+                        <StackInput Placeholder="CVV" Class="w-20" />
+                    </div>
+                </div>
+            </StackWizardStep>
+            <StackWizardStep Title="Confirm">
+                <p class="text-sm text-muted-foreground py-3">
+                    Plan: <strong>@(_wizPlan ?? "not selected")</strong>. Click Finish to subscribe.
+                </p>
+            </StackWizardStep>
+        </StackWizard>
+    </div>
+</CodeSample>
+
+<!-- Toggle Group -->
+<CodeSample Title="Toggle Group"
+             Description="A set of toggle buttons where one (or multiple) can be active at a time. Use Size for sm / md / lg."
+             Code="@_toggleGroupCode">
+    <div class="space-y-6">
+        <div>
+            <p class="text-sm font-medium mb-2">Single select — text alignment (sm)</p>
+            <StackToggleGroup Size="sm" @bind-Value="_align">
+                <StackToggleGroupItem Value="left">Left</StackToggleGroupItem>
+                <StackToggleGroupItem Value="center">Center</StackToggleGroupItem>
+                <StackToggleGroupItem Value="right">Right</StackToggleGroupItem>
+            </StackToggleGroup>
+            @if (!string.IsNullOrEmpty(_align))
+            {
+                <p class="mt-1 text-xs text-muted-foreground">Alignment: <strong>@_align</strong></p>
+            }
+        </div>
+        <div>
+            <p class="text-sm font-medium mb-2">Multi-select — formatting (md)</p>
+            <StackToggleGroup Type="multiple" @bind-SelectedValues="_formatting">
+                <StackToggleGroupItem Value="bold">Bold</StackToggleGroupItem>
+                <StackToggleGroupItem Value="italic">Italic</StackToggleGroupItem>
+                <StackToggleGroupItem Value="underline">Underline</StackToggleGroupItem>
+            </StackToggleGroup>
+        </div>
+        <div>
+            <p class="text-sm font-medium mb-2">View mode (lg)</p>
+            <StackToggleGroup Size="lg" @bind-Value="_view">
+                <StackToggleGroupItem Value="grid">Grid</StackToggleGroupItem>
+                <StackToggleGroupItem Value="list">List</StackToggleGroupItem>
+            </StackToggleGroup>
+        </div>
+    </div>
+</CodeSample>
+
+<!-- Navigation Menu -->
+<CodeSample Title="Navigation Menu"
+             Description="Horizontal navigation with click-to-open dropdown content. Use NavigationMenuTrigger for dropdown items and NavigationMenuLink for plain links."
+             Code="@_navMenuCode">
+    <div class="w-full overflow-visible">
+        <StackNavigationMenu>
+            <StackNavigationMenuList>
+                <StackNavigationMenuItem>
+                    <StackNavigationMenuTrigger Size="sm">Getting started</StackNavigationMenuTrigger>
+                    <StackNavigationMenuContent>
+                        <div class="grid gap-1 p-2 w-48">
+                            <StackNavigationMenuLink Href="#" Size="sm">Introduction</StackNavigationMenuLink>
+                            <StackNavigationMenuLink Href="#" Size="sm">Installation</StackNavigationMenuLink>
+                            <StackNavigationMenuLink Href="#" Size="sm">Quick start</StackNavigationMenuLink>
+                        </div>
+                    </StackNavigationMenuContent>
+                </StackNavigationMenuItem>
+                <StackNavigationMenuItem>
+                    <StackNavigationMenuTrigger Size="sm">Components</StackNavigationMenuTrigger>
+                    <StackNavigationMenuContent>
+                        <div class="grid gap-1 p-2 w-48">
+                            <StackNavigationMenuLink Href="#" Size="sm">Button</StackNavigationMenuLink>
+                            <StackNavigationMenuLink Href="#" Size="sm">Input</StackNavigationMenuLink>
+                            <StackNavigationMenuLink Href="#" Size="sm">Card</StackNavigationMenuLink>
+                            <StackNavigationMenuLink Href="#" Size="sm" Active>Dialog</StackNavigationMenuLink>
+                        </div>
+                    </StackNavigationMenuContent>
+                </StackNavigationMenuItem>
+                <StackNavigationMenuItem>
+                    <StackNavigationMenuLink Href="#" Size="sm">Docs</StackNavigationMenuLink>
+                </StackNavigationMenuItem>
+            </StackNavigationMenuList>
+        </StackNavigationMenu>
+    </div>
+</CodeSample>
+
+@code {
+    private string? _wizPlan = "pro";
+
+    private const string _breadcrumbCode = """
+        <StackBreadcrumb>
+            <StackBreadcrumbItem Href="/">Home</StackBreadcrumbItem>
+            <StackBreadcrumbItem Href="/components">Components</StackBreadcrumbItem>
+            <StackBreadcrumbItem IsCurrentPage ShowSeparator="false">Navigation</StackBreadcrumbItem>
+        </StackBreadcrumb>
+        """;
+
+    private const string _dropdownCode = """
+        <StackDropdownMenu>
+            <Trigger>
+                <StackButton Variant="outline">Options ▾</StackButton>
+            </Trigger>
+            <Content>
+                <StackDropdownMenuItem OnClick="HandleProfile">Profile</StackDropdownMenuItem>
+                <StackDropdownMenuItem Shortcut="⌘,">Settings</StackDropdownMenuItem>
+                <StackDropdownMenuItem Disabled>Billing (soon)</StackDropdownMenuItem>
+                <StackDropdownMenuItem Destructive>Log out</StackDropdownMenuItem>
+            </Content>
+        </StackDropdownMenu>
+        """;
+
+    private const string _toolbarCode = """
+        <StackToolbar>
+            <StackButtonGroup>
+                <StackButton Size="icon" Variant="ghost" AriaLabel="Bold">B</StackButton>
+                <StackButton Size="icon" Variant="ghost" AriaLabel="Italic">I</StackButton>
+            </StackButtonGroup>
+            <StackSeparator Orientation="vertical" Class="h-6 mx-1" />
+            <StackButtonGroup>
+                <StackButton Size="icon" Variant="ghost" AriaLabel="Align left">⬅</StackButton>
+                <StackButton Size="icon" Variant="ghost" AriaLabel="Align center">⬌</StackButton>
+            </StackButtonGroup>
+        </StackToolbar>
+        """;
+
+    private const string _appBarCode = """
+        <StackAppBar>
+            <StartContent>
+                <span class="font-bold">MyStackBlazor</span>
+            </StartContent>
+            <EndContent>
+                <StackButton Variant="ghost" Size="sm">Docs</StackButton>
+                <StackButton Size="sm">Sign in</StackButton>
+            </EndContent>
+        </StackAppBar>
+        """;
+
+    private const string _fabCode = """
+        <StackFloatingActionButton Position="bottom-right" OnClick="HandleAdd">
+            <svg class="h-5 w-5" ...><path d="M12 4v16m8-8H4" /></svg>
+        </StackFloatingActionButton>
+        """;
+
+    private const string _stepperCode = """
+        <StackStepper ShowNavigation Linear OnComplete="HandleComplete">
+            <StackStepperStep Title="Account" Description="Basic details">
+                <StackInput Placeholder="Email" Type="email" />
+            </StackStepperStep>
+            <StackStepperStep Title="Profile" Description="About you">
+                <StackTextarea Placeholder="Bio…" />
+            </StackStepperStep>
+            <StackStepperStep Title="Confirm">
+                <p>Review and submit.</p>
+            </StackStepperStep>
+        </StackStepper>
+        """;
+
+    private const string _wizardCode = """
+        <StackWizard ShowNavigation OnFinish="HandleFinish">
+            <StackWizardStep Title="Choose plan">
+                <StackRadioGroup @bind-Value="_plan">...</StackRadioGroup>
+            </StackWizardStep>
+            <StackWizardStep Title="Payment">
+                <StackInput Placeholder="Card number" />
+            </StackWizardStep>
+            <StackWizardStep Title="Confirm">
+                <p>Click Finish to subscribe.</p>
+            </StackWizardStep>
+        </StackWizard>
+        """;
+
+    private string? _align;
+    private IList<string>? _formatting;
+    private string? _view = "grid";
+
+    private const string _toggleGroupCode = """
+        <!-- Single select -->
+        <StackToggleGroup @bind-Value="_align">
+            <StackToggleGroupItem Value="left">Left</StackToggleGroupItem>
+            <StackToggleGroupItem Value="center">Center</StackToggleGroupItem>
+            <StackToggleGroupItem Value="right">Right</StackToggleGroupItem>
+        </StackToggleGroup>
+
+        <!-- Multi select -->
+        <StackToggleGroup Type="multiple" @bind-SelectedValues="_formatting">
+            <StackToggleGroupItem Value="bold">Bold</StackToggleGroupItem>
+            <StackToggleGroupItem Value="italic">Italic</StackToggleGroupItem>
+        </StackToggleGroup>
+        """;
+
+    private const string _navMenuCode = """
+        <StackNavigationMenu>
+            <StackNavigationMenuList>
+                <StackNavigationMenuItem>
+                    <StackNavigationMenuTrigger>Getting started</StackNavigationMenuTrigger>
+                    <StackNavigationMenuContent>
+                        <StackNavigationMenuLink Href="#">Introduction</StackNavigationMenuLink>
+                        <StackNavigationMenuLink Href="#">Installation</StackNavigationMenuLink>
+                    </StackNavigationMenuContent>
+                </StackNavigationMenuItem>
+                <StackNavigationMenuItem>
+                    <StackNavigationMenuLink Href="#">Docs</StackNavigationMenuLink>
+                </StackNavigationMenuItem>
+            </StackNavigationMenuList>
+        </StackNavigationMenu>
+        """;
+}

@@ -1,0 +1,20 @@
+@namespace MyStackBlazor.Components.Overlays
+@inject DialogService DialogService
+@implements IDisposable
+
+<!-- Place this once in App.razor / MainLayout.razor -->
+<StackAlertDialog IsOpen="DialogService.Current is not null"
+                   Title="DialogService.Current?.Title"
+                   Description="DialogService.Current?.Message"
+                   ConfirmText="@(DialogService.Current?.ConfirmText ?? "Continue")"
+                   CancelText="@(DialogService.Current?.CancelText ?? "Cancel")"
+                   OnConfirm="() => DialogService.Resolve(true)"
+                   OnCancel="() => DialogService.Resolve(false)" />
+
+@code {
+    protected override void OnInitialized() =>
+        DialogService.OnChanged += StateHasChanged;
+
+    public void Dispose() =>
+        DialogService.OnChanged -= StateHasChanged;
+}

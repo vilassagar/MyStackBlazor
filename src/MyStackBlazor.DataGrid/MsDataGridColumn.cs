@@ -24,6 +24,10 @@ public class MsDataGridColumn<TItem> : ComponentBase
     [Parameter] public EditorType EditorType { get; set; } = EditorType.Text;
     /// <summary>Apply an edit string value back to the item. Required when Editable=true.</summary>
     [Parameter] public Action<TItem, string>? ValueSetter { get; set; }
+    /// <summary>Pin this column to the left or right edge of the scrollable grid body.</summary>
+    [Parameter] public FreezePosition Frozen { get; set; } = FreezePosition.None;
+    /// <summary>When set, an aggregate/summary footer row is rendered and this computes the cell text for this column from the full filtered/sorted dataset.</summary>
+    [Parameter] public Func<IEnumerable<TItem>, string>? SummaryFunc { get; set; }
 
     protected override void OnInitialized() => Parent?.RegisterColumn(this);
 

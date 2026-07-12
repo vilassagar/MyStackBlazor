@@ -164,21 +164,12 @@
     private const double PlotW = 485;
     private const double PlotH = 235;
 
-    private static readonly string[] Palette =
-    [
-        "#6366f1", "#22c55e", "#f59e0b", "#ef4444",
-        "#8b5cf6", "#06b6d4", "#f97316", "#ec4899"
-    ];
-
     private int CategoryCount => Series.Count == 0 ? 0 : Series.Max(s => s.Values.Count);
     private double GroupW => CategoryCount > 0 ? PlotW / CategoryCount : PlotW;
     private double BarWGrouped => Series.Count > 0 ? GroupW * 0.7 / Series.Count : GroupW * 0.7;
 
     private string Clr(int idx)
-    {
-        if (Series.Count > idx && Series[idx].Color is { } c) return c;
-        return Palette[idx % Palette.Length];
-    }
+        => ChartHelpers.ResolveColor(idx < Series.Count ? Series[idx].Color : null, idx);
 
     private double ComputeYMax()
     {
@@ -203,38 +194,12 @@
     }
 
     private static (double min, double max, int ticks) NiceScale(double rawMin, double rawMax)
-    {
-        var range = rawMax - rawMin;
-        if (range <= 0) { rawMax = rawMin + 10; range = 10; }
-        var step = NiceNum(range / 5.0, true);
-        var nMin = Math.Floor(rawMin / step) * step;
-        var nMax = Math.Ceiling(rawMax / step) * step;
-        var t    = (int)Math.Round((nMax - nMin) / step);
-        return (nMin, nMax, Math.Max(Math.Min(t, 8), 2));
-    }
-
-    private static double NiceNum(double x, bool round)
-    {
-        var exp = Math.Floor(Math.Log10(x));
-        var f   = x / Math.Pow(10, exp);
-        var nf  = round ? (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10.0)
-                        : (f <= 1  ? 1 : f <= 2   ? 2 : f <= 5   ? 5 : 10.0);
-        return nf * Math.Pow(10, exp);
-    }
+        => ChartHelpers.NiceScale(rawMin, rawMax);
 
     private static string F(double v) => v.ToString("F1", CultureInfo.InvariantCulture);
 
-    private static string FormatY(double v)
-    {
-        if (Math.Abs(v) >= 1_000_000) return $"{v / 1_000_000:F1}M";
-        if (Math.Abs(v) >= 1_000)     return $"{v / 1_000:F1}k";
-        if (v == Math.Floor(v))        return v.ToString("0", CultureInfo.InvariantCulture);
-        return v.ToString("0.#", CultureInfo.InvariantCulture);
-    }
+    private static string FormatY(double v) => ChartHelpers.FormatY(v);
 
     private static string SvgText(double x, double y, string anchor, int fontSize, string fill, string content, string fontWeight = "normal")
-    {
-        var escaped = System.Net.WebUtility.HtmlEncode(content);
-        return $"<text x=\"{x.ToString("F1", CultureInfo.InvariantCulture)}\" y=\"{y.ToString("F1", CultureInfo.InvariantCulture)}\" text-anchor=\"{anchor}\" font-size=\"{fontSize}\" font-weight=\"{fontWeight}\" fill=\"{fill}\" aria-hidden=\"true\" focusable=\"false\">{escaped}</text>";
-    }
+        => ChartHelpers.SvgText(x, y, anchor, fontSize, fill, content, fontWeight);
 }

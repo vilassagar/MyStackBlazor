@@ -15,4 +15,7 @@
   <Folder Name="/samples/">
     <Project Path="samples/MyStackBlazor.Demo/MyStackBlazor.Demo.csproj" />
   </Folder>
+  <Folder Name="/site/">
+    <Project Path="site/MyStackBlazor.Site/MyStackBlazor.Site.csproj" />
+  </Folder>
 </Solution>

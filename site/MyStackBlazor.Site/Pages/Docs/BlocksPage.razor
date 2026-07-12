@@ -1,0 +1,261 @@
+@page "/docs/blocks"
+@inject ToastService Toast
+
+<PageTitle>Landing Blocks — MyStackBlazor Docs</PageTitle>
+
+<h1 class="text-3xl font-bold mb-1">Landing Blocks</h1>
+<p class="text-muted-foreground mb-8">Pre-built section blocks for marketing and landing pages — drop them in and customise via props.</p>
+
+<!-- HeroBlock -->
+<CodeSample Title="Hero Block"
+             Description="Page hero with headline, description, CTA buttons, and optional image or custom content."
+             Code="@_heroCode">
+    <div class="w-full rounded-xl overflow-hidden border">
+        <StackHeroBlock Eyebrow="Introducing v1.0"
+                   Headline="Build beautiful Blazor apps <span class='text-primary'>faster</span>"
+                   Description="MyStackBlazor gives you 100+ accessible, composable UI components for .NET 10. Styled with Tailwind CSS v4."
+                   PrimaryLabel="Get started"
+                   SecondaryLabel="View on GitHub"
+                   OnPrimaryClick="@(() => Toast.Show("Primary CTA clicked!"))"
+                   OnSecondaryClick="@(() => Toast.Show("Secondary CTA clicked!"))" />
+    </div>
+</CodeSample>
+
+<!-- FeaturesBlock -->
+<CodeSample Title="Features Block"
+             Description="Responsive feature grid with icons, titles, and descriptions. Set Columns (2, 3, or 4)."
+             Code="@_featuresCode">
+    <div class="w-full rounded-xl overflow-hidden border">
+        <StackFeaturesBlock Title="Everything you need"
+                       Subtitle="Features"
+                       Description="A complete design system for .NET developers."
+                       Columns="3" />
+    </div>
+</CodeSample>
+
+<!-- StatsBlock -->
+<CodeSample Title="Stats Block"
+             Description="Large metric display with optional trend indicators."
+             Code="@_statsCode">
+    <div class="w-full rounded-xl overflow-hidden border">
+        <StackStatsBlock Title="Trusted by .NET developers"
+                    Subtitle="By the numbers"
+                    Items="@(new List<StatItem>
+                    {
+                        new("100+",  "Components",   Trend: "+12 this month",   TrendUp: true),
+                        new("8 500", "Downloads",    Trend: "+2 400 this week",  TrendUp: true),
+                        new("3",     "Open issues",  Trend: "-7 this sprint",    TrendUp: false),
+                        new("12",    "Contributors", Trend: "+3 this month",     TrendUp: true),
+                    })" />
+    </div>
+</CodeSample>
+
+<!-- TestimonialsBlock -->
+<CodeSample Title="Testimonials Block"
+             Description="Star-rated quote cards with author name, title, and avatar."
+             Code="@_testimonialsCode">
+    <div class="w-full rounded-xl overflow-hidden border">
+        <StackTestimonialsBlock Title="Loved by developers"
+                           Subtitle="Testimonials"
+                           Items="@(new List<TestimonialItem>
+                           {
+                               new("MyStackBlazor cut our UI build time in half. The components are polished and accessible out of the box.", "Priya Nair",  "Product Manager"),
+                               new("Finally a Blazor component library that feels like it belongs in 2025. Tailwind integration is seamless.",  "Arjun Mehta", "Frontend Lead"),
+                               new("The server-side data grid alone is worth it. Virtualization with live search and Excel export — incredible.", "Rahul Kumar", "Full-stack Dev"),
+                           })" />
+    </div>
+</CodeSample>
+
+<!-- PricingBlock -->
+<CodeSample Title="Pricing Block"
+             Description="Three-tier pricing cards with feature lists. Highlight one tier as 'Most popular'."
+             Code="@_pricingCode">
+    <div class="w-full rounded-xl overflow-hidden border">
+        <StackPricingBlock Title="Simple, transparent pricing"
+                      Subtitle="Pricing"
+                      Description="Choose the plan that works for your team. All plans include a 14-day free trial." />
+    </div>
+</CodeSample>
+
+<!-- PartnersBlock -->
+<CodeSample Title="Partners Block"
+             Description="Logo showcase strip. Partner items render as styled name placeholders or images."
+             Code="@_partnersCode">
+    <div class="w-full rounded-xl overflow-hidden border">
+        <StackPartnersBlock Title="Trusted by teams at"
+                       Items="@(new List<PartnerItem>
+                       {
+                           new("Microsoft"),
+                           new("Syncfusion"),
+                           new("Telerik"),
+                           new("DevExpress"),
+                           new("Radzen"),
+                           new("MudBlazor"),
+                       })" />
+    </div>
+</CodeSample>
+
+<!-- NewsletterBlock -->
+<CodeSample Title="Newsletter Block"
+             Description="Email subscription banner with submit callback."
+             Code="@_newsletterCode">
+    <div class="w-full rounded-xl overflow-hidden border">
+        <StackNewsletterBlock Title="Stay in the loop"
+                         Description="Get the latest MyStackBlazor updates, tutorials, and component releases straight to your inbox."
+                         Placeholder="Enter your email"
+                         ButtonText="Subscribe"
+                         Note="No spam, ever. Unsubscribe at any time."
+                         OnSubscribe="@(email => Toast.Show($"Subscribed: {email}", "Thanks!", "success"))" />
+    </div>
+</CodeSample>
+
+<!-- IncentivesBlock -->
+<CodeSample Title="Incentives Block"
+             Description="Highlight key benefits with icon + title + description pairs."
+             Code="@_incentivesCode">
+    <div class="w-full rounded-xl overflow-hidden border">
+        <StackIncentivesBlock Title="Why choose MyStackBlazor"
+                         Items="@(new List<IncentiveItem>
+                         {
+                             new("Zero JS dependencies",  "Pure Blazor — no external JavaScript frameworks required."),
+                             new("Accessible by default", "ARIA roles, keyboard navigation, and focus management built in."),
+                             new("Tailwind CSS v4",       "Token-based design system with full dark mode support."),
+                             new("MIT licensed",          "Free for commercial and personal projects, forever."),
+                         })"
+                         Columns="2" />
+    </div>
+</CodeSample>
+
+<!-- ContactFormBlock -->
+<CodeSample Title="Contact Form Block"
+             Description="Two-column layout: contact details on the left, form on the right."
+             Code="@_contactCode">
+    <div class="w-full rounded-xl overflow-hidden border">
+        <StackContactFormBlock Title="Get in touch"
+                          Eyebrow="Contact"
+                          Description="Have a question or want to collaborate? We'd love to hear from you."
+                          Email="hello@mystackblazor.dev"
+                          Phone="+1 (555) 000-0000"
+                          Address="Bangalore, India"
+                          OnSubmit="@(data => Toast.Show($"Message from {data.FirstName} received!", "Sent!", "success"))" />
+    </div>
+</CodeSample>
+
+<!-- LocationsBlock -->
+<CodeSample Title="Locations Block"
+             Description="Office location cards with address, phone, and business hours."
+             Code="@_locationsCode">
+    <div class="w-full rounded-xl overflow-hidden border">
+        <StackLocationsBlock Title="Our locations"
+                        Subtitle="Find us" />
+    </div>
+</CodeSample>
+
+<!-- CardsBlock -->
+<CodeSample Title="Cards Block"
+             Description="Article/blog post grid with image, badge, title, description, and 'View all' link."
+             Code="@_cardsCode">
+    <div class="w-full rounded-xl overflow-hidden border">
+        <StackCardsBlock Title="Latest updates"
+                    Subtitle="Blog"
+                    ViewAllHref="#" />
+    </div>
+</CodeSample>
+
+<!-- FooterBlock -->
+<CodeSample Title="Footer Block"
+             Description="Multi-column footer with brand, navigation sections, copyright, and social slot."
+             Code="@_footerCode">
+    <div class="w-full rounded-xl overflow-hidden border">
+        <StackFooterBlock Brand="MyStackBlazor"
+                     Description="Beautiful, accessible Blazor components styled with Tailwind CSS."
+                     Copyright="© 2026 MyStackBlazor. MIT License." />
+    </div>
+</CodeSample>
+
+@code {
+    private const string _heroCode = """
+        <StackHeroBlock Eyebrow="Introducing v1.0"
+                   Headline="Build beautiful Blazor apps <span class='text-primary'>faster</span>"
+                   Description="100+ accessible components for .NET 10."
+                   PrimaryLabel="Get started"
+                   SecondaryLabel="View on GitHub"
+                   OnPrimaryClick="HandlePrimary"
+                   OnSecondaryClick="HandleSecondary" />
+        """;
+
+    private const string _featuresCode = """
+        <StackFeaturesBlock Title="Everything you need"
+                       Subtitle="Features"
+                       Columns="3" />
+        <!-- or supply your own Items list -->
+        """;
+
+    private const string _statsCode = """
+        <StackStatsBlock Items="@(new List<StatItem>
+        {
+            new() { Label = "Components", Value = "100+", Trend = "+12 this month", TrendUp = true },
+            new() { Label = "Downloads",  Value = "8 500", TrendUp = true },
+        })" />
+        """;
+
+    private const string _testimonialsCode = """
+        <StackTestimonialsBlock Items="@(new List<TestimonialItem>
+        {
+            new() { Quote = "…", Author = "Priya Nair", Role = "PM", Rating = 5 },
+        })" />
+        """;
+
+    private const string _pricingCode = """
+        <StackPricingBlock Title="Simple, transparent pricing" Subtitle="Pricing" />
+        <!-- Default tiers: Starter / Pro (highlighted) / Enterprise -->
+        """;
+
+    private const string _partnersCode = """
+        <StackPartnersBlock Title="Trusted by"
+                       Items="@(new List<PartnerItem>
+                       {
+                           new() { Name = "Microsoft" },
+                           new() { Name = "Telerik" },
+                       })" />
+        """;
+
+    private const string _newsletterCode = """
+        <StackNewsletterBlock Title="Stay in the loop"
+                         Description="Get updates straight to your inbox."
+                         OnSubscribe="email => HandleSubscribe(email)" />
+        """;
+
+    private const string _incentivesCode = """
+        <StackIncentivesBlock Title="Why choose us"
+                         Items="@(new List<IncentiveItem>
+                         {
+                             new() { Title = "Zero JS", Description = "Pure Blazor." },
+                             new() { Title = "Accessible", Description = "ARIA built-in." },
+                         })"
+                         Columns="2" />
+        """;
+
+    private const string _contactCode = """
+        <StackContactFormBlock Title="Get in touch"
+                          Email="hello@example.com"
+                          Phone="+1 555 000 0000"
+                          OnSubmit="data => HandleContact(data)" />
+        """;
+
+    private const string _locationsCode = """
+        <StackLocationsBlock Title="Our locations" Subtitle="Find us" />
+        <!-- Provide your own Items list to override defaults -->
+        """;
+
+    private const string _cardsCode = """
+        <StackCardsBlock Title="Latest updates" Subtitle="Blog" ViewAllHref="/blog" />
+        <!-- Provide your own Items list to override defaults -->
+        """;
+
+    private const string _footerCode = """
+        <StackFooterBlock Brand="MyApp"
+                     Description="Short description."
+                     Copyright="© 2026 MyApp." />
+        """;
+}

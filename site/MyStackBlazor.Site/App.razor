@@ -1,0 +1,12 @@
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(Layout.SiteLayout)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>Not found — MyStackBlazor</PageTitle>
+        <LayoutView Layout="@typeof(Layout.SiteLayout)">
+            <p role="alert" class="text-muted-foreground">Nothing at this address.</p>
+        </LayoutView>
+    </NotFound>
+</Router>

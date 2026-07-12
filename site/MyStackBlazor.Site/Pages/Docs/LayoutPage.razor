@@ -1,0 +1,510 @@
+@page "/docs/layout"
+
+<PageTitle>Layout — MyStackBlazor Docs</PageTitle>
+
+<h1 class="text-3xl font-bold mb-1">Layout</h1>
+<p class="text-muted-foreground mb-8">Cards, accordion, tabs, and structural layout components.</p>
+
+<!-- Card -->
+<CodeSample Title="Card" Description="Composable card with header, content, and footer slots." Code="@_cardCode">
+    <StackCard Class="w-full max-w-sm">
+        <StackCardHeader>
+            <StackCardTitle>Invoice #1042</StackCardTitle>
+            <StackCardDescription>Due on June 30, 2026</StackCardDescription>
+        </StackCardHeader>
+        <StackCardContent>
+            <p class="text-sm text-muted-foreground">Total amount due for Professional plan subscription.</p>
+            <p class="text-2xl font-bold mt-2">$9.00</p>
+        </StackCardContent>
+        <StackCardFooter>
+            <div class="demo-row w-full justify-between">
+                <StackButton Variant="outline" Size="sm">Download</StackButton>
+                <StackButton Size="sm">Pay Now</StackButton>
+            </div>
+        </StackCardFooter>
+    </StackCard>
+</CodeSample>
+
+<!-- Accordion -->
+<CodeSample Title="Accordion" Description="Pass AllowMultiple to let multiple items stay open at once." Code="@_accordionCode">
+    <div class="w-full max-w-lg">
+        <StackAccordion>
+            <StackAccordionItem Value="item-1" Title="What is MyStackBlazor?">
+                A modern Blazor component library with 70+ components styled with Tailwind CSS v4.
+                Works on Blazor WASM, Blazor Server, and .NET MAUI Blazor Hybrid.
+            </StackAccordionItem>
+            <StackAccordionItem Value="item-2" Title="Is it free to use?">
+                Yes — MyStackBlazor is open source and published under the MIT license.
+                Use it in personal and commercial projects without restriction.
+            </StackAccordionItem>
+            <StackAccordionItem Value="item-3" Title="Does it support dark mode?">
+                Yes. Wrap your app in <code class="bg-muted px-1 rounded">&lt;ThemeProvider&gt;</code> and place
+                <code class="bg-muted px-1 rounded">&lt;ThemeToggle /&gt;</code> anywhere to switch between
+                light, dark, and system-preferred themes.
+            </StackAccordionItem>
+        </StackAccordion>
+    </div>
+</CodeSample>
+
+<!-- Tabs -->
+<CodeSample Title="Tabs" Description="@("Controlled via @bind-ActiveTab. Use OnChange to react to tab switches.")" Code="@_tabsCode">
+    <div class="w-full max-w-lg space-y-2">
+        <StackTabs @bind-ActiveTab="_activeTab" OnChange="OnTabChanged">
+            <StackTabsList Class="w-full">
+                <StackTabsTrigger Value="overview">Overview</StackTabsTrigger>
+                <StackTabsTrigger Value="install">Install</StackTabsTrigger>
+                <StackTabsTrigger Value="usage">Usage</StackTabsTrigger>
+            </StackTabsList>
+            <StackTabsContent Value="overview">
+                <StackCard>
+                    <StackCardContent Class="pt-4">
+                        <p class="text-sm">MyStackBlazor provides composable, accessible UI primitives for Blazor apps.</p>
+                    </StackCardContent>
+                </StackCard>
+            </StackTabsContent>
+            <StackTabsContent Value="install">
+                <StackCard>
+                    <StackCardContent Class="pt-4">
+                        <pre class="text-sm bg-muted rounded p-3"><code>dotnet add package MyStackBlazor</code></pre>
+                    </StackCardContent>
+                </StackCard>
+            </StackTabsContent>
+            <StackTabsContent Value="usage">
+                <StackCard>
+                    <StackCardContent Class="pt-4">
+                        <pre class="text-sm bg-muted rounded p-3"><code>&lt;StackButton&gt;Click me&lt;/StackButton&gt;</code></pre>
+                    </StackCardContent>
+                </StackCard>
+            </StackTabsContent>
+        </StackTabs>
+        @if (!string.IsNullOrEmpty(_lastTabChange))
+        {
+            <p class="text-xs text-muted-foreground">OnChange fired: <strong>@_lastTabChange</strong></p>
+        }
+    </div>
+</CodeSample>
+
+<!-- Separator -->
+<CodeSample Title="Separator" Code="@_separatorCode">
+    <div class="w-full max-w-sm space-y-4">
+        <div>
+            <p class="text-sm font-medium">Section A</p>
+            <StackSeparator Class="my-2" />
+            <p class="text-sm text-muted-foreground">Content below the separator.</p>
+        </div>
+        <div class="flex items-center gap-4">
+            <span class="text-sm">Left</span>
+            <StackSeparator Orientation="vertical" Class="h-4" />
+            <span class="text-sm">Middle</span>
+            <StackSeparator Orientation="vertical" Class="h-4" />
+            <span class="text-sm">Right</span>
+        </div>
+    </div>
+</CodeSample>
+
+<!-- GridLayout -->
+<CodeSample Title="Grid Layout"
+             Description="CSS Grid wrapper. Set Columns and Gap (Tailwind spacing units)."
+             Code="@_gridCode">
+    <StackGridLayout Columns="3" Gap="4" Class="w-full">
+        @foreach (var i in Enumerable.Range(1, 6))
+        {
+            <div class="rounded-lg border bg-muted/40 p-4 text-center text-sm font-medium">Item @i</div>
+        }
+    </StackGridLayout>
+</CodeSample>
+
+<!-- StackLayout -->
+<CodeSample Title="Stack Layout"
+             Description="Flexbox wrapper with configurable Orientation, Gap, Align, and Justify."
+             Code="@_stackCode">
+    <div class="w-full space-y-4">
+        <div>
+            <p class="text-xs text-muted-foreground mb-2">Horizontal (default)</p>
+            <StackLayout Gap="3">
+                <StackBadge>Blazor</StackBadge>
+                <StackBadge Variant="secondary">.NET 10</StackBadge>
+                <StackBadge Variant="outline">Tailwind</StackBadge>
+            </StackLayout>
+        </div>
+        <div>
+            <p class="text-xs text-muted-foreground mb-2">Vertical, center-aligned</p>
+            <StackLayout Orientation="vertical" Align="center" Gap="2">
+                <StackButton Size="sm" Variant="default">Primary</StackButton>
+                <StackButton Size="sm" Variant="outline">Secondary</StackButton>
+                <StackButton Size="sm" Variant="ghost">Ghost</StackButton>
+            </StackLayout>
+        </div>
+    </div>
+</CodeSample>
+
+<!-- ScrollArea -->
+<CodeSample Title="Scroll Area"
+             Description="Constrained scrollable container with styled scrollbars."
+             Code="@_scrollCode">
+    <div class="flex gap-4 flex-wrap">
+        <StackScrollArea MaxHeight="200px" Class="w-60 rounded-md border p-3">
+            @foreach (var i in Enumerable.Range(1, 20))
+            {
+                <p class="text-sm py-1 border-b border-border/40 last:border-0">Row @i — scrollable content</p>
+            }
+        </StackScrollArea>
+        <StackScrollArea MaxHeight="200px" MaxWidth="220px" Class="rounded-md border p-3">
+            <p class="text-sm whitespace-nowrap">This is a very long line that requires horizontal scrolling to see in its entirety.</p>
+            @foreach (var i in Enumerable.Range(1, 8))
+            {
+                <p class="text-sm py-1">Row @i</p>
+            }
+        </StackScrollArea>
+    </div>
+</CodeSample>
+
+<!-- AspectRatio -->
+<CodeSample Title="Aspect Ratio"
+             Description="Maintains a fixed width-to-height ratio. Default is 16/9."
+             Code="@_aspectCode">
+    <div class="flex flex-wrap gap-4">
+        <div class="w-64">
+            <p class="text-xs text-muted-foreground mb-1">16:9 (default)</p>
+            <StackAspectRatio>
+                <div class="h-full w-full rounded-lg bg-muted flex items-center justify-center text-sm text-muted-foreground">16 / 9</div>
+            </StackAspectRatio>
+        </div>
+        <div class="w-40">
+            <p class="text-xs text-muted-foreground mb-1">1:1 (square)</p>
+            <StackAspectRatio Ratio="1">
+                <div class="h-full w-full rounded-lg bg-primary/10 flex items-center justify-center text-sm text-muted-foreground">1 / 1</div>
+            </StackAspectRatio>
+        </div>
+        <div class="w-48">
+            <p class="text-xs text-muted-foreground mb-1">4:3</p>
+            <StackAspectRatio Ratio="@(4.0/3)">
+                <div class="h-full w-full rounded-lg bg-secondary/50 flex items-center justify-center text-sm text-muted-foreground">4 / 3</div>
+            </StackAspectRatio>
+        </div>
+    </div>
+</CodeSample>
+
+<!-- ChunkProgressBar -->
+<CodeSample Title="Chunk Progress Bar"
+             Description="Progress bar segmented into discrete chunks. Set Chunks to control segments."
+             Code="@_chunkCode">
+    <div class="w-full max-w-sm space-y-4">
+        <div>
+            <p class="text-sm font-medium mb-1">Step progress (@_chunkValue / 5)</p>
+            <StackChunkProgressBar Value="@_chunkValue" Max="5" Chunks="5" />
+        </div>
+        <div>
+            <p class="text-sm font-medium mb-1">Level progress (@_levelValue%)</p>
+            <StackChunkProgressBar Value="@_levelValue" Max="100" Chunks="10" />
+        </div>
+        <div class="flex gap-2">
+            <StackButton Size="sm" Variant="outline" OnClick="@(() => _chunkValue = Math.Max(0, _chunkValue - 1))">Back</StackButton>
+            <StackButton Size="sm" OnClick="@(() => _chunkValue = Math.Min(5, _chunkValue + 1))">Next</StackButton>
+            <StackButton Size="sm" Variant="outline" OnClick="@(() => _levelValue = Math.Min(100, _levelValue + 10))">+10%</StackButton>
+        </div>
+    </div>
+</CodeSample>
+
+<!-- AnimationContainer -->
+<CodeSample Title="Animation Container"
+             Description="Wraps content in enter/exit CSS animation classes. Toggle Visible to see transitions."
+             Code="@_animCode">
+    <div class="space-y-3">
+        <StackSwitch @bind-Checked="_animVisible" Label="Show content" />
+        <StackAnimationContainer Visible="_animVisible">
+            <StackCard Class="w-full max-w-sm">
+                <StackCardContent Class="pt-4">
+                    <p class="text-sm">This card fades in and out using CSS animations.</p>
+                </StackCardContent>
+            </StackCard>
+        </StackAnimationContainer>
+    </div>
+</CodeSample>
+
+<!-- PanelBar -->
+<CodeSample Title="Panel Bar"
+             Description="Expandable panel items with smooth grid-row animation. Similar to Accordion but with icon support."
+             Code="@_panelCode">
+    <div class="w-full max-w-lg">
+        <StackPanelBar>
+            <StackPanelBarItem Title="Getting Started">
+                <p class="text-sm text-muted-foreground">Install MyStackBlazor via NuGet and add the ThemeProvider to your layout.</p>
+            </StackPanelBarItem>
+            <StackPanelBarItem Title="Components">
+                <p class="text-sm text-muted-foreground">Over 100 components across Common, Form, Layout, Navigation, and Data categories.</p>
+            </StackPanelBarItem>
+            <StackPanelBarItem Title="Theming">
+                <p class="text-sm text-muted-foreground">Built on Tailwind CSS v4 design tokens. Switch between light and dark mode with ThemeToggle.</p>
+            </StackPanelBarItem>
+        </StackPanelBar>
+    </div>
+</CodeSample>
+
+<!-- Splitter -->
+<CodeSample Title="Splitter"
+             Description="Divides content into resizable panes. Horizontal=true for side-by-side."
+             Code="@_splitterCode">
+    <div class="w-full space-y-4">
+        <div>
+            <p class="text-xs text-muted-foreground mb-1">Horizontal (side-by-side)</p>
+            <StackSplitter Horizontal Height="180px" Class="w-full rounded-lg border overflow-hidden">
+                <StackSplitterPane>
+                    <div class="h-full p-4 text-sm text-muted-foreground">Left panel content</div>
+                </StackSplitterPane>
+                <StackSplitterPane>
+                    <div class="h-full p-4 text-sm text-muted-foreground">Right panel content</div>
+                </StackSplitterPane>
+            </StackSplitter>
+        </div>
+        <div>
+            <p class="text-xs text-muted-foreground mb-1">Vertical (stacked)</p>
+            <StackSplitter Horizontal="false" Height="220px" Class="w-full rounded-lg border overflow-hidden">
+                <StackSplitterPane>
+                    <div class="h-full p-4 text-sm text-muted-foreground">Top panel</div>
+                </StackSplitterPane>
+                <StackSplitterPane>
+                    <div class="h-full p-4 text-sm text-muted-foreground">Bottom panel</div>
+                </StackSplitterPane>
+            </StackSplitter>
+        </div>
+    </div>
+</CodeSample>
+
+<!-- Carousel -->
+<CodeSample Title="Carousel"
+             Description="Auto-cycling or manual slide carousel. ShowArrows and ShowDots are on by default."
+             Code="@_carouselCode">
+    <div class="w-full max-w-lg">
+        <StackCarousel Loop ShowArrows ShowDots>
+            <StackCarouselSlide>
+                <div class="h-48 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <div class="text-center">
+                        <p class="text-lg font-semibold">Slide 1</p>
+                        <p class="text-sm text-muted-foreground">Blazor component library</p>
+                    </div>
+                </div>
+            </StackCarouselSlide>
+            <StackCarouselSlide>
+                <div class="h-48 rounded-lg bg-secondary/30 flex items-center justify-center">
+                    <div class="text-center">
+                        <p class="text-lg font-semibold">Slide 2</p>
+                        <p class="text-sm text-muted-foreground">100+ components</p>
+                    </div>
+                </div>
+            </StackCarouselSlide>
+            <StackCarouselSlide>
+                <div class="h-48 rounded-lg bg-muted flex items-center justify-center">
+                    <div class="text-center">
+                        <p class="text-lg font-semibold">Slide 3</p>
+                        <p class="text-sm text-muted-foreground">Tailwind CSS v4</p>
+                    </div>
+                </div>
+            </StackCarouselSlide>
+        </StackCarousel>
+    </div>
+</CodeSample>
+
+<!-- Resizable -->
+<CodeSample Title="Resizable"
+             Description="Drag the handle between panels to resize. Use Direction for horizontal (default) or vertical splits."
+             Code="@_resizableCode">
+    <div class="w-full space-y-6">
+        <div>
+            <p class="text-sm font-medium mb-2">Horizontal split (sm panels)</p>
+            <div class="h-32">
+                <StackResizablePanelGroup Direction="horizontal">
+                    <StackResizablePanel DefaultSize="30" MinSize="10" MaxSize="70">
+                        <div class="h-full flex items-center justify-center bg-muted/40 text-sm text-muted-foreground">
+                            Left (30%)
+                        </div>
+                    </StackResizablePanel>
+                    <StackResizableHandle />
+                    <StackResizablePanel DefaultSize="70" MinSize="30" MaxSize="90">
+                        <div class="h-full flex items-center justify-center text-sm text-muted-foreground">
+                            Right (70%)
+                        </div>
+                    </StackResizablePanel>
+                </StackResizablePanelGroup>
+            </div>
+        </div>
+        <div>
+            <p class="text-sm font-medium mb-2">Three-pane horizontal</p>
+            <div class="h-40">
+                <StackResizablePanelGroup Direction="horizontal">
+                    <StackResizablePanel DefaultSize="25" MinSize="10" MaxSize="60">
+                        <div class="h-full flex items-center justify-center bg-muted/40 text-sm text-muted-foreground">Sidebar</div>
+                    </StackResizablePanel>
+                    <StackResizableHandle />
+                    <StackResizablePanel DefaultSize="50" MinSize="20" MaxSize="80">
+                        <div class="h-full flex items-center justify-center text-sm text-muted-foreground">Content</div>
+                    </StackResizablePanel>
+                    <StackResizableHandle />
+                    <StackResizablePanel DefaultSize="25" MinSize="10" MaxSize="60">
+                        <div class="h-full flex items-center justify-center bg-muted/40 text-sm text-muted-foreground">Details</div>
+                    </StackResizablePanel>
+                </StackResizablePanelGroup>
+            </div>
+        </div>
+        <div>
+            <p class="text-sm font-medium mb-2">Vertical split</p>
+            <div class="h-48">
+                <StackResizablePanelGroup Direction="vertical">
+                    <StackResizablePanel DefaultSize="40" MinSize="15" MaxSize="85">
+                        <div class="h-full flex items-center justify-center bg-muted/40 text-sm text-muted-foreground">Top</div>
+                    </StackResizablePanel>
+                    <StackResizableHandle />
+                    <StackResizablePanel DefaultSize="60" MinSize="15" MaxSize="85">
+                        <div class="h-full flex items-center justify-center text-sm text-muted-foreground">Bottom</div>
+                    </StackResizablePanel>
+                </StackResizablePanelGroup>
+            </div>
+        </div>
+    </div>
+</CodeSample>
+
+@code {
+    private string? _activeTab = "overview";
+    private string? _lastTabChange;
+    private void OnTabChanged(string? tab) => _lastTabChange = tab;
+
+    private double _chunkValue = 2;
+    private double _levelValue = 40;
+    private bool _animVisible = true;
+
+    private const string _cardCode = """
+        <StackCard>
+            <StackCardHeader>
+                <StackCardTitle>Invoice #1042</StackCardTitle>
+                <StackCardDescription>Due on June 30, 2026</StackCardDescription>
+            </StackCardHeader>
+            <StackCardContent>
+                <p class="text-2xl font-bold">$9.00</p>
+            </StackCardContent>
+            <StackCardFooter>
+                <StackButton Size="sm">Pay Now</StackButton>
+            </StackCardFooter>
+        </StackCard>
+        """;
+
+    private const string _accordionCode = """
+        <StackAccordion>
+            <StackAccordionItem Value="item-1" Title="What is MyStackBlazor?">
+                A modern Blazor component library...
+            </StackAccordionItem>
+            <StackAccordionItem Value="item-2" Title="Is it free to use?">
+                Yes — MIT license.
+            </StackAccordionItem>
+        </StackAccordion>
+        """;
+
+    private const string _tabsCode = """
+        <StackTabs @bind-ActiveTab="_activeTab" OnChange="OnTabChanged">
+            <StackTabsList>
+                <StackTabsTrigger Value="overview">Overview</StackTabsTrigger>
+                <StackTabsTrigger Value="install">Install</StackTabsTrigger>
+            </StackTabsList>
+            <StackTabsContent Value="overview">...</StackTabsContent>
+            <StackTabsContent Value="install">...</StackTabsContent>
+        </StackTabs>
+
+        @code {
+            private string? _activeTab = "overview";
+            private void OnTabChanged(string? tab) { /* react to tab switch */ }
+        }
+        """;
+
+    private const string _separatorCode = """
+        <StackSeparator Class="my-2" />
+        <StackSeparator Orientation="vertical" Class="h-4" />
+        """;
+
+    private const string _gridCode = """
+        <StackGridLayout Columns="3" Gap="4">
+            <div class="rounded-lg border p-4">Item 1</div>
+            <div class="rounded-lg border p-4">Item 2</div>
+            <div class="rounded-lg border p-4">Item 3</div>
+        </StackGridLayout>
+        """;
+
+    private const string _stackCode = """
+        <StackLayout Gap="3">
+            <StackBadge>Blazor</StackBadge>
+            <StackBadge Variant="secondary">.NET 10</StackBadge>
+        </StackLayout>
+        <StackLayout Orientation="vertical" Align="center" Gap="2">
+            <StackButton>Primary</StackButton>
+            <StackButton Variant="outline">Secondary</StackButton>
+        </StackLayout>
+        """;
+
+    private const string _scrollCode = """
+        <StackScrollArea MaxHeight="200px" Class="w-60 rounded-md border p-3">
+            @foreach (var i in Enumerable.Range(1, 20))
+            {
+                <p class="text-sm py-1">Row @i</p>
+            }
+        </StackScrollArea>
+        """;
+
+    private const string _aspectCode = """
+        <div class="w-64">
+            <StackAspectRatio>                      <!-- 16:9 -->
+                <img src="..." class="object-cover" />
+            </StackAspectRatio>
+        </div>
+        <div class="w-40">
+            <StackAspectRatio Ratio="1">            <!-- 1:1 square -->
+                <img src="..." class="object-cover" />
+            </StackAspectRatio>
+        </div>
+        """;
+
+    private const string _chunkCode = """
+        <StackChunkProgressBar Value="3" Max="5" Chunks="5" />     <!-- 3 of 5 steps -->
+        <StackChunkProgressBar Value="60" Max="100" Chunks="10" /> <!-- 60 % in 10 segments -->
+        """;
+
+    private const string _animCode = """
+        <StackAnimationContainer Visible="_show">
+            <StackCard>...</StackCard>
+        </StackAnimationContainer>
+        """;
+
+    private const string _panelCode = """
+        <StackPanelBar>
+            <StackPanelBarItem Title="Getting Started">…</StackPanelBarItem>
+            <StackPanelBarItem Title="Components">…</StackPanelBarItem>
+            <StackPanelBarItem Title="Theming">…</StackPanelBarItem>
+        </StackPanelBar>
+        """;
+
+    private const string _splitterCode = """
+        <StackSplitter Horizontal Height="180px">
+            <StackSplitterPane><div class="p-4">Left</div></StackSplitterPane>
+            <StackSplitterPane><div class="p-4">Right</div></StackSplitterPane>
+        </StackSplitter>
+        """;
+
+    private const string _carouselCode = """
+        <StackCarousel Loop ShowArrows ShowDots>
+            <StackCarouselSlide><div class="h-48">Slide 1</div></StackCarouselSlide>
+            <StackCarouselSlide><div class="h-48">Slide 2</div></StackCarouselSlide>
+            <StackCarouselSlide><div class="h-48">Slide 3</div></StackCarouselSlide>
+        </StackCarousel>
+        """;
+
+    private const string _resizableCode = """
+        <div class="h-32">
+            <StackResizablePanelGroup Direction="horizontal">
+                <StackResizablePanel DefaultSize="30" MinSize="10" MaxSize="70">
+                    <div class="h-full flex items-center justify-center">Left</div>
+                </StackResizablePanel>
+                <StackResizableHandle />
+                <StackResizablePanel DefaultSize="70" MinSize="30" MaxSize="90">
+                    <div class="h-full flex items-center justify-center">Right</div>
+                </StackResizablePanel>
+            </StackResizablePanelGroup>
+        </div>
+        """;
+}

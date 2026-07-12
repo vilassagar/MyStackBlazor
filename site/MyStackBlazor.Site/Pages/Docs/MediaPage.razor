@@ -1,6 +1,6 @@
-@page "/media"
+@page "/docs/media"
 
-<PageTitle>Video &amp; Media — MyStackBlazor Demo</PageTitle>
+<PageTitle>Video &amp; Media — MyStackBlazor Docs</PageTitle>
 
 <h1 class="text-3xl font-bold mb-1">Video &amp; Media</h1>
 <p class="text-muted-foreground mb-6">
@@ -24,7 +24,7 @@
 </div>
 
 <!-- Basic playback -->
-<DemoSection Title="Basic playback"
+<CodeSample Title="Basic playback"
              Description="A single source with a poster image. Click the video or the center button to play."
              Code="@_basicCode">
     <div class="w-full max-w-xl">
@@ -32,10 +32,10 @@
                     Poster="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg"
                     Title="Big Buck Bunny" />
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Autoplay, loop, muted -->
-<DemoSection Title="Autoplay, loop &amp; muted"
+<CodeSample Title="Autoplay, loop &amp; muted"
              Description="Browsers only allow autoplay when the video starts muted."
              Code="@_autoplayCode">
     <div class="w-full max-w-xl">
@@ -43,10 +43,10 @@
                     Autoplay Loop Muted
                     Title="For Bigger Blazes (autoplay demo)" />
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Captions -->
-<DemoSection Title="Captions / subtitles"
+<CodeSample Title="Captions / subtitles"
              Description="Text tracks render via the native <track> element; the CC button toggles them on and off."
              Code="@_captionsCode">
     <div class="w-full max-w-xl">
@@ -54,29 +54,29 @@
                     Title="For Bigger Joyrides (captions demo)"
                     Tracks="_tracks" />
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Live badge -->
-<DemoSection Title="Live mode"
+<CodeSample Title="Live mode"
              Description="Set Live to hide the seek bar/duration and show a LIVE badge, for streaming a live source."
              Code="@_liveCode">
     <div class="w-full max-w-xl">
         <StackVideo Src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4"
                     Title="Live demo" Live />
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- HLS -->
-<DemoSection Title="HLS stream"
+<CodeSample Title="HLS stream"
              Description="Plays natively in browsers that support HLS (e.g. Safari/iOS). Elsewhere, register window.MyStackBlazorMediaEngine to attach hls.js without this library bundling it."
              Code="@_hlsCode">
     <div class="w-full max-w-xl">
         <StackVideo Sources="_hlsSources" Title="Apple HLS example stream" />
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Google Map -->
-<DemoSection Title="Google map"
+<CodeSample Title="Google map"
              Description="Renders an embedded Google Map with optional markers. Requires a valid Google Maps JavaScript API key set via the ApiKey parameter — without one, a placeholder is shown instead of a live map. Paste your own key below to try it live."
              Code="@_googleMapCode">
     <div class="w-full max-w-xl space-y-3">
@@ -88,17 +88,17 @@
                          Markers="_mapMarkers"
                          Height="350px" />
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- PDF Viewer -->
-<DemoSection Title="PDF viewer"
+<CodeSample Title="PDF viewer"
              Description="Embeds a PDF in an iframe with a fallback download link. Uses a small public W3C sample PDF for this demo."
              Code="@_pdfViewerCode">
     <div class="w-full max-w-xl">
         <StackPdfViewer Src="https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
                          Height="400px" />
     </div>
-</DemoSection>
+</CodeSample>
 
 @code {
     private string _googleMapApiKey = "";

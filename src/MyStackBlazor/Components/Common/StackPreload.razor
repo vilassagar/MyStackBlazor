@@ -1,0 +1,30 @@
+@namespace MyStackBlazor.Components.Common
+
+@* Renders a resource-hint <link> into the document <head> via HeadContent so it takes effect
+   before the browser would otherwise discover the resource. *@
+<HeadContent>
+    <link rel="@Rel"
+          href="@Href"
+          as="@As"
+          type="@Type"
+          crossorigin="@CrossOrigin"
+          @attributes="AdditionalAttributes" />
+</HeadContent>
+
+@code {
+    [Parameter, EditorRequired] public string Href { get; set; } = "";
+    /// <summary>Resource type hint for rel="preload", e.g. "style", "script", "font", "image".</summary>
+    [Parameter] public string? As { get; set; }
+    [Parameter] public string? Type { get; set; }
+    [Parameter] public string? CrossOrigin { get; set; }
+    /// <summary>Preload, Prefetch, or Preconnect.</summary>
+    [Parameter] public string Mode { get; set; } = "Preload";
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string Rel => Mode switch
+    {
+        "Prefetch"   => "prefetch",
+        "Preconnect" => "preconnect",
+        _            => "preload",
+    };
+}

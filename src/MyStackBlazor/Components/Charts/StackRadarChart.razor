@@ -1,0 +1,202 @@
+@namespace MyStackBlazor.Components.Charts
+@using System.Globalization
+
+<div class="@($"flex flex-col gap-2 {Class}".Trim())" @attributes="AdditionalAttributes">
+    <svg viewBox="0 0 280 280"
+         role="img"
+         aria-label="@(Title ?? "Radar chart")"
+         class="w-full h-auto"
+         @onmouseleave="() => _hoverIdx = -1">
+        <title>@(Title ?? "Radar chart")</title>
+
+        @{
+            int N = Labels.Count;
+            var (yMin, yMax) = ValueScale();
+        }
+
+        @* Grid rings *@
+        @for (int ring = 1; ring <= Rings; ring++)
+        {
+            var capturedRing = ring;
+            double ringR = MaxR * capturedRing / (double)Rings;
+            <polygon points="@RingPoints(N, ringR)"
+                     fill="none"
+                     stroke="var(--color-border)"
+                     stroke-width="1"
+                     aria-hidden="true" focusable="false" />
+        }
+
+        @* Spokes *@
+        @if (N > 0)
+        {
+            @for (int i = 0; i < N; i++)
+            {
+                var capturedI = i;
+                double angle = SpokeAngle(capturedI, N);
+                double x2 = Cx + MaxR * Math.Cos(angle);
+                double y2 = Cy + MaxR * Math.Sin(angle);
+                <line x1="@F(Cx)" y1="@F(Cy)" x2="@F(x2)" y2="@F(y2)"
+                      stroke="var(--color-border)" stroke-width="1"
+                      aria-hidden="true" focusable="false" />
+            }
+
+            @* Spoke labels *@
+            @for (int i = 0; i < N; i++)
+            {
+                var capturedI = i;
+                double angle = SpokeAngle(capturedI, N);
+                double lx = Cx + (MaxR + 14) * Math.Cos(angle);
+                double ly = Cy + (MaxR + 14) * Math.Sin(angle);
+                double cosA = Math.Cos(angle);
+                string anchor = cosA > 0.3 ? "start" : cosA < -0.3 ? "end" : "middle";
+                @((MarkupString)ChartHelpers.SvgText(lx, ly + 4, anchor, 10, "var(--color-muted-foreground)", Labels[capturedI]))
+            }
+        }
+
+        @* Series polygons *@
+        @for (int si = 0; si < Series.Count; si++)
+        {
+            var capturedSi = si;
+            var series = Series[capturedSi];
+            if (series.Values.Count == 0) continue;
+            string color = ChartHelpers.ResolveColor(series.Color, capturedSi);
+            <polygon points="@SeriesPoints(series, N, yMin, yMax)"
+                     fill="@color" fill-opacity="0.15"
+                     stroke="@color" stroke-width="2" stroke-linejoin="round"
+                     aria-hidden="true" focusable="false" />
+        }
+
+        @* Vertex hover targets *@
+        @if (ShowTooltip && N > 0)
+        {
+            @for (int i = 0; i < N; i++)
+            {
+                var capturedI = i;
+                double angle = SpokeAngle(capturedI, N);
+                double halfStep = Math.PI / N;
+                double startAngle = angle - halfStep;
+                double endAngle = angle + halfStep;
+                double outerR = MaxR + 16;
+                double x1 = Cx + outerR * Math.Cos(startAngle);
+                double y1 = Cy + outerR * Math.Sin(startAngle);
+                double x2 = Cx + outerR * Math.Cos(endAngle);
+                double y2 = Cy + outerR * Math.Sin(endAngle);
+                string wedgeD = $"M {F(Cx)} {F(Cy)} L {F(x1)} {F(y1)} A {F(outerR)} {F(outerR)} 0 0 1 {F(x2)} {F(y2)} Z";
+                <path d="@wedgeD" fill="transparent"
+                      @onmouseenter="() => _hoverIdx = capturedI"
+                      aria-hidden="true" focusable="false" />
+            }
+        }
+
+        @* Tooltip *@
+        @if (ShowTooltip && _hoverIdx >= 0 && _hoverIdx < N)
+        {
+            int lineCount = Series.Count;
+            double tooltipW = 130;
+            double tooltipH = 16 + lineCount * 18 + 8;
+            double angle = SpokeAngle(_hoverIdx, N);
+            double anchorX = Cx + (MaxR + 20) * Math.Cos(angle);
+            double anchorY = Cy + (MaxR + 20) * Math.Sin(angle);
+            double ttx = anchorX;
+            double tty = anchorY - tooltipH / 2.0;
+            if (ttx + tooltipW > 278) ttx = 278 - tooltipW;
+            if (ttx < 2) ttx = 2;
+            if (tty < 2) tty = 2;
+            if (tty + tooltipH > 278) tty = 278 - tooltipH;
+
+            <rect x="@F(ttx)" y="@F(tty)" width="@F(tooltipW)" height="@F(tooltipH)"
+                  rx="4" fill="var(--color-popover)" stroke="var(--color-border)" stroke-width="1"
+                  aria-hidden="true" focusable="false" />
+            @((MarkupString)ChartHelpers.SvgText(ttx + 8, tty + 13, "start", 11, "var(--color-card-foreground)", Labels[_hoverIdx], "600"))
+            @for (int si = 0; si < Series.Count; si++)
+            {
+                var capturedSi = si;
+                double rowY = tty + 16 + capturedSi * 18 + 13;
+                double val = _hoverIdx < Series[capturedSi].Values.Count ? Series[capturedSi].Values[_hoverIdx] : 0;
+                <circle cx="@F(ttx + 12)" cy="@F(rowY - 4)"
+                        r="4" fill="@ChartHelpers.ResolveColor(Series[capturedSi].Color, capturedSi)"
+                        aria-hidden="true" focusable="false" />
+                @((MarkupString)ChartHelpers.SvgText(ttx + 22, rowY, "start", 11, "var(--color-popover-foreground)", $"{Series[capturedSi].Name}: {ChartHelpers.FormatY(val)}"))
+            }
+        }
+    </svg>
+
+    @if (ShowLegend && Series.Count > 0)
+    {
+        <div class="flex flex-wrap gap-x-4 gap-y-1 justify-center mt-1">
+            @for (int si = 0; si < Series.Count; si++)
+            {
+                var capturedSi = si;
+                <div class="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:@ChartHelpers.ResolveColor(Series[capturedSi].Color, capturedSi)"></span>
+                    @Series[capturedSi].Name
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [EditorRequired, Parameter] public IReadOnlyList<ChartSeries> Series { get; set; } = [];
+    [EditorRequired, Parameter] public IReadOnlyList<string> Labels { get; set; } = [];
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public bool ShowLegend { get; set; } = true;
+    [Parameter] public bool ShowTooltip { get; set; } = true;
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private int _hoverIdx = -1;
+
+    private const double Cx = 140;
+    private const double Cy = 140;
+    private const double MaxR = 110;
+    private const int Rings = 4;
+
+    private static double SpokeAngle(int index, int n)
+        => -Math.PI / 2.0 + index * (2 * Math.PI / n);
+
+    private (double min, double max) ValueScale()
+    {
+        var all = Series.SelectMany(s => s.Values).ToList();
+        if (all.Count == 0) return (0, 10);
+        var (min, max, ticks) = ChartHelpers.NiceScale(all.Min(), all.Max());
+        return (min, max);
+    }
+
+    private static double RadiusFor(double value, double yMin, double yMax)
+    {
+        double r = yMax > yMin ? MaxR * (value - yMin) / (yMax - yMin) : MaxR / 2.0;
+        return Math.Clamp(r, 0, MaxR);
+    }
+
+    private static string RingPoints(int n, double radius)
+    {
+        if (n == 0) return "";
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i < n; i++)
+        {
+            double angle = SpokeAngle(i, n);
+            double x = Cx + radius * Math.Cos(angle);
+            double y = Cy + radius * Math.Sin(angle);
+            sb.Append(CultureInfo.InvariantCulture, $"{F(x)},{F(y)} ");
+        }
+        return sb.ToString().Trim();
+    }
+
+    private static string SeriesPoints(ChartSeries series, int n, double yMin, double yMax)
+    {
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i < n; i++)
+        {
+            double val = i < series.Values.Count ? series.Values[i] : yMin;
+            double r = RadiusFor(val, yMin, yMax);
+            double angle = SpokeAngle(i, n);
+            double x = Cx + r * Math.Cos(angle);
+            double y = Cy + r * Math.Sin(angle);
+            sb.Append(CultureInfo.InvariantCulture, $"{F(x)},{F(y)} ");
+        }
+        return sb.ToString().Trim();
+    }
+
+    private static string F(double v) => v.ToString("F1", CultureInfo.InvariantCulture);
+}

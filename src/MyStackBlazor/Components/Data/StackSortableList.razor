@@ -1,0 +1,72 @@
+@namespace MyStackBlazor.Components.Data
+@typeparam TItem
+
+<div class="@($"flex flex-col gap-1 {Class}".Trim())" @attributes="AdditionalAttributes">
+    @if (Items is not null)
+    {
+        @for (int i = 0; i < Items.Count; i++)
+        {
+            var index = i;
+            var item = Items[index];
+            <div @key="item"
+                 draggable="true"
+                 class="@($"cursor-grab rounded-md border border-border bg-background transition-all active:cursor-grabbing {(_draggedIndex == index ? "opacity-40 border-dashed border-primary" : "")} {(_dragOverIndex == index && _draggedIndex != index ? "border-primary ring-1 ring-primary" : "")}")"
+                 @ondragstart="() => OnDragStart(index)"
+                 @ondragover="() => OnDragOver(index)"
+                 @ondragover:preventDefault="true"
+                 @ondrop="() => OnDrop(index)"
+                 @ondragend="OnDragEnd">
+                @ItemTemplate(item)
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IList<TItem> Items { get; set; } = default!;
+    [Parameter, EditorRequired] public RenderFragment<TItem> ItemTemplate { get; set; } = default!;
+    [Parameter] public EventCallback<IList<TItem>> ItemsChanged { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private int? _draggedIndex;
+    private int? _dragOverIndex;
+
+    private void OnDragStart(int index)
+    {
+        _draggedIndex = index;
+    }
+
+    private void OnDragOver(int index)
+    {
+        _dragOverIndex = index;
+    }
+
+    private async Task OnDrop(int targetIndex)
+    {
+        if (_draggedIndex is null || Items is null) return;
+
+        var sourceIndex = _draggedIndex.Value;
+        _dragOverIndex = null;
+        _draggedIndex = null;
+
+        if (sourceIndex == targetIndex) return;
+
+        var moved = Items[sourceIndex];
+        Items.RemoveAt(sourceIndex);
+
+        var insertAt = targetIndex;
+        if (sourceIndex < targetIndex) insertAt--;
+        insertAt = Math.Clamp(insertAt, 0, Items.Count);
+
+        Items.Insert(insertAt, moved);
+
+        await ItemsChanged.InvokeAsync(Items);
+    }
+
+    private void OnDragEnd()
+    {
+        _draggedIndex = null;
+        _dragOverIndex = null;
+    }
+}

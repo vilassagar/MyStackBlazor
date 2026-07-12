@@ -1,0 +1,56 @@
+@page "/docs"
+
+<PageTitle>Introduction — MyStackBlazor Docs</PageTitle>
+
+<h1 class="text-3xl font-bold mb-2">Introduction</h1>
+<p class="text-muted-foreground mb-8">
+    MyStackBlazor is a Razor Class Library of 200+ UI components for Blazor, styled with Tailwind CSS v4 and
+    themeable with CSS custom properties. It targets .NET 10 and runs on Blazor WebAssembly, Blazor Server,
+    and .NET MAUI Blazor Hybrid.
+</p>
+
+<CodeSample Title="Installation" Description="Add the main package to your Blazor project." Code="dotnet add package MyStackBlazor" CodeOpenByDefault="true">
+    <p class="text-sm text-muted-foreground">
+        Optional packages: <code class="text-xs bg-muted px-1.5 py-0.5 rounded">MyStackBlazor.DataGrid</code>,
+        <code class="text-xs bg-muted px-1.5 py-0.5 rounded">MyStackBlazor.Calendar</code>,
+        <code class="text-xs bg-muted px-1.5 py-0.5 rounded">MyStackBlazor.Security</code>,
+        <code class="text-xs bg-muted px-1.5 py-0.5 rounded">MyStackBlazor.Accessibility</code>, and
+        <code class="text-xs bg-muted px-1.5 py-0.5 rounded">MyStackBlazor.Localization</code> — install only what you need.
+    </p>
+</CodeSample>
+
+<CodeSample Title="Register services" Description="In Program.cs, register the component services." Code="@_registerCode" CodeOpenByDefault="true">
+    <p class="text-sm text-muted-foreground">
+        Adds <code class="text-xs bg-muted px-1.5 py-0.5 rounded">ThemeService</code>, <code class="text-xs bg-muted px-1.5 py-0.5 rounded">ToastService</code>,
+        and <code class="text-xs bg-muted px-1.5 py-0.5 rounded">DialogService</code> to the DI container.
+    </p>
+</CodeSample>
+
+<CodeSample Title="Wrap your app in a theme provider" Description="Mount once in your root layout, alongside the toast and confirm-dialog hosts." Code="@_layoutCode" CodeOpenByDefault="true" />
+
+<div class="grid sm:grid-cols-2 gap-4 mt-8">
+    <a href="docs/common" class="rounded-lg border bg-card p-5 hover:bg-accent/50 transition-colors">
+        <h3 class="font-semibold mb-1">UI Atoms →</h3>
+        <p class="text-sm text-muted-foreground">Buttons, badges, avatars, and other building blocks.</p>
+    </a>
+    <a href="docs/forms" class="rounded-lg border bg-card p-5 hover:bg-accent/50 transition-colors">
+        <h3 class="font-semibold mb-1">Form Controls →</h3>
+        <p class="text-sm text-muted-foreground">Inputs, pickers, and validation-ready form fields.</p>
+    </a>
+</div>
+
+@code {
+    private const string _registerCode = """
+    builder.Services.AddMyStackBlazor();
+    builder.Services.AddMyStackBlazorDataGrid(); // optional
+    """;
+
+    private const string _layoutCode = """
+    <StackThemeProvider>
+        @Body
+
+        <StackToaster />
+        <StackConfirmDialogHost />
+    </StackThemeProvider>
+    """;
+}

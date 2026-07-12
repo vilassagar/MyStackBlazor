@@ -20,7 +20,7 @@
             <div class="relative max-w-xs flex-1">
                 <input type="search"
                        class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                       placeholder="Search…"
+                       placeholder="@Labels.SearchPlaceholder"
                        aria-label="Search grid"
                        value="@_state.SearchTerm"
                        @oninput="OnSearchInput" />
@@ -32,7 +32,7 @@
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
-                    Add Row
+                    @Labels.AddRowText
                 </button>
             }
             @if (EditMode == EditMode.Batch && _batchEdits.Count > 0)
@@ -65,7 +65,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                         </svg>
-                        Columns
+                        @Labels.ColumnsText
                     </button>
                     @if (_showColumnChooser)
                     {
@@ -98,7 +98,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    Export
+                    @Labels.ExportText
                     <svg class="h-3 w-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
@@ -148,9 +148,51 @@
         </div>
     }
 
-    @* ── Column header row ────────────────────────────────────────────────── *@
+    @* ── Column header row is rendered inside the scrollable body below (as its first child) so `position:sticky` pins it to the top while rows scroll underneath ── *@
+
+    @* ── Filter row ───────────────────────────────────────────────────────── *@
+    @if (ShowFilterRow && VisibleColumns.Any(c => c.Filterable))
+    {
+        <div class="ms-datagrid__filters grid border-b border-border bg-background" role="row"
+             style="grid-template-columns: @_columnTemplate">
+            @if (DetailTemplate is not null)
+            {
+                <div class="px-3 py-1.5" role="columnheader"></div>
+            }
+            @if (SelectionMode == SelectionMode.Multiple)
+            {
+                <div class="px-3 py-1.5" role="columnheader"></div>
+            }
+            @foreach (var col in VisibleColumns)
+            {
+                <div class="px-3 py-1.5" role="columnheader" style="@GetFrozenStyle(col)">
+                    @if (col.Filterable)
+                    {
+                        <input type="search"
+                               class="w-full rounded border border-input bg-muted/30 px-2 py-1 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                               placeholder="Filter…"
+                               aria-label="@($"Filter by {col.Title}")"
+                               value="@(_filterInputs.TryGetValue(col.Field, out var fv) ? fv : "")"
+                               @oninput="e => OnFilterInput(col.Field, e.Value?.ToString())" />
+                    }
+                </div>
+            }
+            @if (_commandColumn is not null || EditMode == EditMode.Row)
+            {
+                <div class="px-3 py-1.5" role="columnheader"></div>
+            }
+        </div>
+    }
+
+    @* ── Body (header row is the first child so it can stick to the top of this scroll container) ─────────────────────────────────────────────────── *@
+    <div class="ms-datagrid__body relative"
+         style="@(Pageable || _activeGroups.Count > 0 ? "" : $"height:{BodyHeight};overflow-y:auto;")">
     <div class="ms-datagrid__header grid bg-muted/40 border-b border-border" role="row"
-         style="grid-template-columns: @_columnTemplate">
+         style="grid-template-columns: @_columnTemplate; position:sticky; top:0; z-index:3;">
+        @if (DetailTemplate is not null)
+        {
+            <div class="flex items-center justify-center px-3 py-3" role="columnheader" aria-label="Expand column"></div>
+        }
         @if (SelectionMode == SelectionMode.Multiple)
         {
             <div class="flex items-center justify-center px-3 py-3" role="columnheader" aria-label="Select all">
@@ -167,6 +209,7 @@
                  role="columnheader"
                  aria-sort="@GetAriaSortValue(sortDir)"
                  title="@col.Tooltip"
+                 style="@GetFrozenStyle(col)"
                  @onclick="e => OnSortClicked(col, e)">
                 <span class="flex-1 truncate">@col.Title</span>
 
@@ -245,7 +288,7 @@
                                 </div>
                             }
                             <div class="p-3 space-y-2">
-                                <p class="text-xs font-medium text-muted-foreground">Show rows where:</p>
+                                <p class="text-xs font-medium text-muted-foreground">@Labels.ShowRowsWhereText</p>
                                 @{
                                     var curFilter = _menuFilters.TryGetValue(col.Field, out var ef) ? ef : new MenuFilter();
                                 }
@@ -285,39 +328,6 @@
         }
     </div>
 
-    @* ── Filter row ───────────────────────────────────────────────────────── *@
-    @if (ShowFilterRow && VisibleColumns.Any(c => c.Filterable))
-    {
-        <div class="ms-datagrid__filters grid border-b border-border bg-background" role="row"
-             style="grid-template-columns: @_columnTemplate">
-            @if (SelectionMode == SelectionMode.Multiple)
-            {
-                <div class="px-3 py-1.5" role="columnheader"></div>
-            }
-            @foreach (var col in VisibleColumns)
-            {
-                <div class="px-3 py-1.5" role="columnheader">
-                    @if (col.Filterable)
-                    {
-                        <input type="search"
-                               class="w-full rounded border border-input bg-muted/30 px-2 py-1 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                               placeholder="Filter…"
-                               aria-label="@($"Filter by {col.Title}")"
-                               value="@(_filterInputs.TryGetValue(col.Field, out var fv) ? fv : "")"
-                               @oninput="e => OnFilterInput(col.Field, e.Value?.ToString())" />
-                    }
-                </div>
-            }
-            @if (_commandColumn is not null || EditMode == EditMode.Row)
-            {
-                <div class="px-3 py-1.5" role="columnheader"></div>
-            }
-        </div>
-    }
-
-    @* ── Body ─────────────────────────────────────────────────────────────── *@
-    <div class="ms-datagrid__body relative"
-         style="@(Pageable || _activeGroups.Count > 0 ? "" : $"height:{BodyHeight};overflow-y:auto;")">
         @if (DataProvider is not null)
         {
             @if (Pageable || _activeGroups.Count > 0)
@@ -333,6 +343,10 @@
                         else
                         {
                             @RenderDataRow(dr.Data!)
+                            @if (DetailTemplate is not null && IsExpanded(dr.Data!))
+                            {
+                                @RenderDetailRow(dr.Data!)
+                            }
                         }
                     }
                 }
@@ -348,7 +362,13 @@
                             OverscanCount="@OverscanCount"
                             Context="row"
                             @ref="_virtualizeRef">
-                    <ItemContent>@RenderDataRow(row)</ItemContent>
+                    <ItemContent>
+                        @RenderDataRow(row)
+                        @if (DetailTemplate is not null && IsExpanded(row))
+                        {
+                            @RenderDetailRow(row)
+                        }
+                    </ItemContent>
                     <Placeholder>
                         <div class="grid animate-pulse border-b border-border/50"
                              style="grid-template-columns: @_columnTemplate; height: @(RowHeight)px; align-items:center; padding:0 1rem;">
@@ -410,6 +430,32 @@
             <span class="text-xs">1 row selected</span>
         }
     </div>
+
+    @* ── Summary/aggregate row (computed over the full filtered/sorted dataset, not just the current page) ── *@
+    @if (VisibleColumns.Any(c => c.SummaryFunc is not null))
+    {
+        <div class="ms-datagrid__summary grid border-t border-border bg-muted/20 text-sm font-medium" role="row"
+             style="grid-template-columns: @_columnTemplate">
+            @if (DetailTemplate is not null)
+            {
+                <div class="px-3 py-2" role="gridcell"></div>
+            }
+            @if (SelectionMode == SelectionMode.Multiple)
+            {
+                <div class="px-3 py-2" role="gridcell"></div>
+            }
+            @foreach (var col in VisibleColumns)
+            {
+                <div class="px-4 py-2 truncate" role="gridcell" style="@GetFrozenStyle(col)">
+                    @(col.SummaryFunc?.Invoke(_summaryItems) ?? "")
+                </div>
+            }
+            @if (_commandColumn is not null || EditMode == EditMode.Row)
+            {
+                <div class="px-3 py-2" role="gridcell"></div>
+            }
+        </div>
+    }
 </div>
 
 @code {
@@ -436,6 +482,10 @@
     [Parameter] public EventCallback<TItem> OnRowSaved { get; set; }
     [Parameter] public EventCallback<TItem> OnRowAdded { get; set; }
     [Parameter] public EventCallback<TItem> OnRowDeleted { get; set; }
+    /// <summary>When set, a leading expand/collapse chevron column is rendered and this fragment is shown in a full-width row under an expanded item.
+    /// Nested grids are achieved simply by placing a child &lt;MsDataGrid TItem="..."&gt; inside this template — no separate code path needed.</summary>
+    [Parameter] public RenderFragment<TItem>? DetailTemplate { get; set; }
+    [Parameter] public GridLabels Labels { get; set; } = GridLabels.Default;
 
     // ── Internal types ────────────────────────────────────────────────────
     private sealed class DisplayItem
@@ -469,6 +519,12 @@
     private bool _allSelected;
     private int _currentPage;
     private int _lastPage;
+
+    // Detail view (expandable rows) — follows the same reference/value-equality assumption as _selectedItems
+    private readonly HashSet<TItem> _expandedRows = [];
+
+    // Summary/aggregate footer — holds the full filtered/sorted dataset (not just the current page)
+    private List<TItem> _summaryItems = [];
 
     // Display rows (paged + grouped)
     private readonly List<DisplayItem> _displayRows = [];
@@ -553,6 +609,7 @@
         get
         {
             var parts = new List<string>();
+            if (DetailTemplate is not null) parts.Add("40px");
             if (SelectionMode == SelectionMode.Multiple) parts.Add("40px");
             parts.AddRange(VisibleColumns.Select(c => c.Width ?? "1fr"));
             if (_commandColumn is not null || EditMode == EditMode.Row)
@@ -574,6 +631,67 @@
 
     private const string PagerBtnBase =
         "inline-flex items-center justify-center rounded w-7 h-7 text-xs border border-input hover:bg-accent disabled:opacity-40 disabled:pointer-events-none";
+
+    // ── Detail view (expandable rows) ────────────────────────────────────
+    private bool IsExpanded(TItem row) => _expandedRows.Contains(row);
+
+    private void ToggleRowExpand(TItem row)
+    {
+        if (!_expandedRows.Remove(row)) _expandedRows.Add(row);
+        StateHasChanged();
+    }
+
+    // ── Freeze/pinned columns ─────────────────────────────────────────────
+    /// <summary>Fallback pixel width used when a frozen column's Width isn't an explicit px value.</summary>
+    private const double DefaultFrozenColumnPx = 150d;
+
+    private static double ParsePxWidth(string? width)
+    {
+        if (!string.IsNullOrWhiteSpace(width) &&
+            width.EndsWith("px", StringComparison.OrdinalIgnoreCase) &&
+            double.TryParse(width.AsSpan(0, width.Length - 2), out var px))
+            return px;
+        return DefaultFrozenColumnPx;
+    }
+
+    private string? GetFrozenStyle(MsDataGridColumn<TItem> col)
+    {
+        if (col.Frozen == FreezePosition.None) return null;
+        var visible = VisibleColumns.ToList();
+        var idx = visible.IndexOf(col);
+        if (idx < 0) return null;
+
+        double offset = 0;
+        if (col.Frozen == FreezePosition.Left)
+        {
+            if (DetailTemplate is not null) offset += 40;
+            if (SelectionMode == SelectionMode.Multiple) offset += 40;
+            for (var i = 0; i < idx; i++)
+                if (visible[i].Frozen == FreezePosition.Left)
+                    offset += ParsePxWidth(visible[i].Width);
+            return $"position:sticky;left:{offset.ToString(System.Globalization.CultureInfo.InvariantCulture)}px;z-index:2;background:inherit;";
+        }
+        else
+        {
+            for (var i = visible.Count - 1; i > idx; i--)
+                if (visible[i].Frozen == FreezePosition.Right)
+                    offset += ParsePxWidth(visible[i].Width);
+            return $"position:sticky;right:{offset.ToString(System.Globalization.CultureInfo.InvariantCulture)}px;z-index:2;background:inherit;";
+        }
+    }
+
+    // ── Summary/aggregate footer ─────────────────────────────────────────
+    private bool HasSummaryColumns => _columns.Any(c => c.SummaryFunc is not null);
+
+    private async Task RefreshSummaryDataAsync()
+    {
+        if (DataProvider is null) { _summaryItems = []; return; }
+        var result = await DataProvider.GetDataAsync(new GridRequest(
+            new PageDescriptor(0, int.MaxValue),
+            _state.Sort, _state.Filters, _state.SearchTerm));
+        _summaryItems = result.Items.ToList();
+        StateHasChanged();
+    }
 
     // ── Column registration ───────────────────────────────────────────────
     internal void RegisterColumn(MsDataGridColumn<TItem> col)
@@ -642,6 +760,27 @@
                 this, e => OnRowKeyDown(e, row)));
         int seq = 10;
 
+        // Expand/collapse chevron (Detail View)
+        if (DetailTemplate is not null)
+        {
+            var expanded = IsExpanded(row);
+            __b.OpenElement(seq++, "div");
+            __b.AddAttribute(seq++, "class", "flex items-center justify-center px-3");
+            __b.AddAttribute(seq++, "role", "gridcell");
+            __b.OpenElement(seq++, "button");
+            __b.AddAttribute(seq++, "type", "button");
+            __b.AddAttribute(seq++, "class", "text-xs opacity-60 hover:opacity-100");
+            __b.AddAttribute(seq++, "aria-label", expanded ? "Collapse row" : "Expand row");
+            __b.AddAttribute(seq++, "aria-expanded", expanded ? "true" : "false");
+            __b.AddAttribute(seq++, "onclick",
+                EventCallback.Factory.Create<Microsoft.AspNetCore.Components.Web.MouseEventArgs>(
+                    this, _ => ToggleRowExpand(row)));
+            __b.AddEventStopPropagationAttribute(seq++, "onclick", true);
+            __b.AddContent(seq++, expanded ? "▼" : "▶");
+            __b.CloseElement();
+            __b.CloseElement();
+        }
+
         // Checkbox
         if (SelectionMode == SelectionMode.Multiple)
         {
@@ -664,13 +803,15 @@
         {
             var cellStyle = col.CellStyleFunc?.Invoke(row);
             var cellClass = col.CellClassFunc?.Invoke(row);
+            var frozenStyle = GetFrozenStyle(col);
+            var combinedStyle = frozenStyle is null ? cellStyle : frozenStyle + cellStyle;
             __b.OpenElement(seq++, "div");
             __b.AddAttribute(seq++, "class",
                 string.IsNullOrEmpty(cellClass)
                     ? "px-4 py-2 text-sm text-foreground truncate"
                     : $"px-4 py-2 text-sm text-foreground truncate {cellClass}");
-            if (!string.IsNullOrEmpty(cellStyle))
-                __b.AddAttribute(seq++, "style", cellStyle);
+            if (!string.IsNullOrEmpty(combinedStyle))
+                __b.AddAttribute(seq++, "style", combinedStyle);
             __b.AddAttribute(seq++, "role", "gridcell");
 
             var isCellEditMode = EditMode == EditMode.Cell && col.Editable;
@@ -841,6 +982,21 @@
         __b.CloseElement();
     };
 
+    // Detail row: this grid lays out rows with CSS `display:grid` (not an HTML <table>), so a plain
+    // block-level div naturally spans the full row width — no colspan/grid-template bookkeeping needed.
+    private RenderFragment RenderDetailRow(TItem row) => __b =>
+    {
+        __b.OpenElement(0, "div");
+        __b.AddAttribute(1, "class", "ms-datagrid__detail-row border-b border-border/50 bg-muted/10");
+        __b.AddAttribute(2, "role", "row");
+        __b.OpenElement(3, "div");
+        __b.AddAttribute(4, "role", "gridcell");
+        __b.AddAttribute(5, "class", "p-4");
+        __b.AddContent(6, DetailTemplate!(row));
+        __b.CloseElement();
+        __b.CloseElement();
+    };
+
     private RenderFragment RenderEmptyState() => __b =>
     {
         __b.OpenElement(0, "div");
@@ -854,7 +1010,7 @@
         """);
         __b.OpenElement(5, "p");
         __b.AddAttribute(6, "class", "text-sm font-medium");
-        __b.AddContent(7, "No results found");
+        __b.AddContent(7, Labels.NoResultsText);
         __b.CloseElement();
         __b.CloseElement();
     };
@@ -1217,6 +1373,7 @@
     {
         if (Pageable || _activeGroups.Count > 0) _ = LoadPageAsync();
         else _ = _virtualizeRef?.RefreshDataAsync();
+        if (HasSummaryColumns) _ = RefreshSummaryDataAsync();
     }
 
     private async ValueTask<ItemsProviderResult<TItem>> LoadServerRowsAsync(ItemsProviderRequest request)
@@ -1247,6 +1404,8 @@
     {
         if (firstRender && (Pageable || _activeGroups.Count > 0) && DataProvider is not null && !_hasData)
             await LoadPageAsync();
+        if (firstRender && HasSummaryColumns && DataProvider is not null)
+            await RefreshSummaryDataAsync();
     }
 
     private async Task LoadPageAsync()

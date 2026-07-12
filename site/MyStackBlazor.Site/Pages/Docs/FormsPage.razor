@@ -1,13 +1,13 @@
-@page "/forms"
+@page "/docs/forms"
 @using System.ComponentModel.DataAnnotations
 
-<PageTitle>Form Controls — MyStackBlazor Demo</PageTitle>
+<PageTitle>Form Controls — MyStackBlazor Docs</PageTitle>
 
 <h1 class="text-3xl font-bold mb-1">Form Controls</h1>
 <p class="text-muted-foreground mb-8">Input, select, switch, slider, and more — all keyboard-accessible with two-way binding.</p>
 
 <!-- Text Input -->
-<DemoSection Title="Input"
+<CodeSample Title="Input"
              Description="Supports two-way binding. Use Type for email, password, number, etc."
              Code="@_inputCode">
     <div class="w-full max-w-sm space-y-3">
@@ -20,10 +20,10 @@
             <p class="text-sm text-muted-foreground">Hello, <strong>@_name</strong>!</p>
         }
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Textarea -->
-<DemoSection Title="Textarea" Code="@_textareaCode">
+<CodeSample Title="Textarea" Code="@_textareaCode">
     <div class="w-full max-w-sm">
         <StackTextarea Placeholder="Write a message..." @bind-Value="_message" Rows="4" />
         @if (!string.IsNullOrEmpty(_message))
@@ -31,10 +31,10 @@
             <p class="text-xs text-muted-foreground mt-1">@_message.Length characters</p>
         }
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Select -->
-<DemoSection Title="Select" Code="@_selectCode">
+<CodeSample Title="Select" Code="@_selectCode">
     <div class="w-full max-w-sm">
         <StackSelect @bind-Value="_framework" Placeholder="Choose a framework">
             <option value="blazor">Blazor</option>
@@ -47,10 +47,10 @@
             <p class="text-sm text-muted-foreground mt-2">Selected: <strong>@_framework</strong></p>
         }
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Switch -->
-<DemoSection Title="Switch" Code="@_switchCode">
+<CodeSample Title="Switch" Code="@_switchCode">
     <div class="space-y-3 w-full max-w-sm">
         <StackSwitch Id="sw-notif" @bind-Checked="_notifications" Label="Enable notifications" />
         <StackSwitch Id="sw-dark" @bind-Checked="_darkMode" Label="Dark mode preview" />
@@ -60,10 +60,10 @@
             Dark mode: <strong>@(_darkMode ? "on" : "off")</strong>
         </p>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Slider -->
-<DemoSection Title="Slider" Code="@_sliderCode">
+<CodeSample Title="Slider" Code="@_sliderCode">
     <div class="w-full max-w-sm space-y-4">
         <div>
             <p class="text-sm font-medium mb-2">Volume: @_volume%</p>
@@ -74,10 +74,10 @@
             <StackSlider @bind-Value="_brightness" Min="0" Max="100" Step="10" />
         </div>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Radio Group -->
-<DemoSection Title="Radio Group" Code="@_radioCode">
+<CodeSample Title="Radio Group" Code="@_radioCode">
     <div class="w-full max-w-sm space-y-6">
         <div>
             <p class="text-sm font-medium mb-2">Select a plan</p>
@@ -100,10 +100,10 @@
             </StackRadioGroup>
         </div>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Floating Label -->
-<DemoSection Title="Floating Label"
+<CodeSample Title="Floating Label"
              Description="Label animates above the input when focused or filled."
              Code="@_floatingCode">
     <div class="w-full max-w-sm space-y-4">
@@ -111,10 +111,10 @@
         <StackFloatingLabel Label="Email" Type="email" @bind-Value="_floatEmail" />
         <StackFloatingLabel Label="Password" Type="password" @bind-Value="_floatPass" />
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- NumericInput -->
-<DemoSection Title="Numeric Input"
+<CodeSample Title="Numeric Input"
              Description="Number input with optional stepper buttons and min/max clamping."
              Code="@_numericCode">
     <div class="w-full max-w-xs space-y-4">
@@ -132,10 +132,10 @@
         </div>
         <p class="text-sm text-muted-foreground">Qty: <strong>@_quantity</strong> — Price: <strong>$@_price</strong></p>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- InputOtp -->
-<DemoSection Title="OTP Input"
+<CodeSample Title="OTP Input"
              Description="Auto-advances focus on each digit. GroupAt adds a visual separator."
              Code="@_otpCode">
     <div class="space-y-3">
@@ -152,10 +152,10 @@
             <p class="text-sm text-muted-foreground">Code: <strong>@_otp</strong></p>
         }
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- MaskedTextBox -->
-<DemoSection Title="Masked Text Box"
+<CodeSample Title="Masked Text Box"
              Description="Enforces an input pattern. 0=digit, a=letter, *=any character."
              Code="@_maskedCode">
     <div class="w-full max-w-xs space-y-4">
@@ -172,10 +172,10 @@
             <StackMaskedTextBox Id="msk-card" Mask="0000 0000 0000 0000" @bind-Value="_maskedCard" />
         </div>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- FormField -->
-<DemoSection Title="Form Field"
+<CodeSample Title="Form Field"
              Description="Wrapper that adds a Label, helper text, and error message around any input."
              Code="@_formFieldCode">
     <div class="w-full max-w-sm space-y-4">
@@ -190,10 +190,10 @@
         </StackFormField>
         <StackSwitch @bind-Checked="_ffDisabled" Label="Disable notes field" />
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- MultiSelect -->
-<DemoSection Title="Multi-Select Dropdown"
+<CodeSample Title="Multi-Select Dropdown"
              Description="Searchable multi-select with tag pills, Select All, grouping, descriptions, keyboard navigation, and max-selection limit."
              Code="@_multiSelectCode">
     <div class="w-full max-w-2xl space-y-8">
@@ -267,10 +267,10 @@
                          Disabled="true" />
         </div>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- ListBox -->
-<DemoSection Title="List Box"
+<CodeSample Title="List Box"
              Description="Scrollable selection list. Set MultiSelect for multiple picks."
              Code="@_listboxCode">
     <div class="flex flex-wrap gap-6">
@@ -302,10 +302,10 @@
             }
         </div>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- InputGroup -->
-<DemoSection Title="Input Group"
+<CodeSample Title="Input Group"
              Description="Wraps an Input with a text prefix, suffix, or both. Size matches the inner input."
              Code="@_inputGroupCode">
     <div class="w-full max-w-sm space-y-3">
@@ -332,10 +332,10 @@
             </StackInputGroup>
         </div>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- PhoneInput -->
-<DemoSection Title="Phone Input"
+<CodeSample Title="Phone Input"
              Description="Country-code dropdown combined with a tel input. Defaults to +91."
              Code="@_phoneCode">
     <div class="w-full max-w-sm space-y-3">
@@ -348,10 +348,10 @@
             <p class="text-sm text-muted-foreground">Number: <strong>@_dialCode @_phone</strong></p>
         }
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- NativeSelect -->
-<DemoSection Title="Native Select"
+<CodeSample Title="Native Select"
              Description="Native HTML &lt;select&gt; with consistent Tailwind styling. Use Size for sm / md / lg."
              Code="@_nativeSelectCode">
     <div class="w-full max-w-sm space-y-3">
@@ -375,10 +375,10 @@
             <p class="text-sm text-muted-foreground">Framework: <strong>@_nativeFramework</strong></p>
         }
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- MonthYearPicker -->
-<DemoSection Title="Month Year Picker"
+<CodeSample Title="Month Year Picker"
              Description="Select a month and year. Displays full month names in a 3×4 grid with year navigation arrows."
              Code="@_monthYearPickerCode">
     <div class="w-full max-w-xs space-y-3">
@@ -388,10 +388,10 @@
             <p class="text-sm text-muted-foreground">Selected: <strong>@_selectedMonthYear.Value.ToString("MMMM yyyy")</strong></p>
         }
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- ColorPalette -->
-<DemoSection Title="Color Palette"
+<CodeSample Title="Color Palette"
              Description="Click a swatch to select a color. ShowHex displays the selected hex value."
              Code="@_colorCode">
     <div class="space-y-4">
@@ -399,10 +399,10 @@
         <StackColorPalette Label="Accent color" @bind-Value="_accentColor" ShowHex
                       Colors="@(new[] { "#ef4444","#f97316","#eab308","#22c55e","#3b82f6","#8b5cf6","#ec4899" })" />
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- PasswordInput -->
-<DemoSection Title="Password Input"
+<CodeSample Title="Password Input"
              Description="Text input with a show/hide visibility toggle button."
              Code="@_passwordCode">
     <div class="w-full max-w-sm space-y-3">
@@ -413,10 +413,10 @@
             <p class="text-sm text-muted-foreground">Value: <strong>@_password</strong></p>
         }
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- CurrencyInput -->
-<DemoSection Title="Currency Input"
+<CodeSample Title="Currency Input"
              Description="Numeric input formatted with a currency symbol and thousands separators, with optional stepper buttons and min/max clamping."
              Code="@_currencyCode">
     <div class="w-full max-w-xs space-y-4">
@@ -430,10 +430,10 @@
         </div>
         <p class="text-sm text-muted-foreground">Price: <strong>@_currencyPrice</strong></p>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- EnumInput -->
-<DemoSection Title="Enum Input"
+<CodeSample Title="Enum Input"
              Description="Binds directly to a C# enum. Mode=&quot;Select&quot; renders a dropdown, Mode=&quot;Radio&quot; renders a radio group. Option labels honor [Display(Name = ...)]."
              Code="@_enumCode">
     <div class="w-full max-w-sm space-y-6">
@@ -448,10 +448,10 @@
             <p class="text-sm text-muted-foreground mt-1">Selected: <strong>@_statusRadio</strong></p>
         </div>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Validation -->
-<DemoSection Title="Validation"
+<CodeSample Title="Validation"
              Description="EditForm + DataAnnotationsValidator, with StackValidationSummary for form-level errors and StackValidationMessage for per-field errors."
              Code="@_validationCode">
     <EditForm Model="_signupModel" OnValidSubmit="HandleValidSubmit" OnInvalidSubmit="HandleInvalidSubmit" class="w-full max-w-sm space-y-4">
@@ -483,7 +483,7 @@
             <p class="text-sm text-green-600 dark:text-green-400">Account created for <strong>@_signupModel.FullName</strong>.</p>
         }
     </EditForm>
-</DemoSection>
+</CodeSample>
 
 @code {
     private string? _name;

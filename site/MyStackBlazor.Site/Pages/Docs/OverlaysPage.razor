@@ -1,14 +1,14 @@
-@page "/overlays"
+@page "/docs/overlays"
 @inject ToastService Toast
 @inject DialogService DialogService
 
-<PageTitle>Overlays — MyStackBlazor Demo</PageTitle>
+<PageTitle>Overlays — MyStackBlazor Docs</PageTitle>
 
 <h1 class="text-3xl font-bold mb-1">Overlays</h1>
 <p class="text-muted-foreground mb-8">Sheet, drawer, popover, tooltip, hover card, window, and popup.</p>
 
 <!-- Tooltip -->
-<DemoSection Title="Tooltip"
+<CodeSample Title="Tooltip"
              Description="Appears on hover. Use Text for simple labels, Content for rich markup. Side controls placement."
              Code="@_tooltipCode">
     <div class="flex flex-wrap gap-6">
@@ -30,10 +30,10 @@
             </Content>
         </StackTooltip>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Popover -->
-<DemoSection Title="Popover"
+<CodeSample Title="Popover"
              Description="Click-triggered floating panel with arbitrary content. Closes when clicking outside."
              Code="@_popoverCode">
     <div class="flex flex-wrap gap-4">
@@ -72,10 +72,10 @@
             </Content>
         </StackPopover>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- HoverCard -->
-<DemoSection Title="Hover Card"
+<CodeSample Title="Hover Card"
              Description="Richer preview card that appears on hover. Great for user/link previews."
              Code="@_hoverCardCode">
     <div class="flex flex-wrap gap-6">
@@ -110,10 +110,10 @@
             </Content>
         </StackHoverCard>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Sheet -->
-<DemoSection Title="Sheet"
+<CodeSample Title="Sheet"
              Description="Slides in from a side of the screen. Use Side to control direction."
              Code="@_sheetCode">
     <div class="flex flex-wrap gap-3">
@@ -166,10 +166,10 @@
             </div>
         </div>
     </StackSheet>
-</DemoSection>
+</CodeSample>
 
 <!-- Drawer -->
-<DemoSection Title="Drawer"
+<CodeSample Title="Drawer"
              Description="Bottom drawer with a handle bar. Ideal for mobile action sheets."
              Code="@_drawerCode">
     <StackButton Variant="outline" OnClick="@(() => _drawerOpen = true)">Open drawer</StackButton>
@@ -188,10 +188,10 @@
             </div>
         </div>
     </StackDrawer>
-</DemoSection>
+</CodeSample>
 
 <!-- Window -->
-<DemoSection Title="Window"
+<CodeSample Title="Window"
              Description="Modal window with title bar, scrollable content, and footer. Use Width (sm/md/lg/xl/full)."
              Code="@_windowCode">
     <div class="flex flex-wrap gap-3">
@@ -242,10 +242,10 @@
             </div>
         </FooterContent>
     </StackWindow>
-</DemoSection>
+</CodeSample>
 
 <!-- Confirm Dialog -->
-<DemoSection Title="Confirm Dialog"
+<CodeSample Title="Confirm Dialog"
              Description="Async confirmation dialog driven by DialogService.ConfirmAsync. Await the returned bool to know whether the user confirmed or cancelled."
              Code="@_confirmDialogCode">
     <div class="flex flex-wrap items-center gap-3">
@@ -259,10 +259,10 @@
             })
         </span>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Popup -->
-<DemoSection Title="Popup"
+<CodeSample Title="Popup"
              Description="Lightweight positioned popup relative to an anchor element."
              Code="@_popupCode">
     <div class="flex flex-wrap gap-4">
@@ -289,10 +289,10 @@
             </Content>
         </StackPopup>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Command -->
-<DemoSection Title="Command"
+<CodeSample Title="Command"
              Description="Searchable command palette. Type to filter items. Use CommandGroup to organise, CommandItem for actions, CommandEmpty as the no-results fallback."
              Code="@_commandCode">
     <div class="flex flex-wrap gap-8 items-start">
@@ -343,7 +343,7 @@
             </StackCommand>
         </div>
     </div>
-</DemoSection>
+</CodeSample>
 
 @code {
     private bool _sheetRight;

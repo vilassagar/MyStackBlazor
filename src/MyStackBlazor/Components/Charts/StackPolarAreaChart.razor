@@ -1,0 +1,124 @@
+@namespace MyStackBlazor.Components.Charts
+@using System.Globalization
+
+<div class="@($"flex flex-col gap-3 {Class}".Trim())" @attributes="AdditionalAttributes">
+    @if (!string.IsNullOrWhiteSpace(Title))
+    {
+        <div class="text-sm font-medium text-foreground">@Title</div>
+    }
+    <div class="flex items-center gap-6">
+        <svg width="280" height="280"
+             viewBox="0 0 280 280"
+             role="img"
+             aria-label="@(Title ?? "Polar area chart")"
+             @onmouseleave="() => _hoverIdx = -1">
+            <title>@(Title ?? "Polar area chart")</title>
+
+            @{
+                int n = Segments.Count;
+                double maxValue = n == 0 ? 0 : Segments.Max(s => Math.Max(s.Value, 0));
+                double total = Segments.Sum(s => Math.Max(s.Value, 0));
+                double angleStep = n > 0 ? 2 * Math.PI / n : 0;
+            }
+
+            @* Faint reference rings *@
+            <circle cx="@Fc(Cx)" cy="@Fc(Cy)" r="@Fc(MaxR * 0.5)" fill="none"
+                    stroke="var(--color-border)" stroke-width="1" stroke-dasharray="3 3" opacity="0.6"
+                    aria-hidden="true" focusable="false" />
+            <circle cx="@Fc(Cx)" cy="@Fc(Cy)" r="@Fc(MaxR)" fill="none"
+                    stroke="var(--color-border)" stroke-width="1" stroke-dasharray="3 3" opacity="0.6"
+                    aria-hidden="true" focusable="false" />
+
+            @for (int i = 0; i < n; i++)
+            {
+                var capturedI = i;
+                var seg = Segments[capturedI];
+                double value = Math.Max(seg.Value, 0);
+                double radius = maxValue > 0 ? MaxR * value / maxValue : 0;
+                double startAngle = -Math.PI / 2.0 + capturedI * angleStep;
+                double endAngle = startAngle + angleStep;
+                double midAngle = startAngle + angleStep / 2.0;
+                bool isHovered = _hoverIdx == capturedI;
+
+                double dx = isHovered ? Math.Cos(midAngle) * 4 : 0;
+                double dy = isHovered ? Math.Sin(midAngle) * 4 : 0;
+
+                int largeArc = angleStep > Math.PI ? 1 : 0;
+
+                double x1 = Cx + radius * Math.Cos(startAngle);
+                double y1 = Cy + radius * Math.Sin(startAngle);
+                double x2 = Cx + radius * Math.Cos(endAngle);
+                double y2 = Cy + radius * Math.Sin(endAngle);
+
+                string pathD = radius > 0
+                    ? $"M {Fc(Cx)} {Fc(Cy)} L {Fc(x1)} {Fc(y1)} A {Fc(radius)} {Fc(radius)} 0 {largeArc} 1 {Fc(x2)} {Fc(y2)} Z"
+                    : "";
+
+                @if (radius > 0)
+                {
+                    <path d="@pathD"
+                          fill="@ChartHelpers.ResolveColor(seg.Color, capturedI)"
+                          stroke="var(--color-card)" stroke-width="1"
+                          transform="translate(@Fc(dx), @Fc(dy))"
+                          @onmouseenter="() => _hoverIdx = capturedI"
+                          aria-hidden="true" focusable="false" />
+                }
+            }
+
+            @* Tooltip *@
+            @if (ShowTooltip && _hoverIdx >= 0 && _hoverIdx < n)
+            {
+                var seg = Segments[_hoverIdx];
+                double fraction = total > 0 ? Math.Max(seg.Value, 0) / total : 0;
+
+                double tooltipW = 140;
+                double tooltipH = 52;
+                double midAngle = -Math.PI / 2.0 + _hoverIdx * angleStep + angleStep / 2.0;
+                double ttxPx = Cx + (Math.Cos(midAngle) >= 0 ? MaxR * 0.6 : -MaxR * 0.6 - tooltipW);
+                double ttyPx = Cy + Math.Sin(midAngle) * MaxR * 0.4 - tooltipH / 2.0;
+                if (ttxPx < 4) ttxPx = 4;
+                if (ttxPx + tooltipW > 276) ttxPx = 276 - tooltipW;
+                if (ttyPx < 4) ttyPx = 4;
+                if (ttyPx + tooltipH > 276) ttyPx = 276 - tooltipH;
+
+                <rect x="@Fc(ttxPx)" y="@Fc(ttyPx)" width="@Fc(tooltipW)" height="@Fc(tooltipH)"
+                      rx="4" fill="var(--color-popover)" stroke="var(--color-border)" stroke-width="1"
+                      aria-hidden="true" focusable="false" />
+                @((MarkupString)ChartHelpers.SvgText(ttxPx + 8, ttyPx + 16, "start", 11, "var(--color-card-foreground)", seg.Label, "600"))
+                @((MarkupString)ChartHelpers.SvgText(ttxPx + 8, ttyPx + 31, "start", 11, "var(--color-popover-foreground)", ChartHelpers.FormatY(seg.Value)))
+                @((MarkupString)ChartHelpers.SvgText(ttxPx + 8, ttyPx + 46, "start", 11, "var(--color-muted-foreground)", $"{fraction * 100:F1}%"))
+            }
+        </svg>
+
+        @if (ShowLegend && Segments.Count > 0)
+        {
+            <div class="flex flex-col gap-1.5">
+                @for (int i = 0; i < Segments.Count; i++)
+                {
+                    var capturedI = i;
+                    <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:@ChartHelpers.ResolveColor(Segments[capturedI].Color, capturedI)"></span>
+                        @Segments[capturedI].Label
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [EditorRequired, Parameter] public IReadOnlyList<ChartSegment> Segments { get; set; } = [];
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public bool ShowLegend { get; set; } = true;
+    [Parameter] public bool ShowTooltip { get; set; } = true;
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private int _hoverIdx = -1;
+
+    private const double Cx = 140;
+    private const double Cy = 140;
+    private const double MaxR = 120;
+
+    private static string Fc(double v) => v.ToString("F2", CultureInfo.InvariantCulture);
+}

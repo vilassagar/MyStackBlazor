@@ -1,13 +1,12 @@
-@page "/data"
-@using MyStackBlazor.DataGrid.Models
+@page "/docs/data"
 
-<PageTitle>Data Controls — MyStackBlazor Demo</PageTitle>
+<PageTitle>Data &amp; Charts — MyStackBlazor Docs</PageTitle>
 
 <h1 class="text-3xl font-bold mb-1">Data Controls</h1>
-<p class="text-muted-foreground mb-8">Table, DataTable, ListView, TreeView, and VirtualList.</p>
+<p class="text-muted-foreground mb-8">Table, DataTable, ListView, TreeView, VirtualList, Charts, and MsDataGrid.</p>
 
 <!-- Static Table -->
-<DemoSection Title="Table"
+<CodeSample Title="Table"
              Description="Composable table primitives. Use TableHeader, TableBody, TableRow, TableHead, TableCell."
              Code="@_tableCode">
     <div class="w-full overflow-x-auto">
@@ -37,10 +36,10 @@
             </StackTableBody>
         </StackTable>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- DataTable — search + sort + filter + pagination -->
-<DemoSection Title="DataTable"
+<CodeSample Title="DataTable"
              Description="Built-in search, column sort, per-column filter, and pagination. Pass ShowSearch, ShowPagination, PageSize."
              Code="@_dataTableCode">
     <div class="w-full">
@@ -49,10 +48,10 @@
                    PageSize="4"
                    Columns="_columns" />
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- ListView -->
-<DemoSection Title="ListView"
+<CodeSample Title="ListView"
              Description="Generic list with ItemTemplate, selection highlight, and click callback."
              Code="@_listViewCode">
     <div class="w-full max-w-sm">
@@ -81,10 +80,10 @@
             </p>
         }
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- TreeView -->
-<DemoSection Title="TreeView"
+<CodeSample Title="TreeView"
              Description="Recursive tree with expand/collapse, keyboard-accessible selection."
              Code="@_treeCode">
     <div class="w-full max-w-xs rounded-md border p-2">
@@ -100,46 +99,46 @@
             Selected: <strong>@_selectedNode.Label</strong>
         </p>
     }
-</DemoSection>
+</CodeSample>
 
 <!-- Doughnut Chart -->
-<DemoSection Title="Doughnut Chart"
+<CodeSample Title="Doughnut Chart"
              Description="StackDoughnutChart wraps StackPieChart with Donut=true — same Segments / CenterLabel / legend / tooltip API as the pie chart."
              Code="@_doughnutCode">
     <div class="w-full max-w-md">
         <StackDoughnutChart Segments="_channelSegments" Title="Traffic by Channel" CenterLabel="12.4K" />
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Radar Chart -->
-<DemoSection Title="Radar Chart"
+<CodeSample Title="Radar Chart"
              Description="StackRadarChart plots one or more ChartSeries across shared Labels (spokes). Hover a spoke's wedge to see all series values for that axis."
              Code="@_radarCode">
     <div class="w-full max-w-md">
         <StackRadarChart Series="_radarSeries" Labels="_radarLabels" Title="Team Skill Comparison" />
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Polar Area Chart -->
-<DemoSection Title="Polar Area Chart"
+<CodeSample Title="Polar Area Chart"
              Description="StackPolarAreaChart uses ChartSegment like the pie/doughnut chart, but each slice keeps an equal angle and instead encodes value as radius."
              Code="@_polarAreaCode">
     <div class="w-full max-w-md">
         <StackPolarAreaChart Segments="_weekdaySegments" Title="Orders by Weekday" />
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Scatter Chart -->
-<DemoSection Title="Scatter Chart"
+<CodeSample Title="Scatter Chart"
              Description="StackScatterChart plots ChartPointSeries — each series is a list of ChartPoint(X, Y, Label) values. Hover a point for its exact coordinates."
              Code="@_scatterCode">
     <div class="w-full">
         <StackScatterChart Series="_scatterSeries" Title="Price vs. Rating" />
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Sortable List -->
-<DemoSection Title="Sortable List"
+<CodeSample Title="Sortable List"
              Description="StackSortableList adds HTML5 drag-and-drop reordering to any IList<T>. Drag an item and drop it on another to reorder; ItemsChanged fires with the updated list."
              Code="@_sortableListCode">
     <div class="w-full max-w-sm">
@@ -155,10 +154,10 @@
             Current order: @string.Join(" → ", _sortableItems)
         </p>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- MsDataGrid: infinite-scroll virtualized server-side grid -->
-<DemoSection Title="MsDataGrid — Infinite Scroll"
+<CodeSample Title="MsDataGrid — Infinite Scroll"
              Description="Virtual-scroll server-side grid: only visible rows are rendered. Click a header to sort; Shift+click a second header for multi-column sort (numbered badge shows priority). Use the Columns button to show or hide any column. Export downloads all rows as .xlsx."
              Code="@_gridCode">
     <div class="w-full">
@@ -197,10 +196,10 @@
             <p class="mt-1 text-xs text-muted-foreground">@_exportMessage</p>
         }
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- MsDataGrid: Pagination -->
-<DemoSection Title="MsDataGrid — Pagination"
+<CodeSample Title="MsDataGrid — Pagination"
              Description="Set Pageable=true and PageSize to switch from infinite scroll to a numbered pager. The footer shows a windowed page list with first / prev / next / last navigation."
              Code="@_gridPageCode">
     <div class="w-full">
@@ -234,10 +233,10 @@
             </p>
         }
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- MsDataGrid: Multi-Row Selection -->
-<DemoSection Title="MsDataGrid — Multi-Row Selection"
+<CodeSample Title="MsDataGrid — Multi-Row Selection"
              Description="SelectionMode.Multiple adds a checkbox column and a select-all header checkbox. Click any row or its checkbox to toggle it. SelectedItems and SelectedItemsChanged track the full selection set."
              Code="@_gridSelectCode">
     <div class="w-full">
@@ -279,10 +278,10 @@
             }
         </p>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- MsDataGrid: Command Column -->
-<DemoSection Title="MsDataGrid — Command Column"
+<CodeSample Title="MsDataGrid — Command Column"
              Description="MsDataGridCommandColumn appends an actions cell to every row. Built-in EditLabel / DeleteLabel buttons fire OnEdit / OnDelete callbacks. Swap in CustomButtons for fully custom actions."
              Code="@_gridCmdCode">
     <div class="w-full">
@@ -316,10 +315,10 @@
             }
         </p>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- MsDataGrid: Conditional Formatting + Column Chooser -->
-<DemoSection Title="MsDataGrid — Conditional Formatting &amp; Column Chooser"
+<CodeSample Title="MsDataGrid — Conditional Formatting &amp; Column Chooser"
              Description="CellStyleFunc returns an inline style string per row (e.g. red text for high prices). CellClassFunc returns extra CSS classes. The Columns toolbar button opens a dropdown to toggle any column; columns marked Visible=false start hidden."
              Code="@_gridFmtCode">
     <div class="w-full">
@@ -357,10 +356,10 @@
             Prices above $400 are highlighted. Click <strong>Columns</strong> in the toolbar — "SKU (hidden by default)" starts unchecked.
         </p>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- MsDataGrid: Grouping -->
-<DemoSection Title="MsDataGrid — Grouping"
+<CodeSample Title="MsDataGrid — Grouping"
              Description="ShowGroupPanel reveals a drag-target bar above the header. Click the ≡ icon on any Groupable column header to group by it. Group rows show the value, item count, and a ▶/▼ toggle to collapse/expand."
              Code="@_gridGroupCode">
     <div class="w-full">
@@ -391,10 +390,10 @@
             Click <strong>≡</strong> on the Category or Stock header to group. Click a group row to collapse/expand it.
         </p>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- MsDataGrid: Filter Menu -->
-<DemoSection Title="MsDataGrid — Filter Menu"
+<CodeSample Title="MsDataGrid — Filter Menu"
              Description="When Filterable=true on a column the header shows a funnel icon. Clicking it opens a per-column panel with Sort A→Z / Sort Z→A shortcuts and a filter form. Pick an operator (Contains, Equals, Starts with, Greater than…) and type a value to filter without leaving the header."
              Code="@_gridFilterMenuCode">
     <div class="w-full">
@@ -425,10 +424,10 @@
             Click the funnel icon on Name, Category, or Price. Active filters are shown with a highlighted icon.
         </p>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- MsDataGrid: Row Editing -->
-<DemoSection Title="MsDataGrid — Row Editing"
+<CodeSample Title="MsDataGrid — Row Editing"
              Description="EditMode.Row puts Save / Cancel buttons in each row's action cell. Click Edit to enter edit mode for that row; editable cells become inputs. ValueSetter is called on save to write the string value back to your model. NewRowFactory + Add Row inserts a blank row at the top."
              Code="@_gridRowEditCode">
     <div class="w-full">
@@ -458,10 +457,10 @@
             { <span>Click Edit on any row, or Add Row to insert a new entry.</span> }
         </p>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- MsDataGrid: Cell Editing -->
-<DemoSection Title="MsDataGrid — Cell Editing"
+<CodeSample Title="MsDataGrid — Cell Editing"
              Description="EditMode.Cell lets users click any editable cell to edit it directly in place. The cell switches to an input; press Enter or click away to commit, Escape to cancel."
              Code="@_gridCellEditCode">
     <div class="w-full">
@@ -486,10 +485,10 @@
             Click any Name, Category, or Price cell to edit in place. Enter commits, Escape cancels.
         </p>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- MsDataGrid: Batch Editing -->
-<DemoSection Title="MsDataGrid — Batch Editing"
+<CodeSample Title="MsDataGrid — Batch Editing"
              Description="EditMode.Batch renders all editable cells as inputs at once. Changes are buffered until you click Save All (shows pending count) or Discard in the toolbar."
              Code="@_gridBatchEditCode">
     <div class="w-full">
@@ -514,10 +513,10 @@
             Edit any cells — the toolbar shows <strong>Save All (N)</strong>. Click Save All to commit or Discard to revert.
         </p>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- MsDataGrid: Export -->
-<DemoSection Title="MsDataGrid — Export (Excel / CSV / JSON)"
+<CodeSample Title="MsDataGrid — Export (Excel / CSV / JSON)"
              Description="The Export button in the toolbar opens a dropdown with Excel (.xlsx), CSV (.csv), and JSON (.json) options. OnExported receives (byte[] Data, string Format) — use it to trigger a file download. All matching rows across all pages are exported."
              Code="@_gridExportCode">
     <div class="w-full">
@@ -550,10 +549,10 @@
             { <span>Click the Export button and choose a format.</span> }
         </p>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- MsDataGrid: Detail Row, Frozen Column & Summary Footer -->
-<DemoSection Title="MsDataGrid — Detail Row, Frozen Column &amp; Summary Footer"
+<CodeSample Title="MsDataGrid — Detail Row, Frozen Column &amp; Summary Footer"
              Description="DetailTemplate adds an expand chevron per row; click it to reveal extra content in a full-width row below (nest a child MsDataGrid inside DetailTemplate to build master-detail grids). Frozen=&quot;FreezePosition.Left&quot; pins the ID column while the body scrolls horizontally. Setting SummaryFunc on the Price column renders an aggregate footer row."
              Code="@_gridDetailCode">
     <div class="w-full">
@@ -583,10 +582,10 @@
             Click the ▶ chevron on any row to expand its detail panel. The ID column stays frozen while scrolling and the footer totals the Price column.
         </p>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- MsDataGrid: Custom Labels -->
-<DemoSection Title="MsDataGrid — Custom Labels"
+<CodeSample Title="MsDataGrid — Custom Labels"
              Description="Pass a Labels GridLabels record to override any built-in string — search placeholder, Add Row / Columns / Export button text, the empty-state message, and the filter-menu heading — for full localization control."
              Code="@_gridLabelsCode">
     <div class="w-full">
@@ -609,10 +608,10 @@
             Notice the search box placeholder now reads "Find records..." instead of the default "Search…".
         </p>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- MsVirtualList -->
-<DemoSection Title="MsVirtualList"
+<CodeSample Title="MsVirtualList"
              Description="Blazor Virtualize wrapper for large flat lists. Renders only visible rows."
              Code="@_virtualCode">
     <div class="w-full max-w-sm">
@@ -630,7 +629,7 @@
         </StackMsVirtualList>
         <p class="text-xs text-muted-foreground mt-1">@_virtualItems.Count items — only visible rows rendered.</p>
     </div>
-</DemoSection>
+</CodeSample>
 
 @code {
     // ── Sample data ──────────────────────────────────────────────────────────

@@ -1,0 +1,166 @@
+@namespace MyStackBlazor.Components.Charts
+@using System.Globalization
+
+<div class="@($"flex flex-col gap-2 {Class}".Trim())" @attributes="AdditionalAttributes">
+    <svg viewBox="0 0 560 300"
+         role="img"
+         aria-label="@(Title ?? "Scatter chart")"
+         class="w-full h-auto"
+         @onmouseleave="() => _hover = (-1, -1)">
+        <title>@(Title ?? "Scatter chart")</title>
+
+        @{
+            var (xMin, xMax, xTicks) = XScale();
+            var (yMin, yMax, yTicks) = YScale();
+            double xRange = xMax - xMin;
+            double yRange = yMax - yMin;
+        }
+
+        @* Y grid lines and labels *@
+        @for (int ti = 0; ti <= yTicks; ti++)
+        {
+            var capturedTi = ti;
+            double yVal = yMin + capturedTi * (yMax - yMin) / yTicks;
+            double yPx = YPos(yVal, yMin, yRange);
+            <line x1="@F(ML)" y1="@F(yPx)" x2="@F(ML + PlotW)" y2="@F(yPx)"
+                  stroke="var(--color-border)" stroke-width="1" stroke-dasharray="3 3"
+                  aria-hidden="true" focusable="false" />
+            @((MarkupString)ChartHelpers.SvgText(ML - 6, yPx + 4, "end", 11, "var(--color-muted-foreground)", ChartHelpers.FormatY(yVal)))
+        }
+
+        @* X grid lines and labels *@
+        @for (int ti = 0; ti <= xTicks; ti++)
+        {
+            var capturedTi = ti;
+            double xVal = xMin + capturedTi * (xMax - xMin) / xTicks;
+            double xPx = XPos(xVal, xMin, xRange);
+            <line x1="@F(xPx)" y1="@F(MT)" x2="@F(xPx)" y2="@F(MT + PlotH)"
+                  stroke="var(--color-border)" stroke-width="1" stroke-dasharray="3 3"
+                  aria-hidden="true" focusable="false" />
+            @((MarkupString)ChartHelpers.SvgText(xPx, MT + PlotH + 20, "middle", 11, "var(--color-muted-foreground)", ChartHelpers.FormatY(xVal)))
+        }
+
+        @* Points *@
+        @for (int si = 0; si < Series.Count; si++)
+        {
+            var capturedSi = si;
+            var series = Series[capturedSi];
+            @for (int pi = 0; pi < series.Points.Count; pi++)
+            {
+                var capturedPi = pi;
+                var pt = series.Points[capturedPi];
+                double cx = XPos(pt.X, xMin, xRange);
+                double cy = YPos(pt.Y, yMin, yRange);
+                bool isHovered = _hover == (capturedSi, capturedPi);
+                string color = pt.Color ?? ChartHelpers.ResolveColor(series.Color, capturedSi);
+                <circle cx="@F(cx)" cy="@F(cy)"
+                        r="@F(isHovered ? PointRadius + 1.5 : PointRadius)"
+                        fill="@color"
+                        opacity="@(isHovered ? "0.85" : "1")"
+                        stroke="var(--color-card)" stroke-width="1.5"
+                        aria-hidden="true" focusable="false" />
+                @* Larger transparent hit target for easier hovering *@
+                <circle cx="@F(cx)" cy="@F(cy)" r="@F(Math.Max(PointRadius + 6, 10))"
+                        fill="transparent"
+                        @onmouseenter="() => _hover = (capturedSi, capturedPi)"
+                        aria-hidden="true" focusable="false" />
+            }
+        }
+
+        @* Tooltip *@
+        @if (ShowTooltip && _hover.s >= 0 && _hover.p >= 0)
+        {
+            var series = Series[_hover.s];
+            var pt = series.Points[_hover.p];
+            string color = pt.Color ?? ChartHelpers.ResolveColor(series.Color, _hover.s);
+            double cx = XPos(pt.X, xMin, xRange);
+            double cy = YPos(pt.Y, yMin, yRange);
+
+            double tooltipW = 150;
+            double tooltipH = string.IsNullOrWhiteSpace(pt.Label) ? 46 : 62;
+            double txPx = cx + 12;
+            if (txPx + tooltipW > ML + PlotW) txPx = cx - tooltipW - 12;
+            double tyPx = cy - tooltipH / 2.0;
+            if (tyPx < MT) tyPx = MT;
+            if (tyPx + tooltipH > MT + PlotH) tyPx = MT + PlotH - tooltipH;
+            double rowY = tyPx + 16;
+
+            <rect x="@F(txPx)" y="@F(tyPx)" width="@F(tooltipW)" height="@F(tooltipH)"
+                  rx="4" fill="var(--color-popover)" stroke="var(--color-border)" stroke-width="1"
+                  aria-hidden="true" focusable="false" />
+            <circle cx="@F(txPx + 12)" cy="@F(rowY - 4)" r="4" fill="@color"
+                    aria-hidden="true" focusable="false" />
+            @((MarkupString)ChartHelpers.SvgText(txPx + 22, rowY, "start", 11, "var(--color-card-foreground)", series.Name, "600"))
+            @if (!string.IsNullOrWhiteSpace(pt.Label))
+            {
+                @((MarkupString)ChartHelpers.SvgText(txPx + 8, rowY + 18, "start", 11, "var(--color-popover-foreground)", pt.Label))
+                @((MarkupString)ChartHelpers.SvgText(txPx + 8, rowY + 34, "start", 11, "var(--color-muted-foreground)", $"x: {ChartHelpers.FormatY(pt.X)}, y: {ChartHelpers.FormatY(pt.Y)}"))
+            }
+            else
+            {
+                @((MarkupString)ChartHelpers.SvgText(txPx + 8, rowY + 18, "start", 11, "var(--color-popover-foreground)", $"x: {ChartHelpers.FormatY(pt.X)}, y: {ChartHelpers.FormatY(pt.Y)}"))
+            }
+        }
+
+        @* Axes *@
+        <line x1="@F(ML)" y1="@F(MT)" x2="@F(ML)" y2="@F(MT + PlotH)"
+              stroke="var(--color-border)" stroke-width="1"
+              aria-hidden="true" focusable="false" />
+        <line x1="@F(ML)" y1="@F(MT + PlotH)" x2="@F(ML + PlotW)" y2="@F(MT + PlotH)"
+              stroke="var(--color-border)" stroke-width="1"
+              aria-hidden="true" focusable="false" />
+    </svg>
+
+    @if (ShowLegend && Series.Count > 0)
+    {
+        <div class="flex flex-wrap gap-x-4 gap-y-1 justify-center mt-1">
+            @for (int si = 0; si < Series.Count; si++)
+            {
+                var capturedSi = si;
+                <div class="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:@ChartHelpers.ResolveColor(Series[capturedSi].Color, capturedSi)"></span>
+                    @Series[capturedSi].Name
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [EditorRequired, Parameter] public IReadOnlyList<ChartPointSeries> Series { get; set; } = [];
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public bool ShowLegend { get; set; } = true;
+    [Parameter] public bool ShowTooltip { get; set; } = true;
+    [Parameter] public double PointRadius { get; set; } = 4;
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private (int s, int p) _hover = (-1, -1);
+
+    private const double ML = 55;
+    private const double MT = 20;
+    private const double PlotW = 485;
+    private const double PlotH = 235;
+
+    private (double min, double max, int ticks) XScale()
+    {
+        var allX = Series.SelectMany(s => s.Points).Select(p => p.X).ToList();
+        if (allX.Count == 0) return (0, 10, 5);
+        return ChartHelpers.NiceScale(allX.Min(), allX.Max());
+    }
+
+    private (double min, double max, int ticks) YScale()
+    {
+        var allY = Series.SelectMany(s => s.Points).Select(p => p.Y).ToList();
+        if (allY.Count == 0) return (0, 10, 5);
+        return ChartHelpers.NiceScale(allY.Min(), allY.Max());
+    }
+
+    private static double XPos(double val, double xMin, double xRange)
+        => ML + (xRange > 0 ? PlotW * (val - xMin) / xRange : PlotW / 2.0);
+
+    private static double YPos(double val, double yMin, double yRange)
+        => MT + PlotH - (yRange > 0 ? PlotH * (val - yMin) / yRange : PlotH / 2.0);
+
+    private static string F(double v) => v.ToString("F1", CultureInfo.InvariantCulture);
+}

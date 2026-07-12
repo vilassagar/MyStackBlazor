@@ -1,0 +1,62 @@
+@namespace MyStackBlazor.Components.Form
+@typeparam TEnum where TEnum : struct, Enum
+@using System.ComponentModel.DataAnnotations
+@using System.Reflection
+
+@if (Mode == "Radio")
+{
+    <StackRadioGroup Value="@Value.ToString()" ValueChanged="OnRadioChanged" Class="@Class" AdditionalAttributes="AdditionalAttributes">
+        @foreach (var option in Options)
+        {
+            <StackRadioGroupItem Value="@option.Value" Label="@option.Label" />
+        }
+    </StackRadioGroup>
+}
+else
+{
+    <StackSelect Value="@Value.ToString()" ValueChanged="OnSelectChanged" Class="@Class" AdditionalAttributes="AdditionalAttributes">
+        @foreach (var option in Options)
+        {
+            <option value="@option.Value">@option.Label</option>
+        }
+    </StackSelect>
+}
+
+@code {
+    [Parameter] public TEnum Value { get; set; }
+    [Parameter] public EventCallback<TEnum> ValueChanged { get; set; }
+    /// <summary>Select or Radio.</summary>
+    [Parameter] public string Mode { get; set; } = "Select";
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private IReadOnlyList<(string Value, string Label)> Options =>
+        Enum.GetValues<TEnum>()
+            .Select(v => (Value: v.ToString(), Label: GetLabel(v)))
+            .ToList();
+
+    private static string GetLabel(TEnum value)
+    {
+        var name = value.ToString();
+        var display = typeof(TEnum).GetField(name)?.GetCustomAttribute<DisplayAttribute>()?.Name;
+        return display ?? name;
+    }
+
+    private async Task OnSelectChanged(string? val)
+    {
+        if (val is not null && Enum.TryParse<TEnum>(val, out var parsed))
+        {
+            Value = parsed;
+            await ValueChanged.InvokeAsync(Value);
+        }
+    }
+
+    private async Task OnRadioChanged(string? val)
+    {
+        if (val is not null && Enum.TryParse<TEnum>(val, out var parsed))
+        {
+            Value = parsed;
+            await ValueChanged.InvokeAsync(Value);
+        }
+    }
+}

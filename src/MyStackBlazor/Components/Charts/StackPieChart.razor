@@ -135,27 +135,12 @@
     private const double R = 120;
     private const double InnerR = 72;
 
-    private static readonly string[] Palette =
-    [
-        "#6366f1", "#22c55e", "#f59e0b", "#ef4444",
-        "#8b5cf6", "#06b6d4", "#f97316", "#ec4899"
-    ];
-
     private string SegClr(int idx)
-    {
-        if (Segments.Count > idx && Segments[idx].Color is { } c) return c;
-        return Palette[idx % Palette.Length];
-    }
+        => ChartHelpers.ResolveColor(idx < Segments.Count ? Segments[idx].Color : null, idx);
 
     private static string Fc(double v) => v.ToString("F2", CultureInfo.InvariantCulture);
 
-    private static string FormatVal(double v)
-    {
-        if (Math.Abs(v) >= 1_000_000) return $"{v / 1_000_000:F1}M";
-        if (Math.Abs(v) >= 1_000)     return $"{v / 1_000:F1}k";
-        if (v == Math.Floor(v))        return v.ToString("0", CultureInfo.InvariantCulture);
-        return v.ToString("0.#", CultureInfo.InvariantCulture);
-    }
+    private static string FormatVal(double v) => ChartHelpers.FormatY(v);
 
     private static string SvgText(double x, double y, string anchor, int fontSize, string fill, string content, string fontWeight = "normal")
     {

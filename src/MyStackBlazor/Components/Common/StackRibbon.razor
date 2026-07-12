@@ -1,0 +1,30 @@
+@namespace MyStackBlazor.Components.Common
+
+<div class="@($"relative overflow-hidden {Class}".Trim())" @attributes="AdditionalAttributes">
+    @ChildContent
+    <span class="@RibbonClass">@Text</span>
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter, EditorRequired] public string Text { get; set; } = "";
+    /// <summary>TopLeft, TopRight, BottomLeft, or BottomRight.</summary>
+    [Parameter] public string Position { get; set; } = "TopRight";
+    /// <summary>Tailwind background color class fragment, e.g. "bg-primary" (default) or "bg-destructive".</summary>
+    [Parameter] public string Color { get; set; } = "bg-primary";
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private const string BaseClass =
+        "absolute flex w-[160px] justify-center py-1 text-center text-xs font-semibold uppercase tracking-wide text-primary-foreground shadow-md select-none pointer-events-none";
+
+    private string RibbonClass => $"{BaseClass} {Color} {PositionClass}".Trim();
+
+    private string PositionClass => Position switch
+    {
+        "TopLeft"     => "-left-10 top-4 -rotate-45",
+        "BottomLeft"  => "-left-10 bottom-4 rotate-45",
+        "BottomRight" => "-right-10 bottom-4 -rotate-45",
+        _             => "-right-10 top-4 rotate-45", // TopRight
+    };
+}

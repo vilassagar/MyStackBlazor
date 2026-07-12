@@ -1,12 +1,12 @@
-@page "/common"
+@page "/docs/common"
 
-<PageTitle>Buttons &amp; Badges — MyStackBlazor Demo</PageTitle>
+<PageTitle>Buttons &amp; Badges — MyStackBlazor Docs</PageTitle>
 
 <h1 class="text-3xl font-bold mb-1">Buttons &amp; Badges</h1>
 <p class="text-muted-foreground mb-8">Core UI atoms: buttons, badges, chips, avatars, and loading indicators.</p>
 
 <!-- Button Variants -->
-<DemoSection Title="Button Variants"
+<CodeSample Title="Button Variants"
              Description="Use Variant to control the visual style."
              Code="@_btnVariants">
     <StackButton Variant="default">Default</StackButton>
@@ -15,10 +15,10 @@
     <StackButton Variant="destructive">Destructive</StackButton>
     <StackButton Variant="ghost">Ghost</StackButton>
     <StackButton Variant="link">Link</StackButton>
-</DemoSection>
+</CodeSample>
 
 <!-- Button Sizes -->
-<DemoSection Title="Button Sizes"
+<CodeSample Title="Button Sizes"
              Description="Use Size to control the button dimensions."
              Code="@_btnSizes">
     <StackButton Size="sm">Small</StackButton>
@@ -31,27 +31,27 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
     </StackButton>
-</DemoSection>
+</CodeSample>
 
 <!-- Loading & Disabled -->
-<DemoSection Title="Loading &amp; Disabled States" Code="@_btnStates">
+<CodeSample Title="Loading &amp; Disabled States" Code="@_btnStates">
     <StackButton IsLoading="_loading" OnClick="SimulateLoad">
         @(_loading ? "Saving..." : "Save Changes")
     </StackButton>
     <StackButton Variant="outline" Disabled>Disabled</StackButton>
     <StackButton Variant="secondary" IsLoading>Always Loading</StackButton>
-</DemoSection>
+</CodeSample>
 
 <!-- Badge Variants -->
-<DemoSection Title="Badge Variants" Code="@_badges">
+<CodeSample Title="Badge Variants" Code="@_badges">
     <StackBadge>Default</StackBadge>
     <StackBadge Variant="secondary">Secondary</StackBadge>
     <StackBadge Variant="destructive">Destructive</StackBadge>
     <StackBadge Variant="outline">Outline</StackBadge>
-</DemoSection>
+</CodeSample>
 
 <!-- Chips -->
-<DemoSection Title="Chips" Description="Use OnRemove to make chips removable." Code="@_chips">
+<CodeSample Title="Chips" Description="Use OnRemove to make chips removable." Code="@_chips">
     @foreach (var tag in _tags)
     {
         <StackChip OnRemove="@(() => RemoveTag(tag))" RemoveLabel="@($"Remove {tag}")">@tag</StackChip>
@@ -64,29 +64,29 @@
     {
         <span class="text-xs text-muted-foreground">All tags removed — refresh to reset.</span>
     }
-</DemoSection>
+</CodeSample>
 
 <!-- Avatar -->
-<DemoSection Title="Avatar" Description="Shows initials as fallback when no image source is set." Code="@_avatars">
+<CodeSample Title="Avatar" Description="Shows initials as fallback when no image source is set." Code="@_avatars">
     <StackAvatar Initials="VS" Size="xs" />
     <StackAvatar Initials="AB" Size="sm" />
     <StackAvatar Initials="CD" />
     <StackAvatar Initials="EF" Size="lg" />
     <StackAvatar Initials="GH" Size="xl" />
     <StackAvatar />
-</DemoSection>
+</CodeSample>
 
 <!-- Spinner -->
-<DemoSection Title="Spinner" Description="Use for loading states. Size mirrors button sizes." Code="@_spinners">
+<CodeSample Title="Spinner" Description="Use for loading states. Size mirrors button sizes." Code="@_spinners">
     <StackSpinner Size="xs" />
     <StackSpinner Size="sm" />
     <StackSpinner />
     <StackSpinner Size="lg" />
     <StackSpinner Size="xl" />
-</DemoSection>
+</CodeSample>
 
 <!-- Skeleton -->
-<DemoSection Title="Skeleton" Description="Pulse placeholder while content loads." Code="@_skeleton">
+<CodeSample Title="Skeleton" Description="Pulse placeholder while content loads." Code="@_skeleton">
     <div class="w-full space-y-3">
         <div class="flex items-center gap-3">
             <StackSkeleton Class="h-10 w-10 rounded-full" />
@@ -99,10 +99,10 @@
         <StackSkeleton Class="h-4 w-4/5" />
         <StackSkeleton Class="h-4 w-2/3" />
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Typography -->
-<DemoSection Title="Typography"
+<CodeSample Title="Typography"
              Description="Semantic text elements. Use Variant to switch between h1–h6, p, lead, large, small, muted, blockquote, and code."
              Code="@_typographyCode">
     <div class="w-full space-y-2">
@@ -118,20 +118,20 @@
         <StackTypography Variant="blockquote">"Great components are composed, not configured." — someone wise</StackTypography>
         <StackTypography Variant="code">npm install mystack-blazor</StackTypography>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Label -->
-<DemoSection Title="Label"
+<CodeSample Title="Label"
              Description="Associates with an input via For. Styled to match the design system."
              Code="@_labelCode">
     <div class="w-full max-w-xs space-y-1">
         <StackLabel For="lbl-demo">Your email address</StackLabel>
         <StackInput Id="lbl-demo" Type="email" Placeholder="you@example.com" />
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- ButtonGroup -->
-<DemoSection Title="Button Group"
+<CodeSample Title="Button Group"
              Description="Groups related buttons together, removing gaps between them."
              Code="@_btnGroupCode">
     <div class="space-y-3">
@@ -146,10 +146,10 @@
             <StackButton Variant="outline" Size="sm">Discard</StackButton>
         </StackButtonGroup>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- ToggleButton -->
-<DemoSection Title="Toggle Button"
+<CodeSample Title="Toggle Button"
              Description="Stateful button that tracks a pressed/active state via IsPressed / IsPressedChanged."
              Code="@_toggleCode">
     <div class="flex flex-wrap gap-3">
@@ -183,10 +183,10 @@
             }.Where(x => x is not null)))
         </p>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Kbd -->
-<DemoSection Title="Kbd"
+<CodeSample Title="Kbd"
              Description="Displays keyboard shortcuts using the semantic &lt;kbd&gt; element. Use Size for sm / md / lg."
              Code="@_kbdCode">
     <div class="flex flex-wrap items-center gap-4">
@@ -213,10 +213,10 @@
             </div>
         </div>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Empty -->
-<DemoSection Title="Empty"
+<CodeSample Title="Empty"
              Description="Empty-state placeholder with icon, title, description, and optional action. Use Size for sm / md / lg."
              Code="@_emptyCode">
     <div class="w-full grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -235,10 +235,10 @@
             <StackEmpty Size="lg" Title="No data yet" Description="Start by creating your first record." />
         </div>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Direction -->
-<DemoSection Title="Direction"
+<CodeSample Title="Direction"
              Description="Sets the text direction (LTR/RTL) on a container. Useful for internationalization."
              Code="@_dirCode">
     <div class="w-full space-y-4">
@@ -255,10 +255,10 @@
             </StackDirection>
         </div>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Item -->
-<DemoSection Title="Item"
+<CodeSample Title="Item"
              Description="Generic styled list or menu item with optional icon and keyboard shortcut. Use Size for sm / md / lg."
              Code="@_itemCode">
     <div class="w-full max-w-sm space-y-4">
@@ -280,10 +280,10 @@
             <StackItem Size="lg">Settings</StackItem>
         </div>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Callout -->
-<DemoSection Title="Callout"
+<CodeSample Title="Callout"
              Description="Inline alert/notice box. Use Variant for Info, Tip, Warning, or Danger, plus an optional Title."
              Code="@_calloutCode">
     <div class="w-full space-y-3">
@@ -292,10 +292,10 @@
         <StackCallout Variant="Warning" Title="Careful">This action may have unintended side effects.</StackCallout>
         <StackCallout Variant="Danger">Something went wrong. Please try again.</StackCallout>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Ribbon -->
-<DemoSection Title="Ribbon"
+<CodeSample Title="Ribbon"
              Description="Overlays a diagonal ribbon banner on top of ChildContent. Use Position for TopLeft/TopRight/BottomLeft/BottomRight and Color for the ribbon background."
              Code="@_ribbonCode">
     <div class="flex flex-wrap gap-8">
@@ -306,20 +306,20 @@
             <div class="h-32 w-48 rounded-lg border bg-muted"></div>
         </StackRibbon>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Preload -->
-<DemoSection Title="Preload"
+<CodeSample Title="Preload"
              Description="Injects a resource hint (&lt;link rel=&quot;preload|prefetch|preconnect&quot;&gt;) into &lt;head&gt; via HeadContent. It has no visible output on the page — view page source or the browser dev tools Elements panel to confirm the &lt;link&gt; tag was added."
              Code="@_preloadCode">
     <div class="w-full space-y-2">
         <StackPreload Href="/js/demo-script.js" As="script" Mode="Preload" />
         <p class="text-sm text-muted-foreground">No visible output — check the page's &lt;head&gt; for a matching &lt;link rel="preload"&gt; tag.</p>
     </div>
-</DemoSection>
+</CodeSample>
 
 <!-- Script Loader -->
-<DemoSection Title="Script Loader"
+<CodeSample Title="Script Loader"
              Description="Dynamically injects an external <script> tag on first render and raises OnLoaded once it finishes. This demo points Src at a small same-origin dummy script and flips the badge below when OnLoaded fires."
              Code="@_scriptLoaderCode">
     <div class="flex items-center gap-3">
@@ -333,7 +333,7 @@
             <StackBadge Variant="outline">Loading...</StackBadge>
         }
     </div>
-</DemoSection>
+</CodeSample>
 
 @code {
     private bool _loading;

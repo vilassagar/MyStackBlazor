@@ -1,0 +1,109 @@
+@namespace MyStackBlazor.Components.Form
+
+<div class="@ContainerClass">
+    <span class="flex items-center pl-3 text-sm text-muted-foreground select-none">@CurrencySymbol</span>
+    <input type="text"
+           inputmode="decimal"
+           id="@Id"
+           value="@DisplayValue"
+           disabled="@Disabled"
+           placeholder="@Placeholder"
+           class="flex h-full w-full rounded-md bg-transparent px-2 py-2 text-sm placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+           @oninput="OnInputChanged"
+           @onfocus="OnFocus"
+           @onblur="OnBlur"
+           @attributes="AdditionalAttributes" />
+    @if (ShowStepper)
+    {
+        <div class="flex flex-col border-l-2 border-input">
+            <button type="button"
+                    class="flex flex-1 items-center justify-center px-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+                    disabled="@IsIncrementDisabled"
+                    @onclick="Increment">
+                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <polyline points="18 15 12 9 6 15"></polyline>
+                </svg>
+            </button>
+            <button type="button"
+                    class="flex flex-1 items-center justify-center border-t-2 border-input px-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+                    disabled="@IsDecrementDisabled"
+                    @onclick="Decrement">
+                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public decimal? Value { get; set; }
+    [Parameter] public EventCallback<decimal?> ValueChanged { get; set; }
+    [Parameter] public decimal? Min { get; set; }
+    [Parameter] public decimal? Max { get; set; }
+    [Parameter] public decimal Step { get; set; } = 1;
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool ShowStepper { get; set; } = true;
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string CurrencySymbol { get; set; } = "$";
+    [Parameter] public int DecimalPlaces { get; set; } = 2;
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool _focused;
+
+    private bool IsIncrementDisabled => Disabled || (Max.HasValue && Value.HasValue && Value >= Max);
+    private bool IsDecrementDisabled => Disabled || (Min.HasValue && Value.HasValue && Value <= Min);
+
+    private string ContainerClass =>
+        $"relative flex h-10 w-full items-stretch overflow-hidden rounded-md border-2 border-input bg-background ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 {Class}".Trim();
+
+    // While focused, show the raw editable number (no thousands separators) so the caret
+    // position/parsing stays predictable; once blurred, show the fully formatted value.
+    private string? DisplayValue => _focused
+        ? Value?.ToString($"F{DecimalPlaces}")
+        : Value.HasValue
+            ? Value.Value.ToString($"N{DecimalPlaces}")
+            : null;
+
+    private void OnFocus() => _focused = true;
+    private void OnBlur() => _focused = false;
+
+    private async Task OnInputChanged(ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString();
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            Value = null;
+            await ValueChanged.InvokeAsync(null);
+            return;
+        }
+
+        var cleaned = raw.Replace(CurrencySymbol, "").Replace(",", "").Trim();
+        if (decimal.TryParse(cleaned, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var v))
+        {
+            Value = Clamp(v);
+            await ValueChanged.InvokeAsync(Value);
+        }
+    }
+
+    private async Task Increment()
+    {
+        Value = Clamp((Value ?? 0) + Step);
+        await ValueChanged.InvokeAsync(Value);
+    }
+
+    private async Task Decrement()
+    {
+        Value = Clamp((Value ?? 0) - Step);
+        await ValueChanged.InvokeAsync(Value);
+    }
+
+    private decimal Clamp(decimal v)
+    {
+        if (Min.HasValue && v < Min.Value) return Min.Value;
+        if (Max.HasValue && v > Max.Value) return Max.Value;
+        return v;
+    }
+}
