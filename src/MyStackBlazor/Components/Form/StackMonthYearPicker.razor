@@ -54,7 +54,7 @@
                             aria-pressed="@isSelected.ToString().ToLower()"
                             class="@MonthClass(isSelected, isToday)"
                             @onclick="() => SelectMonth(month)">
-                        @(new DateTime(_viewYear, month, 1).ToString("MMMM"))
+                        @(new DateTime(_viewYear, month, 1).ToString("MMM"))
                     </button>
                 }
             </div>
