@@ -1,0 +1,30 @@
+@namespace MyStackBlazor.Components.Form
+
+@*
+    Non-rendering child of <DropDownListSettings> that configures the popup of a StackDropDownList.
+
+    <StackDropDownList ...>
+        <DropDownListSettings>
+            <StackDropDownListPopupSettings Height="auto" MaxHeight="300px" Width="320px" />
+        </DropDownListSettings>
+    </StackDropDownList>
+*@
+
+@code {
+    [CascadingParameter] private IDropDownListPopupSettingsHost? Host { get; set; }
+
+    /// <summary>Popup height, e.g. "200px" or "auto".</summary>
+    [Parameter] public string? Height { get; set; }
+    [Parameter] public string? MinHeight { get; set; }
+    [Parameter] public string? MaxHeight { get; set; }
+
+    /// <summary>Popup width. Defaults to the width of the component.</summary>
+    [Parameter] public string? Width { get; set; }
+    [Parameter] public string? MinWidth { get; set; }
+    [Parameter] public string? MaxWidth { get; set; }
+
+    /// <summary>Extra CSS classes for the popup element.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    protected override void OnParametersSet() => Host?.SetPopupSettings(this);
+}

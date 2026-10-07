@@ -148,6 +148,38 @@
     </div>
 </CodeSample>
 
+<!-- ButtonGroup: selection, toggle buttons, appearance -->
+<CodeSample Title="Button Group — selection &amp; appearance"
+             Description="Telerik-style ButtonGroup: SelectionMode Single/Multiple, StackButtonGroupToggleButton with @@bind-Selected, StackButtonGroupButton with OnClick, Enabled/Visible, Icon, Width, Size/Rounded/FillMode/ThemeColor."
+             Code="@_btnGroupSelectionCode">
+    <div class="space-y-4">
+        <StackButtonGroup SelectionMode="ButtonGroupSelectionMode.Single" ThemeColor="@ButtonGroupTheme.ThemeColor.Primary" FillMode="@ButtonGroupTheme.FillMode.Outline">
+            <StackButtonGroupToggleButton @bind-Selected="_bgDay">Day</StackButtonGroupToggleButton>
+            <StackButtonGroupToggleButton @bind-Selected="_bgWeek">Week</StackButtonGroupToggleButton>
+            <StackButtonGroupToggleButton @bind-Selected="_bgMonth">Month</StackButtonGroupToggleButton>
+            <StackButtonGroupButton Icon="calendar" OnClick="() => { _bgDay = true; _bgWeek = _bgMonth = false; }">Today</StackButtonGroupButton>
+        </StackButtonGroup>
+
+        <StackButtonGroup SelectionMode="ButtonGroupSelectionMode.Multiple" Size="@ButtonGroupTheme.Size.Small">
+            <StackButtonGroupToggleButton @bind-Selected="_bgBold" Title="Bold"><strong>B</strong></StackButtonGroupToggleButton>
+            <StackButtonGroupToggleButton @bind-Selected="_bgItalic" Title="Italic"><em>I</em></StackButtonGroupToggleButton>
+            <StackButtonGroupToggleButton @bind-Selected="_bgUnderline" Title="Underline"><u>U</u></StackButtonGroupToggleButton>
+            <StackButtonGroupToggleButton Enabled="false" Title="Strikethrough (disabled)"><s>S</s></StackButtonGroupToggleButton>
+        </StackButtonGroup>
+
+        <StackButtonGroup Width="100%" Rounded="@ButtonGroupTheme.Rounded.Full" ThemeColor="@ButtonGroupTheme.ThemeColor.Success">
+            <StackButtonGroupButton>Approve</StackButtonGroupButton>
+            <StackButtonGroupButton ThemeColor="@ButtonGroupTheme.ThemeColor.Warning">Hold</StackButtonGroupButton>
+            <StackButtonGroupButton ThemeColor="@ButtonGroupTheme.ThemeColor.Error">Reject</StackButtonGroupButton>
+        </StackButtonGroup>
+
+        <p class="text-xs text-muted-foreground">
+            View: <strong>@(_bgDay ? "Day" : _bgWeek ? "Week" : _bgMonth ? "Month" : "none")</strong> &nbsp;|&nbsp;
+            Format: <strong>@string.Join(", ", new[] { _bgBold ? "Bold" : null, _bgItalic ? "Italic" : null, _bgUnderline ? "Underline" : null }.Where(x => x is not null))</strong>
+        </p>
+    </div>
+</CodeSample>
+
 <!-- ToggleButton -->
 <CodeSample Title="Toggle Button"
              Description="Stateful button that tracks a pressed/active state via IsPressed / IsPressedChanged."
@@ -336,6 +368,35 @@
 </CodeSample>
 
 @code {
+    // ── ButtonGroup selection demo ───────────────────────────────────────────
+    private bool _bgDay = true, _bgWeek, _bgMonth;
+    private bool _bgBold, _bgItalic, _bgUnderline;
+
+    private const string _btnGroupSelectionCode = """
+        <!-- Single selection (radio-like) -->
+        <StackButtonGroup SelectionMode="ButtonGroupSelectionMode.Single"
+                          ThemeColor="@ButtonGroupTheme.ThemeColor.Primary"
+                          FillMode="@ButtonGroupTheme.FillMode.Outline">
+            <StackButtonGroupToggleButton @bind-Selected="isDay">Day</StackButtonGroupToggleButton>
+            <StackButtonGroupToggleButton @bind-Selected="isWeek">Week</StackButtonGroupToggleButton>
+            <StackButtonGroupButton Icon="calendar" OnClick="GoToToday">Today</StackButtonGroupButton>
+        </StackButtonGroup>
+
+        <!-- Multiple selection -->
+        <StackButtonGroup SelectionMode="ButtonGroupSelectionMode.Multiple" Size="@ButtonGroupTheme.Size.Small">
+            <StackButtonGroupToggleButton @bind-Selected="bold">B</StackButtonGroupToggleButton>
+            <StackButtonGroupToggleButton @bind-Selected="italic">I</StackButtonGroupToggleButton>
+            <StackButtonGroupToggleButton Enabled="false">S</StackButtonGroupToggleButton>
+        </StackButtonGroup>
+
+        <!-- Full width, per-button ThemeColor -->
+        <StackButtonGroup Width="100%" Rounded="@ButtonGroupTheme.Rounded.Full" ThemeColor="success">
+            <StackButtonGroupButton>Approve</StackButtonGroupButton>
+            <StackButtonGroupButton ThemeColor="warning">Hold</StackButtonGroupButton>
+            <StackButtonGroupButton ThemeColor="error" Visible="@canReject">Reject</StackButtonGroupButton>
+        </StackButtonGroup>
+        """;
+
     private bool _loading;
     private List<string> _tags = ["Blazor", ".NET", "Tailwind"];
     private bool _boldOn;

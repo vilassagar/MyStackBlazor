@@ -1,0 +1,68 @@
+@namespace MyStackBlazor.Components.Navigation
+@inherits ButtonGroupItemBase
+
+@* A selectable button inside a StackButtonGroup. Selection follows the group's SelectionMode. *@
+
+@if (Visible)
+{
+    <button type="button"
+            id="@Id"
+            title="@Title"
+            tabindex="@TabIndex"
+            aria-label="@AriaLabel"
+            aria-pressed="@(_selected ? "true" : "false")"
+            disabled="@IsDisabled"
+            class="@ComputeClass(_selected)"
+            @onclick="ToggleAsync"
+            @attributes="AdditionalAttributes">
+        @if (Icon is not null)
+        {
+            <StackIcon Name="@Icon" Size="sm" />
+        }
+        @ChildContent
+    </button>
+}
+
+@code {
+    /// <summary>Whether the button is selected. Supports <c>@bind-Selected</c>.</summary>
+    [Parameter] public bool Selected { get; set; }
+    [Parameter] public EventCallback<bool> SelectedChanged { get; set; }
+
+    private bool _selected;
+    private bool? _lastSelectedParam;
+
+    internal bool IsSelected => _selected;
+
+    protected override void OnParametersSet()
+    {
+        if (Selected != _lastSelectedParam)
+        {
+            _lastSelectedParam = Selected;
+            _selected = Selected;
+        }
+    }
+
+    private async Task ToggleAsync(MouseEventArgs e)
+    {
+        if (IsDisabled) return;
+
+        // Single mode works like radio buttons: clicking the selected button keeps it selected.
+        var single = Group?.SelectionMode is null or ButtonGroupSelectionMode.Single;
+        if (!(single && _selected))
+        {
+            await SetSelectedAsync(!_selected);
+            if (_selected && Group is not null) await Group.OnToggleSelectedAsync(this);
+        }
+
+        await OnClick.InvokeAsync(e);
+    }
+
+    internal async Task SetSelectedAsync(bool value)
+    {
+        if (_selected == value) return;
+        _selected = value;
+        _lastSelectedParam = value;
+        await SelectedChanged.InvokeAsync(value);
+        StateHasChanged();
+    }
+}

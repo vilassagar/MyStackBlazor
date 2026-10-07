@@ -1,161 +1,937 @@
 @namespace MyStackBlazor.Components.Form
+@typeparam T
+@implements IDisposable
+@inject IJSRuntime JS
+@using System.Globalization
+@using System.Linq.Expressions
 
-<div class="flex flex-wrap items-center gap-2 @Class" @attributes="AdditionalAttributes">
-    <div class="relative">
-        <div class="flex h-10 items-center rounded-md border-2 border-input bg-background px-3 py-2 text-sm cursor-pointer"
-             @onclick="@(()=>TogglePanel(startPanelName))">
-            <svg class="mr-2 h-4 w-4 text-muted-foreground" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="16" y1="2" x2="16" y2="6"></line>
-                <line x1="8" y1="2" x2="8" y2="6"></line>
-                <line x1="3" y1="10" x2="21" y2="10"></line>
-            </svg>
-            <span class="@(StartDate is null ? "text-muted-foreground" : "")">
-                @(StartDate?.ToString(Format) ?? StartPlaceholder ?? "Start date")
-            </span>
-        </div>
-        @if (_activePanel == "start")
-        {
-            <div class="fixed inset-0 z-40" @onclick="() => _activePanel = null"></div>
-            <div class="absolute z-50 mt-1 rounded-md border bg-popover p-3 shadow-md animate-fade-in">
-                @CalendarView(_startView, StartDate, d => SelectStart(d))
-            </div>
-        }
+@*
+    Date range picker modelled on the Telerik DateRangePicker API.
+    T can be DateTime, DateTime?, DateOnly or DateOnly?.
+
+    <StackDateRangePicker @bind-StartValue="from" @bind-EndValue="to"
+                          Min="@DateTime.Today" Format="dd MMM yyyy" ShowWeekNumbers />
+*@
+
+<div class="@WrapperCls" style="@WrapperStyle" @attributes="AdditionalAttributes">
+
+    <!-- ── Inputs ───────────────────────────────────────────────── -->
+    <div class="flex w-full items-center gap-2">
+        @RenderInput(RangePart.Start)
+        <span class="shrink-0 text-muted-foreground" aria-hidden="true">–</span>
+        @RenderInput(RangePart.End)
     </div>
 
-    <span class="text-muted-foreground">→</span>
+    <!-- ── Popup ────────────────────────────────────────────────── -->
+    @if (_open)
+    {
+        <div class="@OverlayCls" @onclick="OnOverlayClick" aria-hidden="true"></div>
 
-    <div class="relative">
-        <div class="flex h-10 items-center rounded-md border-2 border-input bg-background px-3 py-2 text-sm cursor-pointer"
-             @onclick="@(()=>TogglePanel(endPanelName))">
-            <svg class="mr-2 h-4 w-4 text-muted-foreground" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="16" y1="2" x2="16" y2="6"></line>
-                <line x1="8" y1="2" x2="8" y2="6"></line>
-                <line x1="3" y1="10" x2="21" y2="10"></line>
-            </svg>
-            <span class="@(EndDate is null ? "text-muted-foreground" : "")">
-                @(EndDate?.ToString(Format) ?? EndPlaceholder ?? "End date")
-            </span>
-        </div>
-        @if (_activePanel == "end")
-        {
-            <div class="fixed inset-0 z-40" @onclick="() => _activePanel = null"></div>
-            <div class="absolute z-50 mt-1 rounded-md border bg-popover p-3 shadow-md animate-fade-in">
-                @CalendarView(_endView, EndDate, d => SelectEnd(d))
+        <div class="@PopupCls" role="dialog" aria-label="@(Title ?? "Choose a date range")">
+
+            @if (AdaptiveMode == AdaptiveMode.Auto)
+            {
+                <div class="hidden items-center justify-between border-b px-4 py-3 max-sm:flex">
+                    <span class="text-sm font-semibold">@(Title ?? "Select range")</span>
+                    <button type="button"
+                            class="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+                            aria-label="Close"
+                            @onclick="() => CloseFromUserAsync(refocus: true)">
+                        <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                    </button>
+                </div>
+            }
+
+            <!-- Navigation -->
+            <div class="flex items-center gap-1 px-3 pt-3">
+                <button type="button"
+                        class="@NavButtonCls"
+                        aria-label="Previous"
+                        disabled="@(!CanNavigate(-1))"
+                        @onclick="() => Navigate(-1)">
+                    <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><polyline points="15 18 9 12 15 6" /></svg>
+                </button>
+                <div class="flex flex-1 justify-around gap-4">
+                    @foreach (var panel in Panels)
+                    {
+                        <button type="button"
+                                class="rounded-md px-2 py-1 text-sm font-semibold transition-colors hover:bg-accent disabled:pointer-events-none"
+                                disabled="@(_view == CalendarView.Century)"
+                                aria-label="@($"{PanelTitle(panel)}, switch to a wider view")"
+                                @onclick="GoUp">
+                            @PanelTitle(panel)
+                        </button>
+                    }
+                </div>
+                <button type="button"
+                        class="@NavButtonCls"
+                        aria-label="Next"
+                        disabled="@(!CanNavigate(1))"
+                        @onclick="() => Navigate(1)">
+                    <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><polyline points="9 18 15 12 9 6" /></svg>
+                </button>
             </div>
-        }
-    </div>
+
+            <!-- Calendars -->
+            <div @ref="_gridRef"
+                 tabindex="0"
+                 role="application"
+                 aria-label="Calendar. Use the arrow keys to move and Enter to select."
+                 class="flex flex-wrap justify-center gap-6 p-3 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                 @onkeydown="OnGridKeyDown"
+                 @onfocus="() => _gridFocused = true"
+                 @onblur="() => _gridFocused = false"
+                 @onmouseleave="ClearHover">
+                @foreach (var panel in Panels)
+                {
+                    @RenderPanel(panel)
+                }
+            </div>
+
+            <div class="flex items-center justify-between border-t px-3 py-2 text-xs">
+                <span class="text-muted-foreground">
+                    @(_activePart == RangePart.Start ? "Select the start date" : "Select the end date")
+                </span>
+                <button type="button" class="font-medium text-primary hover:underline" @onclick="GoToToday">Today</button>
+            </div>
+        </div>
+    }
 </div>
 
 @code {
-    [Parameter] public DateTime? StartDate { get; set; }
-    [Parameter] public EventCallback<DateTime?> StartDateChanged { get; set; }
-    [Parameter] public DateTime? EndDate { get; set; }
-    [Parameter] public EventCallback<DateTime?> EndDateChanged { get; set; }
-    [Parameter] public EventCallback<(DateTime? Start, DateTime? End)> RangeChanged { get; set; }
-    [Parameter] public string? StartPlaceholder { get; set; }
-    [Parameter] public string? EndPlaceholder { get; set; }
-    [Parameter] public string Format { get; set; } = "MMM dd, yyyy";
+    // ── Value ────────────────────────────────────────────────────────────────
+    [Parameter] public T? StartValue { get; set; }
+    [Parameter] public EventCallback<T?> StartValueChanged { get; set; }
+    [Parameter] public Expression<Func<T?>>? StartValueExpression { get; set; }
+
+    [Parameter] public T? EndValue { get; set; }
+    [Parameter] public EventCallback<T?> EndValueChanged { get; set; }
+    [Parameter] public Expression<Func<T?>>? EndValueExpression { get; set; }
+
+    // ── Calendar ─────────────────────────────────────────────────────────────
+    [Parameter] public DateTime Min { get; set; } = new(1900, 1, 1);
+    [Parameter] public DateTime Max { get; set; } = new(2099, 12, 31);
+
+    /// <summary>The calendar level shown when the popup opens. Supports <c>@bind-View</c>.</summary>
+    [Parameter] public CalendarView View { get; set; } = CalendarView.Month;
+    [Parameter] public EventCallback<CalendarView> ViewChanged { get; set; }
+
+    /// <summary>The level at which a click selects a date (Year = pick months, and so on).</summary>
+    [Parameter] public CalendarView BottomView { get; set; } = CalendarView.Month;
+
+    [Parameter] public List<DateTime>? DisabledDates { get; set; }
+    [Parameter] public bool ShowWeekNumbers { get; set; }
+    [Parameter] public bool ShowOtherMonthDays { get; set; } = true;
+
+    /// <summary>When true, picking an end date before the start swaps them instead of starting over.</summary>
+    [Parameter] public bool AllowReverse { get; set; }
+
+    // ── Input ────────────────────────────────────────────────────────────────
+    /// <summary>Display and parse format, e.g. "d" (default), "dd/MM/yyyy", "MMM dd, yyyy".</summary>
+    [Parameter] public string Format { get; set; } = "d";
+    [Parameter] public string? StartPlaceholder { get; set; } = "Start";
+    [Parameter] public string? EndPlaceholder { get; set; } = "End";
+    [Parameter] public bool ShowClearButton { get; set; }
+
+    // ── State ────────────────────────────────────────────────────────────────
+    [Parameter] public bool Enabled { get; set; } = true;
+    [Parameter] public bool ReadOnly { get; set; }
+
+    // ── Appearance ───────────────────────────────────────────────────────────
+    /// <summary>"sm", "md" (default), "lg".</summary>
+    [Parameter] public string Size { get; set; } = "md";
+    /// <summary>"none", "sm", "md" (default), "lg", "full".</summary>
+    [Parameter] public string Rounded { get; set; } = "md";
+    /// <summary>"solid" (default), "flat", "outline".</summary>
+    [Parameter] public string FillMode { get; set; } = "solid";
+    [Parameter] public string? Width { get; set; }
     [Parameter] public string? Class { get; set; }
+    [Parameter] public string? PopupClass { get; set; }
+    [Parameter] public AdaptiveMode AdaptiveMode { get; set; } = AdaptiveMode.None;
+    /// <summary>Header text of the popup action sheet. Applies only when <see cref="AdaptiveMode"/> is Auto.</summary>
+    [Parameter] public string? Title { get; set; }
+
+    // ── Accessibility ────────────────────────────────────────────────────────
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? StartId { get; set; }
+    [Parameter] public string? EndId { get; set; }
+    [Parameter] public int? TabIndex { get; set; }
+    [Parameter] public string? StartAriaLabel { get; set; }
+    [Parameter] public string? EndAriaLabel { get; set; }
+
+    // ── Events ───────────────────────────────────────────────────────────────
+    /// <summary>Fires when the user confirms a range: popup closes, or an input loses focus after typing.</summary>
+    [Parameter] public EventCallback<DateRangePickerChangeEventArgs> OnChange { get; set; }
+    [Parameter] public EventCallback<DateRangePickerOpenEventArgs> OnOpen { get; set; }
+    [Parameter] public EventCallback<DateRangePickerCloseEventArgs> OnClose { get; set; }
+    [Parameter] public EventCallback OnBlur { get; set; }
+    /// <summary>Called for every calendar cell; set <c>args.Class</c> to style it.</summary>
+    [Parameter] public Action<DateRangePickerCalendarCellRenderEventArgs>? OnCalendarCellRender { get; set; }
+
+    [CascadingParameter] private EditContext? EditContext { get; set; }
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
 
-    private string? _activePanel;
-    private DateTime _startView = DateTime.Today;
-    private DateTime _endView   = DateTime.Today;
-    private const string startPanelName = "start";
-    private const string endPanelName = "end";
+    // ── Internal state ───────────────────────────────────────────────────────
+    private enum RangePart { Start, End }
 
-    private void TogglePanel(string panelName)
+    private static readonly string[] GridNavKeys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End", "PageUp", "PageDown", " ", "Enter"];
+
+    private readonly string _uid = $"drp-{Guid.NewGuid():N}"[..12];
+    private readonly ElementReference[] _inputRefs = new ElementReference[2];
+    private ElementReference _gridRef;
+
+    private DateTime? _start, _end;
+    private DateTime? _lastStartParam, _lastEndParam;
+    private CalendarView? _lastViewParam;
+    private bool _paramsSynced;
+    private string? _startText, _endText;
+
+    private bool _open;
+    private RangePart _activePart = RangePart.Start;
+    private CalendarView _view = CalendarView.Month;
+    private DateTime _viewDate = DateTime.Today;
+    private DateTime _focusedDate = DateTime.Today;
+    private DateTime? _hoverDate;
+    private bool _gridFocused;
+    private bool _focusGridPending;
+    private bool _gridKeysPending;
+    private bool _pendingChange;
+    private bool _skipRender;
+
+    private HashSet<DateTime> _disabled = [];
+    private EditContext? _subscribedContext;
+    private FieldIdentifier? _startField, _endField;
+
+    private CultureInfo Culture => CultureInfo.CurrentCulture;
+    private bool IsDisabled => !Enabled;
+    private string StartInputId => StartId ?? $"{Id ?? _uid}-start";
+    private string EndInputId => EndId ?? $"{Id ?? _uid}-end";
+
+    // ── Lifecycle ────────────────────────────────────────────────────────────
+    protected override void OnParametersSet()
     {
-        _activePanel = _activePanel == panelName ? null : panelName;
+        var start = ToDate(StartValue);
+        var end = ToDate(EndValue);
+        if (!_paramsSynced || start != _lastStartParam) { _lastStartParam = start; _start = start; _startText = null; }
+        if (!_paramsSynced || end != _lastEndParam)     { _lastEndParam = end; _end = end; _endText = null; }
+        _paramsSynced = true;
+
+        if (View != _lastViewParam)
+        {
+            _lastViewParam = View;
+            _view = ClampView(View);
+        }
+
+        _disabled = DisabledDates?.Select(d => d.Date).ToHashSet() ?? [];
+        SubscribeEditContext();
     }
 
-    private RenderFragment CalendarView(DateTime view, DateTime? selected, Action<DateTime> onSelect) =>
-        __builder =>
+    protected override bool ShouldRender()
+    {
+        if (!_skipRender) return true;
+        _skipRender = false;
+        return false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_open) return;
+
+        if (_gridKeysPending)
         {
-            __builder.OpenElement(0, "div");
-            // Month nav
-            __builder.OpenElement(1, "div");
-            __builder.AddAttribute(2, "class", "flex items-center justify-between mb-3");
-            // Prev
-            __builder.OpenElement(3, "button");
-            __builder.AddAttribute(4, "type", "button");
-            __builder.AddAttribute(5, "class", "p-1 hover:bg-accent rounded");
-            __builder.AddAttribute(6, "onclick", EventCallback.Factory.Create(this, () => { if (_activePanel == "start") _startView = _startView.AddMonths(-1); else _endView = _endView.AddMonths(-1); }));
-            __builder.AddContent(7, "‹");
-            __builder.CloseElement();
-            // Label
-            __builder.OpenElement(8, "span");
-            __builder.AddAttribute(9, "class", "text-sm font-medium");
-            __builder.AddContent(10, view.ToString("MMMM yyyy"));
-            __builder.CloseElement();
-            // Next
-            __builder.OpenElement(11, "button");
-            __builder.AddAttribute(12, "type", "button");
-            __builder.AddAttribute(13, "class", "p-1 hover:bg-accent rounded");
-            __builder.AddAttribute(14, "onclick", EventCallback.Factory.Create(this, () => { if (_activePanel == "start") _startView = _startView.AddMonths(1); else _endView = _endView.AddMonths(1); }));
-            __builder.AddContent(15, "›");
-            __builder.CloseElement();
-            __builder.CloseElement();
-            // Day headers
-            __builder.OpenElement(16, "div");
-            __builder.AddAttribute(17, "class", "grid grid-cols-7 mb-1");
-            foreach (var d in new[] { "Su","Mo","Tu","We","Th","Fr","Sa" })
+            _gridKeysPending = false;
+            await TryJsAsync("MyStackBlazor.dropDownPreventKeys", _gridRef, GridNavKeys);
+        }
+
+        if (_focusGridPending)
+        {
+            _focusGridPending = false;
+            try { await _gridRef.FocusAsync(); } catch { }
+        }
+    }
+
+    // ── Public API (mirrors Telerik) ─────────────────────────────────────────
+    /// <summary>Opens the popup. Does not fire <see cref="OnOpen"/>.</summary>
+    public void Open()
+    {
+        if (IsDisabled || _open) return;
+        OpenCore();
+        StateHasChanged();
+    }
+
+    /// <summary>Closes the popup. Does not fire <see cref="OnClose"/>.</summary>
+    public void Close()
+    {
+        if (!_open) return;
+        _open = false;
+        StateHasChanged();
+    }
+
+    public void Refresh() => _ = InvokeAsync(StateHasChanged);
+
+    public ValueTask FocusStartAsync() => _inputRefs[(int)RangePart.Start].FocusAsync();
+    public ValueTask FocusEndAsync() => _inputRefs[(int)RangePart.End].FocusAsync();
+
+    /// <summary>Shows the given date at the given calendar level.</summary>
+    public void NavigateTo(DateTime date, CalendarView view)
+    {
+        _view = ClampView(view);
+        _focusedDate = ClampDate(date.Date);
+        _viewDate = PeriodStart(_focusedDate, _view);
+        StateHasChanged();
+    }
+
+    // ── Conversions ──────────────────────────────────────────────────────────
+    private static DateTime? ToDate(T? value) => (object?)value switch
+    {
+        DateTime d when d == default => null,
+        DateTime d                   => d,
+        DateOnly d when d == default => null,
+        DateOnly d                   => d.ToDateTime(TimeOnly.MinValue),
+        _                            => null,
+    };
+
+    private static T? FromDate(DateTime? date)
+    {
+        if (date is null) return default;
+        var target = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+        object value = target == typeof(DateOnly) ? DateOnly.FromDateTime(date.Value) : date.Value;
+        return (T)value;
+    }
+
+    private string FormatDate(DateTime? date) => date?.ToString(Format, Culture) ?? "";
+
+    private bool TryParse(string text, out DateTime date) =>
+        DateTime.TryParseExact(text, Format, Culture, DateTimeStyles.AllowWhiteSpaces, out date)
+        || DateTime.TryParse(text, Culture, DateTimeStyles.AllowWhiteSpaces, out date);
+
+    // ── Value changes ────────────────────────────────────────────────────────
+    private async Task SetStartAsync(DateTime? date)
+    {
+        _startText = null;
+        if (date == _start) return;
+        _start = date;
+        _lastStartParam = date;
+        _pendingChange = true;
+        await StartValueChanged.InvokeAsync(FromDate(date));
+        if (EditContext is not null && _startField is { } field) EditContext.NotifyFieldChanged(field);
+    }
+
+    private async Task SetEndAsync(DateTime? date)
+    {
+        _endText = null;
+        if (date == _end) return;
+        _end = date;
+        _lastEndParam = date;
+        _pendingChange = true;
+        await EndValueChanged.InvokeAsync(FromDate(date));
+        if (EditContext is not null && _endField is { } field) EditContext.NotifyFieldChanged(field);
+    }
+
+    private async Task CommitChangeAsync()
+    {
+        if (!_pendingChange) return;
+        _pendingChange = false;
+        await OnChange.InvokeAsync(new DateRangePickerChangeEventArgs { StartValue = FromDate(_start), EndValue = FromDate(_end) });
+    }
+
+    /// <summary>Applies a date picked in the calendar to the active part of the range.</summary>
+    private async Task SelectDateAsync(DateTime date)
+    {
+        if (IsDateDisabled(date) || ReadOnly) return;
+        _focusedDate = date;
+        _hoverDate = null;
+
+        if (_activePart == RangePart.Start || _start is null)
+        {
+            await SetStartAsync(date);
+            if (_end is not null && date > _end && !AllowReverse) await SetEndAsync(null);
+            else if (_end is not null && date > _end) { var end = _end; await SetEndAsync(date); await SetStartAsync(end); }
+            _activePart = RangePart.End;
+            return;
+        }
+
+        if (date < _start)
+        {
+            if (AllowReverse)
             {
-                __builder.OpenElement(18, "div");
-                __builder.AddAttribute(19, "class", "flex h-8 w-8 items-center justify-center text-xs text-muted-foreground");
-                __builder.AddContent(20, d);
-                __builder.CloseElement();
+                var start = _start;
+                await SetStartAsync(date);
+                await SetEndAsync(start);
+                await CloseFromUserAsync(refocus: true);
             }
-            __builder.CloseElement();
-            // Cells
-            __builder.OpenElement(21, "div");
-            __builder.AddAttribute(22, "class", "grid grid-cols-7");
-            var first  = new DateTime(view.Year, view.Month, 1);
-            var blanks = (int)first.DayOfWeek;
-            var days   = DateTime.DaysInMonth(view.Year, view.Month);
-            for (var b = 0; b < blanks; b++)
+            else
             {
-                __builder.OpenElement(23, "div");
-                __builder.AddAttribute(24, "class", "h-8 w-8");
-                __builder.CloseElement();
+                // An earlier date restarts the range from that day.
+                await SetStartAsync(date);
+                await SetEndAsync(null);
             }
-            for (var day = 1; day <= days; day++)
+            return;
+        }
+
+        await SetEndAsync(date);
+        await CloseFromUserAsync(refocus: true);
+    }
+
+    private async Task ClearAsync()
+    {
+        await SetStartAsync(null);
+        await SetEndAsync(null);
+        _activePart = RangePart.Start;
+        await CommitChangeAsync();
+    }
+
+    // ── Inputs ───────────────────────────────────────────────────────────────
+    private async Task OnInputClick(RangePart part)
+    {
+        if (IsDisabled || ReadOnly) return;
+        _activePart = part;
+        if (!_open) await OpenFromUserAsync();
+    }
+
+    private void OnInputFocus(RangePart part)
+    {
+        if (_open) _activePart = part;
+        else _skipRender = true;
+    }
+
+    private void OnInputText(RangePart part, ChangeEventArgs e)
+    {
+        if (part == RangePart.Start) _startText = e.Value?.ToString();
+        else _endText = e.Value?.ToString();
+        _skipRender = true;
+    }
+
+    private async Task OnInputChange(RangePart part, ChangeEventArgs e)
+    {
+        var text = e.Value?.ToString()?.Trim() ?? "";
+        var isStart = part == RangePart.Start;
+
+        if (text.Length == 0)
+        {
+            if (isStart) await SetStartAsync(null); else await SetEndAsync(null);
+            return;
+        }
+
+        if (!TryParse(text, out var date) || IsDateDisabled(date.Date))
+        {
+            // Invalid or out-of-range text: show the last valid value again.
+            if (isStart) _startText = null; else _endText = null;
+            return;
+        }
+
+        date = date.Date;
+        if (isStart)
+        {
+            await SetStartAsync(date);
+            if (_end is not null && date > _end) await SetEndAsync(null);
+        }
+        else
+        {
+            if (_start is not null && date < _start)
             {
-                var date = new DateTime(view.Year, view.Month, day);
-                var isSelected = selected?.Date == date.Date;
-                var inRange    = StartDate.HasValue && EndDate.HasValue && date > StartDate.Value.Date && date < EndDate.Value.Date;
-                var cls = $"h-8 w-8 text-sm flex items-center justify-center rounded-md " +
-                          (isSelected ? "bg-primary text-primary-foreground" : inRange ? "bg-primary/20" : "hover:bg-accent") +
-                          (date.Date == DateTime.Today && !isSelected ? " font-bold text-primary" : "");
-                var capturedDate = date;
-                __builder.OpenElement(25, "button");
-                __builder.AddAttribute(26, "type", "button");
-                __builder.AddAttribute(27, "class", cls);
-                __builder.AddAttribute(28, "onclick", EventCallback.Factory.Create(this, () => onSelect(capturedDate)));
-                __builder.AddContent(29, day);
-                __builder.CloseElement();
+                // An end before the start is rejected unless AllowReverse swaps them.
+                if (!AllowReverse) { _endText = null; return; }
+                var start = _start;
+                await SetStartAsync(date);
+                await SetEndAsync(start);
             }
-            __builder.CloseElement();
-            __builder.CloseElement();
+            else
+            {
+                await SetEndAsync(date);
+            }
+        }
+
+        if (_open) NavigateTo(date, _view);
+    }
+
+    private async Task OnInputKeyDown(RangePart part, KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "ArrowDown" when e.AltKey:
+                _activePart = part;
+                if (!_open) await OpenFromUserAsync();
+                _focusGridPending = _open;
+                break;
+            case "ArrowUp" when e.AltKey:
+            case "Escape":
+                await CloseFromUserAsync(refocus: false);
+                break;
+            case "Tab" when _open && ((part == RangePart.End && !e.ShiftKey) || (part == RangePart.Start && e.ShiftKey)):
+                await CloseFromUserAsync(refocus: false);
+                break;
+            default:
+                _skipRender = true;
+                break;
+        }
+    }
+
+    private async Task OnInputBlur()
+    {
+        // Focus moving into the popup or the other input is not a blur of the whole picker.
+        if (_open) { _skipRender = true; return; }
+        await CommitChangeAsync();
+        await OnBlur.InvokeAsync();
+    }
+
+    // ── Open / close ─────────────────────────────────────────────────────────
+    private void OpenCore()
+    {
+        _open = true;
+        _view = ClampView(View);
+        var anchor = (_activePart == RangePart.End ? _end ?? _start : _start) ?? DateTime.Today;
+        _focusedDate = ClampDate(anchor.Date);
+        _viewDate = PeriodStart(_focusedDate, _view);
+        _gridKeysPending = true;
+        _hoverDate = null;
+    }
+
+    private async Task OpenFromUserAsync()
+    {
+        if (IsDisabled || ReadOnly || _open) return;
+        var args = new DateRangePickerOpenEventArgs();
+        await OnOpen.InvokeAsync(args);
+        if (args.IsCancelled) return;
+        OpenCore();
+    }
+
+    private async Task<bool> CloseFromUserAsync(bool refocus)
+    {
+        if (!_open) return true;
+        var args = new DateRangePickerCloseEventArgs();
+        await OnClose.InvokeAsync(args);
+        if (args.IsCancelled) return false;
+
+        _open = false;
+        _hoverDate = null;
+        await CommitChangeAsync();
+        if (refocus)
+        {
+            try { await _inputRefs[(int)_activePart].FocusAsync(); } catch { }
+        }
+        return true;
+    }
+
+    private async Task OnOverlayClick()
+    {
+        if (await CloseFromUserAsync(refocus: false))
+            await OnBlur.InvokeAsync();
+    }
+
+    // ── Calendar navigation ──────────────────────────────────────────────────
+    private CalendarView ClampView(CalendarView view) => view < BottomView ? BottomView : view;
+
+    private IEnumerable<DateTime> Panels =>
+        _view == CalendarView.Month ? [_viewDate, _viewDate.AddMonths(1)] : [_viewDate];
+
+    private static DateTime PeriodStart(DateTime date, CalendarView view) => view switch
+    {
+        CalendarView.Year    => new DateTime(date.Year, 1, 1),
+        CalendarView.Decade  => new DateTime(date.Year - date.Year % 10, 1, 1),
+        CalendarView.Century => new DateTime(Math.Max(1, date.Year - date.Year % 100), 1, 1),
+        _                    => new DateTime(date.Year, date.Month, 1),
+    };
+
+    /// <summary>The period one cell of the given view covers.</summary>
+    private static DateTime CellEnd(DateTime cellStart, CalendarView view) => view switch
+    {
+        CalendarView.Year    => cellStart.AddMonths(1).AddDays(-1),
+        CalendarView.Decade  => cellStart.AddYears(1).AddDays(-1),
+        CalendarView.Century => cellStart.AddYears(10).AddDays(-1),
+        _                    => cellStart,
+    };
+
+    private static DateTime Step(DateTime date, CalendarView view, int count) => view switch
+    {
+        CalendarView.Year    => date.AddYears(count),
+        CalendarView.Decade  => date.AddYears(10 * count),
+        CalendarView.Century => date.AddYears(100 * count),
+        _                    => date.AddMonths(count),
+    };
+
+    private bool CanNavigate(int direction)
+    {
+        if (direction < 0) return _viewDate > PeriodStart(Min, _view);
+        var lastShown = Step(_viewDate, _view, Panels.Count() - 1);
+        return lastShown < PeriodStart(Max, _view);
+    }
+
+    private void Navigate(int direction)
+    {
+        if (!CanNavigate(direction)) return;
+        _viewDate = Step(_viewDate, _view, direction);
+        _focusedDate = ClampDate(Step(_focusedDate, _view, direction));
+    }
+
+    private async Task GoUp()
+    {
+        if (_view == CalendarView.Century) return;
+        _view++;
+        _viewDate = PeriodStart(_focusedDate, _view);
+        await ViewChanged.InvokeAsync(_view);
+    }
+
+    private async Task DrillDownAsync(DateTime cellStart)
+    {
+        if (_view == BottomView)
+        {
+            await SelectDateAsync(cellStart);
+            return;
+        }
+        _view--;
+        _focusedDate = ClampDate(cellStart);
+        _viewDate = PeriodStart(_focusedDate, _view);
+        await ViewChanged.InvokeAsync(_view);
+    }
+
+    private void GoToToday() => NavigateTo(DateTime.Today, _view);
+
+    private DateTime ClampDate(DateTime date) =>
+        date < Min.Date ? Min.Date : date > Max.Date ? Max.Date : date;
+
+    private bool IsDateDisabled(DateTime date) =>
+        date < Min.Date || date > Max.Date || _disabled.Contains(date.Date);
+
+    private bool IsCellDisabled(DateTime cellStart) =>
+        _view == CalendarView.Month ? IsDateDisabled(cellStart) : CellEnd(cellStart, _view) < Min.Date || cellStart > Max.Date;
+
+    private void EnsureFocusedVisible()
+    {
+        var panels = Panels.Count();
+        if (_focusedDate < _viewDate)
+            _viewDate = PeriodStart(_focusedDate, _view);
+        else if (_focusedDate >= Step(_viewDate, _view, panels))
+            _viewDate = Step(PeriodStart(_focusedDate, _view), _view, -(panels - 1));
+    }
+
+    // ── Keyboard in the calendar ─────────────────────────────────────────────
+    private async Task OnGridKeyDown(KeyboardEventArgs e)
+    {
+        var d = _focusedDate;
+        DateTime? next = (e.Key, _view) switch
+        {
+            ("ArrowUp", _) when e.CtrlKey   => null,
+            ("ArrowDown", _) when e.CtrlKey => null,
+            ("ArrowLeft", CalendarView.Month)    => d.AddDays(-1),
+            ("ArrowRight", CalendarView.Month)   => d.AddDays(1),
+            ("ArrowUp", CalendarView.Month)      => d.AddDays(-7),
+            ("ArrowDown", CalendarView.Month)    => d.AddDays(7),
+            ("Home", CalendarView.Month)         => new DateTime(d.Year, d.Month, 1),
+            ("End", CalendarView.Month)          => new DateTime(d.Year, d.Month, DateTime.DaysInMonth(d.Year, d.Month)),
+            ("ArrowLeft", CalendarView.Year)     => d.AddMonths(-1),
+            ("ArrowRight", CalendarView.Year)    => d.AddMonths(1),
+            ("ArrowUp", CalendarView.Year)       => d.AddMonths(-4),
+            ("ArrowDown", CalendarView.Year)     => d.AddMonths(4),
+            ("ArrowLeft", CalendarView.Decade)   => d.AddYears(-1),
+            ("ArrowRight", CalendarView.Decade)  => d.AddYears(1),
+            ("ArrowUp", CalendarView.Decade)     => d.AddYears(-4),
+            ("ArrowDown", CalendarView.Decade)   => d.AddYears(4),
+            ("ArrowLeft", CalendarView.Century)  => d.AddYears(-10),
+            ("ArrowRight", CalendarView.Century) => d.AddYears(10),
+            ("ArrowUp", CalendarView.Century)    => d.AddYears(-40),
+            ("ArrowDown", CalendarView.Century)  => d.AddYears(40),
+            ("PageUp", _)                        => Step(d, _view, -1),
+            ("PageDown", _)                      => Step(d, _view, 1),
+            _                                    => null,
         };
 
-    private async Task SelectStart(DateTime d)
-    {
-        StartDate = d;
-        if (EndDate.HasValue && d > EndDate.Value) EndDate = null;
-        _activePanel = null;
-        await StartDateChanged.InvokeAsync(StartDate);
-        await RangeChanged.InvokeAsync((StartDate, EndDate));
+        if (next is DateTime target)
+        {
+            _focusedDate = ClampDate(target);
+            if (_view == CalendarView.Month && _activePart == RangePart.End && _start is not null) _hoverDate = _focusedDate;
+            EnsureFocusedVisible();
+            return;
+        }
+
+        switch (e.Key)
+        {
+            case "ArrowUp" when e.CtrlKey:
+                await GoUp();
+                break;
+            case "ArrowDown" when e.CtrlKey:
+            case "Enter":
+            case " ":
+                await DrillDownAsync(_view == CalendarView.Month ? _focusedDate : PeriodStart(_focusedDate, _view - 1));
+                break;
+            case "Escape":
+                await CloseFromUserAsync(refocus: true);
+                break;
+            case "Tab":
+                await CloseFromUserAsync(refocus: false);
+                break;
+            default:
+                _skipRender = true;
+                break;
+        }
     }
 
-    private async Task SelectEnd(DateTime d)
+    // ── Hover preview ────────────────────────────────────────────────────────
+    private bool IsPreviewing => _activePart == RangePart.End && _start is not null && _view == CalendarView.Month;
+
+    private void OnCellHover(DateTime date)
     {
-        EndDate = d;
-        if (StartDate.HasValue && d < StartDate.Value) StartDate = null;
-        _activePanel = null;
-        await EndDateChanged.InvokeAsync(EndDate);
-        await RangeChanged.InvokeAsync((StartDate, EndDate));
+        if (!IsPreviewing || _hoverDate == date) { _skipRender = true; return; }
+        _hoverDate = date;
+    }
+
+    private void ClearHover()
+    {
+        if (_hoverDate is null) { _skipRender = true; return; }
+        _hoverDate = null;
+    }
+
+    /// <summary>The range to highlight: the selected one, or start → hovered date while choosing the end.</summary>
+    private (DateTime? Start, DateTime? End) DisplayRange
+    {
+        get
+        {
+            if (IsPreviewing && _hoverDate is DateTime hover && _start is DateTime s)
+                return hover < s ? (hover, s) : (s, hover);
+            return (_start, _end);
+        }
+    }
+
+    // ── Validation ───────────────────────────────────────────────────────────
+    private void SubscribeEditContext()
+    {
+        if (StartValueExpression is not null && _startField is null) _startField = FieldIdentifier.Create(StartValueExpression);
+        if (EndValueExpression is not null && _endField is null) _endField = FieldIdentifier.Create(EndValueExpression);
+
+        if (ReferenceEquals(_subscribedContext, EditContext)) return;
+        if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged -= OnValidationStateChanged;
+        _subscribedContext = EditContext;
+        if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged += OnValidationStateChanged;
+    }
+
+    private void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs e) => _ = InvokeAsync(StateHasChanged);
+
+    private bool IsInvalid(FieldIdentifier? field) =>
+        EditContext is not null && field is { } f && EditContext.GetValidationMessages(f).Any();
+
+    // ── Rendering ────────────────────────────────────────────────────────────
+    private RenderFragment RenderInput(RangePart part)
+    {
+        var isStart = part == RangePart.Start;
+        var text = (isStart ? _startText : _endText) ?? FormatDate(isStart ? _start : _end);
+        var invalid = IsInvalid(isStart ? _startField : _endField);
+        var active = _open && _activePart == part;
+        var showClear = !isStart && ShowClearButton && !IsDisabled && !ReadOnly && (_start is not null || _end is not null);
+
+        return @<div class="@InputBoxCls(active, invalid)">
+            <svg class="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+            <input @ref="_inputRefs[(int)part]"
+                   id="@(isStart ? StartInputId : EndInputId)"
+                   type="text"
+                   autocomplete="off"
+                   class="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+                   placeholder="@(isStart ? StartPlaceholder : EndPlaceholder)"
+                   aria-label="@(isStart ? StartAriaLabel ?? StartPlaceholder : EndAriaLabel ?? EndPlaceholder)"
+                   aria-haspopup="dialog"
+                   aria-expanded="@(_open ? "true" : "false")"
+                   aria-invalid="@(invalid ? "true" : null)"
+                   tabindex="@TabIndex"
+                   disabled="@IsDisabled"
+                   readonly="@ReadOnly"
+                   value="@text"
+                   @onclick="() => OnInputClick(part)"
+                   @onfocus="() => OnInputFocus(part)"
+                   @oninput="e => OnInputText(part, e)"
+                   @onchange="e => OnInputChange(part, e)"
+                   @onkeydown="e => OnInputKeyDown(part, e)"
+                   @onblur="OnInputBlur" />
+            @if (showClear)
+            {
+                <button type="button"
+                        tabindex="-1"
+                        class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                        aria-label="Clear"
+                        @onclick="ClearAsync">
+                    <svg class="h-3.5 w-3.5" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            }
+        </div>;
+    }
+
+    private string PanelTitle(DateTime panel) => _view switch
+    {
+        CalendarView.Year    => panel.Year.ToString(Culture),
+        CalendarView.Decade  => $"{panel.Year}–{panel.Year + 9}",
+        CalendarView.Century => $"{panel.Year}–{panel.Year + 99}",
+        _                    => panel.ToString("MMMM yyyy", Culture),
+    };
+
+    private RenderFragment RenderPanel(DateTime panel) => _view == CalendarView.Month ? RenderMonth(panel) : RenderUpperView(panel);
+
+    private RenderFragment RenderMonth(DateTime month)
+    {
+        var dtf = Culture.DateTimeFormat;
+        var firstDay = dtf.FirstDayOfWeek;
+        var offset = ((int)month.DayOfWeek - (int)firstDay + 7) % 7;
+        var gridStart = month.AddDays(-offset);
+        var dayNames = Enumerable.Range(0, 7).Select(i => dtf.ShortestDayNames[((int)firstDay + i) % 7]).ToArray();
+        var cols = ShowWeekNumbers ? "grid-cols-8" : "grid-cols-7";
+
+        return @<div class="w-64" role="grid" aria-label="@month.ToString("MMMM yyyy", Culture)">
+            <div class="grid @cols" role="row">
+                @if (ShowWeekNumbers)
+                {
+                    <div role="columnheader" class="flex h-8 items-center justify-center text-[11px] text-muted-foreground/70">#</div>
+                }
+                @foreach (var name in dayNames)
+                {
+                    <div role="columnheader" class="flex h-8 items-center justify-center text-xs font-medium text-muted-foreground">@name</div>
+                }
+            </div>
+            @for (var week = 0; week < 6; week++)
+            {
+                var weekStart = gridStart.AddDays(week * 7);
+                <div class="grid @cols" role="row">
+                    @if (ShowWeekNumbers)
+                    {
+                        <div role="rowheader" class="flex h-8 items-center justify-center text-[11px] text-muted-foreground/70">
+                            @Culture.Calendar.GetWeekOfYear(weekStart, dtf.CalendarWeekRule, firstDay)
+                        </div>
+                    }
+                    @for (var i = 0; i < 7; i++)
+                    {
+                        var date = weekStart.AddDays(i);
+                        var otherMonth = date.Month != month.Month;
+                        if (otherMonth && !ShowOtherMonthDays)
+                        {
+                            <div role="gridcell" class="h-8"></div>
+                            continue;
+                        }
+                        @RenderCell(date, date.Day.ToString(Culture), otherMonth)
+                    }
+                </div>
+            }
+        </div>;
+    }
+
+    private RenderFragment RenderUpperView(DateTime panel)
+    {
+        var cells = _view switch
+        {
+            CalendarView.Year   => Enumerable.Range(0, 12).Select(i => (panel.AddMonths(i), Culture.DateTimeFormat.AbbreviatedMonthNames[i], false)),
+            CalendarView.Decade => Enumerable.Range(-1, 12).Select(i => (panel.AddYears(i), panel.AddYears(i).Year.ToString(Culture), i is < 0 or > 9)),
+            _                   => Enumerable.Range(-1, 12).Select(i => (panel.AddYears(i * 10), $"{panel.Year + i * 10}", i is < 0 or > 9)),
+        };
+
+        return @<div class="grid w-64 grid-cols-4 gap-y-2" role="grid" aria-label="@PanelTitle(panel)">
+            @foreach (var (start, label, outside) in cells)
+            {
+                @RenderCell(start, label, outside)
+            }
+        </div>;
+    }
+
+    private RenderFragment RenderCell(DateTime cellStart, string label, bool muted)
+    {
+        var cellEnd = CellEnd(cellStart, _view);
+        var (rangeStart, rangeEnd) = DisplayRange;
+        var isStart = rangeStart is DateTime s && s >= cellStart && s <= cellEnd;
+        var isEnd = rangeEnd is DateTime e && e >= cellStart && e <= cellEnd;
+        var inRange = rangeStart is DateTime rs && rangeEnd is DateTime re && cellStart > rs && cellEnd < re;
+        var disabled = IsCellDisabled(cellStart);
+        var today = DateTime.Today >= cellStart && DateTime.Today <= cellEnd;
+        var focused = _gridFocused && _focusedDate >= cellStart && _focusedDate <= cellEnd;
+        var height = _view == CalendarView.Month ? "h-8" : "h-12";
+
+        string? extra = null;
+        if (OnCalendarCellRender is not null)
+        {
+            var args = new DateRangePickerCalendarCellRenderEventArgs { Date = cellStart, View = _view };
+            OnCalendarCellRender(args);
+            extra = args.Class;
+        }
+
+        var cellCls = $"flex {height} items-center justify-center " +
+                      (inRange ? "bg-primary/15 " : "") +
+                      (isStart && rangeEnd is not null && !isEnd ? "rounded-l-md bg-primary/15 " : "") +
+                      (isEnd && rangeStart is not null && !isStart ? "rounded-r-md bg-primary/15 " : "") +
+                      (disabled ? "pointer-events-none opacity-40 " : "cursor-pointer ") +
+                      extra;
+
+        var innerCls = $"flex {height} w-full max-w-12 items-center justify-center rounded-md text-sm transition-colors " +
+                       (isStart || isEnd
+                           ? "bg-primary font-semibold text-primary-foreground "
+                           : (muted ? "text-muted-foreground/60 " : "") + (today ? "font-semibold text-primary underline underline-offset-4 " : "") + "hover:bg-accent ") +
+                       (focused ? "ring-2 ring-ring " : "") +
+                       (disabled ? "line-through " : "");
+
+        return @<div role="gridcell"
+                     data-date="@cellStart.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+                     aria-selected="@(isStart || isEnd ? "true" : "false")"
+                     aria-disabled="@(disabled ? "true" : null)"
+                     title="@(_view == CalendarView.Month ? cellStart.ToString("D", Culture) : null)"
+                     class="@cellCls"
+                     @onclick="() => DrillDownAsync(cellStart)"
+                     @onmouseenter="() => OnCellHover(cellStart)">
+            <span class="@innerCls">@label</span>
+        </div>;
+    }
+
+    private async Task TryJsAsync(string identifier, params object[] args)
+    {
+        try { await JS.InvokeVoidAsync(identifier, args); }
+        catch { /* JS not loaded or prerendering. */ }
+    }
+
+    // ── CSS ──────────────────────────────────────────────────────────────────
+    private string WrapperCls => $"relative inline-flex flex-col {Class}".TrimEnd();
+    private string? WrapperStyle => Width is null ? null : $"width:{Width}";
+
+    private string InputBoxCls(bool active, bool invalid)
+    {
+        var size = Size switch
+        {
+            "sm" => "h-8 px-2 text-xs",
+            "lg" => "h-12 px-4 text-base",
+            _    => "h-10 px-3 text-sm",
+        };
+        var rounded = FillMode == "flat" ? "rounded-none" : Rounded switch
+        {
+            "none" => "rounded-none",
+            "sm"   => "rounded-sm",
+            "lg"   => "rounded-lg",
+            "full" => "rounded-full",
+            _      => "rounded-md",
+        };
+        var fill = FillMode switch
+        {
+            "flat"    => "border-0 border-b-2 border-input bg-transparent",
+            "outline" => "border-2 border-input bg-transparent",
+            _         => "border border-input bg-background shadow-sm",
+        };
+        return $"flex min-w-0 flex-1 items-center gap-2 transition-colors {size} {rounded} {fill} " +
+               "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ring-offset-background " +
+               (active ? "ring-2 ring-ring ring-offset-2 " : "") +
+               (IsDisabled ? "cursor-not-allowed opacity-50 " : "") +
+               (invalid ? "border-destructive" : "");
+    }
+
+    private string OverlayCls =>
+        "fixed inset-0 z-40" + (AdaptiveMode == AdaptiveMode.Auto ? " max-sm:bg-black/40" : "");
+
+    private string PopupCls =>
+        "absolute left-0 top-full z-50 mt-1 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg animate-fade-in " +
+        (AdaptiveMode == AdaptiveMode.Auto
+            ? "max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:mt-0 max-sm:max-h-[85vh] max-sm:overflow-y-auto max-sm:rounded-b-none max-sm:rounded-t-xl "
+            : "") +
+        PopupClass;
+
+    private const string NavButtonCls =
+        "flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-30";
+
+    public void Dispose()
+    {
+        if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged -= OnValidationStateChanged;
     }
 }

@@ -347,5 +347,38 @@ window.MyStackBlazor = {
     chatScrollToBottom(el, smooth) {
         if (!el) return;
         el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+    },
+
+    // ----------------------------------------------------------------
+    //  DropDownList — stop navigation keys from scrolling the page
+    // ----------------------------------------------------------------
+    dropDownPreventKeys(el, keys) {
+        if (!el || el._msDdlKeys) return;
+        el._msDdlKeys = (e) => { if (keys.includes(e.key)) e.preventDefault(); };
+        el.addEventListener('keydown', el._msDdlKeys);
+    },
+
+    // ----------------------------------------------------------------
+    //  TabStrip — scrollable headers
+    // ----------------------------------------------------------------
+    tabStripScroll(el, direction, vertical) {
+        if (!el) return;
+        const step = (vertical ? el.clientHeight : el.clientWidth) * 0.8 * direction;
+        el.scrollBy({ [vertical ? 'top' : 'left']: step, behavior: 'smooth' });
+    },
+
+    tabStripHasOverflow(el, vertical) {
+        if (!el) return false;
+        return vertical ? el.scrollHeight > el.clientHeight + 1 : el.scrollWidth > el.clientWidth + 1;
+    },
+
+    tabStripScrollIntoView(id) {
+        document.getElementById(id)?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+    },
+
+    dropDownScrollIntoView(listId, index) {
+        const list = document.getElementById(listId);
+        const item = list?.querySelector(`[data-index="${index}"]`);
+        item?.scrollIntoView({ block: 'nearest' });
     }
 };

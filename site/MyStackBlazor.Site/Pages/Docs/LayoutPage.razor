@@ -84,6 +84,39 @@
     </div>
 </CodeSample>
 
+<!-- TabStrip -->
+<CodeSample Title="TabStrip"
+             Description="Telerik-style TabStrip: ActiveTabId/ActiveTabIndex binding, TabPosition, TabAlignment, Scrollable with scroll buttons, PersistTabContent, closeable and disabled tabs, header templates."
+             Code="@_tabStripCode">
+    <div class="w-full max-w-xl space-y-4">
+        <div class="flex flex-wrap gap-2">
+            @foreach (var pos in Enum.GetValues<TabPosition>())
+            {
+                var p = pos;
+                <StackButton Size="sm" Variant="@(_tsPosition == p ? "default" : "outline")" OnClick="() => _tsPosition = p">@p</StackButton>
+            }
+        </div>
+
+        <StackTabStrip @bind-ActiveTabId="_tsActiveId" TabPosition="_tsPosition" Scrollable PersistTabContent
+                       OnTabClose="OnTabStripClose" Class="rounded-md border" Height="220px">
+            @foreach (var t in _tsTabs)
+            {
+                <StackTabStripTab @key="t" Id="@t" Title="@t" Closeable="@(t != "Home")">
+                    <p class="text-sm">Content of <strong>@t</strong>. Type here and switch tabs — the text is kept:</p>
+                    <input class="mt-2 h-9 w-full rounded-md border border-input bg-background px-3 text-sm" placeholder="Persisted input" />
+                </StackTabStripTab>
+            }
+            <StackTabStripTab Id="locked" Title="Locked" Disabled>Never shown.</StackTabStripTab>
+            <StackTabStripTab Id="custom">
+                <HeaderTemplate><span class="inline-flex items-center gap-1.5">Inbox <StackBadge>3</StackBadge></span></HeaderTemplate>
+                <Content><p class="text-sm">Tab with a custom header template.</p></Content>
+            </StackTabStripTab>
+        </StackTabStrip>
+
+        <p class="text-xs text-muted-foreground">Active tab: <strong>@_tsActiveId</strong></p>
+    </div>
+</CodeSample>
+
 <!-- Separator -->
 <CodeSample Title="Separator" Code="@_separatorCode">
     <div class="w-full max-w-sm space-y-4">
@@ -364,6 +397,40 @@
 </CodeSample>
 
 @code {
+    // ── TabStrip data ────────────────────────────────────────────────────────
+    private string _tsActiveId = "Home";
+    private TabPosition _tsPosition = TabPosition.Top;
+    private readonly List<string> _tsTabs = ["Home", "Profile", "Messages", "Settings", "Billing", "Security", "Notifications", "Integrations"];
+
+    private void OnTabStripClose(TabStripTabCloseEventArgs args) => _tsTabs.Remove(args.TabId);
+
+    private const string _tabStripCode = """
+        <StackTabStrip @bind-ActiveTabId="activeTab"
+                       TabPosition="TabPosition.Top"
+                       TabAlignment="TabStripTabAlignment.Start"
+                       Scrollable
+                       ScrollButtonsPosition="TabStripScrollButtonsPosition.Split"
+                       ScrollButtonsVisibility="TabStripScrollButtonsVisibility.Auto"
+                       PersistTabContent
+                       Size="@TabStripTheme.Size.Medium"
+                       Height="220px"
+                       OnTabClose="@(args => tabs.Remove(args.TabId))">
+
+            <StackTabStripTab Id="home" Title="Home">Home content</StackTabStripTab>
+            <StackTabStripTab Id="profile" Title="Profile" Closeable>Profile content</StackTabStripTab>
+            <StackTabStripTab Id="locked" Title="Locked" Disabled>…</StackTabStripTab>
+            <StackTabStripTab Id="hidden" Title="Hidden" Visible="false">…</StackTabStripTab>
+
+            <StackTabStripTab Id="inbox">
+                <HeaderTemplate>Inbox <StackBadge>3</StackBadge></HeaderTemplate>
+                <Content>Tab with a custom header.</Content>
+            </StackTabStripTab>
+        </StackTabStrip>
+
+        <!-- Or bind by position -->
+        <StackTabStrip @bind-ActiveTabIndex="activeIndex"> … </StackTabStrip>
+        """;
+
     private string? _activeTab = "overview";
     private string? _lastTabChange;
     private void OnTabChanged(string? tab) => _lastTabChange = tab;

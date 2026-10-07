@@ -1,0 +1,439 @@
+@namespace MyStackBlazor.Components.Navigation
+@implements IDisposable
+@inject IJSRuntime JS
+
+@*
+    Tab strip modelled on the Telerik TabStrip API.
+
+    <StackTabStrip @bind-ActiveTabId="activeTab" TabPosition="TabPosition.Top" Scrollable>
+        <StackTabStripTab Id="general" Title="General">General settings…</StackTabStripTab>
+        <StackTabStripTab Id="billing" Title="Billing" Disabled>Billing…</StackTabStripTab>
+    </StackTabStrip>
+*@
+
+<div id="@Id" class="@WrapperCls" style="@WrapperStyle" @attributes="AdditionalAttributes">
+
+    <!-- ── Tab headers ───────────────────────────────────────────── -->
+    <div class="@HeaderAreaCls">
+        @if (ShowScrollButtons && ScrollButtonsPosition is TabStripScrollButtonsPosition.Split or TabStripScrollButtonsPosition.Start)
+        {
+            @RenderScrollButton(-1)
+        }
+        @if (ShowScrollButtons && ScrollButtonsPosition == TabStripScrollButtonsPosition.Start)
+        {
+            @RenderScrollButton(1)
+        }
+
+        <div @ref="_listRef"
+             role="tablist"
+             aria-orientation="@(IsVertical ? "vertical" : "horizontal")"
+             class="@ListCls"
+             @onkeydown="OnListKeyDown">
+            @foreach (var tab in _tabs)
+            {
+                if (!tab.IsShown) continue;
+                var current = tab;
+                var active = ActiveTab == current;
+
+                <div role="presentation" class="@HeaderItemCls(current)">
+                    <button @ref="_headerRefs[current]"
+                            type="button"
+                            role="tab"
+                            id="@HeaderId(current)"
+                            aria-selected="@(active ? "true" : "false")"
+                            aria-controls="@PanelId(current)"
+                            aria-disabled="@(current.Disabled ? "true" : null)"
+                            tabindex="@(active ? 0 : -1)"
+                            class="@HeaderButtonCls(current, active)"
+                            @onclick="() => SelectTabAsync(current, focus: false)">
+                        @if (current.HeaderTemplate is not null)
+                        {
+                            @current.HeaderTemplate
+                        }
+                        else
+                        {
+                            @current.Title
+                        }
+                    </button>
+
+                    @if (current.Closeable && !current.Disabled)
+                    {
+                        <button type="button"
+                                tabindex="-1"
+                                class="absolute right-1.5 flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                                aria-label="@($"Close {current.Title}".TrimEnd())"
+                                @onclick="() => CloseTabAsync(current)"
+                                @onclick:stopPropagation="true">
+                            <svg class="h-3 w-3" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+
+        @if (ShowScrollButtons && ScrollButtonsPosition == TabStripScrollButtonsPosition.End)
+        {
+            @RenderScrollButton(-1)
+        }
+        @if (ShowScrollButtons && ScrollButtonsPosition is TabStripScrollButtonsPosition.Split or TabStripScrollButtonsPosition.End)
+        {
+            @RenderScrollButton(1)
+        }
+    </div>
+
+    <!-- ── Panels (rendered by each StackTabStripTab) ────────────── -->
+    <div class="@ContentAreaCls">
+        <CascadingValue Value="this" IsFixed="true">
+            @ChildContent
+        </CascadingValue>
+    </div>
+</div>
+
+@code {
+    // ── Parameters ───────────────────────────────────────────────────────────
+    /// <summary>The <see cref="StackTabStripTab"/> children.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Id of the active tab. Takes precedence over <see cref="ActiveTabIndex"/>. Supports <c>@bind-ActiveTabId</c>.</summary>
+    [Parameter] public string? ActiveTabId { get; set; }
+    [Parameter] public EventCallback<string> ActiveTabIdChanged { get; set; }
+
+    /// <summary>Zero-based index of the active tab. Supports <c>@bind-ActiveTabIndex</c>.</summary>
+    [Parameter] public int ActiveTabIndex { get; set; }
+    [Parameter] public EventCallback<int> ActiveTabIndexChanged { get; set; }
+
+    [Parameter] public TabPosition TabPosition { get; set; } = TabPosition.Top;
+    [Parameter] public TabStripTabAlignment TabAlignment { get; set; } = TabStripTabAlignment.Start;
+
+    /// <summary>Scroll the headers instead of wrapping them when they do not fit.</summary>
+    [Parameter] public bool Scrollable { get; set; }
+    [Parameter] public TabStripScrollButtonsPosition ScrollButtonsPosition { get; set; } = TabStripScrollButtonsPosition.Split;
+    [Parameter] public TabStripScrollButtonsVisibility ScrollButtonsVisibility { get; set; } = TabStripScrollButtonsVisibility.Visible;
+
+    /// <summary>Keep inactive tab content in the DOM (hidden) so its state survives tab switches.</summary>
+    [Parameter] public bool PersistTabContent { get; set; }
+
+    /// <summary>One of <see cref="TabStripTheme.Size"/>: "sm", "md" (default), "lg".</summary>
+    [Parameter] public string Size { get; set; } = TabStripTheme.Size.Medium;
+
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Width { get; set; }
+    [Parameter] public string? Height { get; set; }
+
+    /// <summary>Fires when a <c>Closeable</c> tab's close button is clicked. Set <c>IsCancelled</c> to keep it open.</summary>
+    [Parameter] public EventCallback<TabStripTabCloseEventArgs> OnTabClose { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    // ── State ────────────────────────────────────────────────────────────────
+    private static readonly string[] NavKeys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"];
+
+    private readonly string _uid = $"tabstrip-{Guid.NewGuid():N}"[..17];
+    private readonly List<StackTabStripTab> _tabs = [];
+    private readonly Dictionary<StackTabStripTab, ElementReference> _headerRefs = new();
+    private ElementReference _listRef;
+
+    private string? _activeId;
+    private int? _activeIndex;
+    private string? _lastActiveTabIdParam;
+    private int? _lastActiveTabIndexParam;
+
+    private StackTabStripTab? _focusPending;
+    private StackTabStripTab? _scrollPending;
+    private bool _hasOverflow;
+    private bool _disposed;
+
+    private bool IsVertical => TabPosition is TabPosition.Left or TabPosition.Right;
+    private string BaseId => Id ?? _uid;
+
+    private bool ShowScrollButtons => Scrollable && ScrollButtonsVisibility switch
+    {
+        TabStripScrollButtonsVisibility.Visible => true,
+        TabStripScrollButtonsVisibility.Auto    => _hasOverflow,
+        _                                       => false,
+    };
+
+    internal string HeaderId(StackTabStripTab tab) => $"{BaseId}-tab-{tab.EffectiveId}";
+    internal string PanelId(StackTabStripTab tab)  => $"{BaseId}-panel-{tab.EffectiveId}";
+
+    /// <summary>The tab whose content is shown.</summary>
+    internal StackTabStripTab? ActiveTab
+    {
+        get
+        {
+            StackTabStripTab? tab = null;
+            if (_activeId is not null) tab = _tabs.Find(t => t.EffectiveId == _activeId);
+            else if (_activeIndex is int i && i >= 0 && i < _tabs.Count) tab = _tabs[i];
+
+            // Fall back to the first usable tab when the requested one is missing or hidden.
+            return tab is { IsShown: true } ? tab : _tabs.Find(t => t.IsSelectable);
+        }
+    }
+
+    // ── Lifecycle ────────────────────────────────────────────────────────────
+    protected override void OnParametersSet()
+    {
+        if (ActiveTabId != _lastActiveTabIdParam)
+        {
+            _lastActiveTabIdParam = ActiveTabId;
+            if (ActiveTabId is not null) { _activeId = ActiveTabId; _activeIndex = null; }
+        }
+
+        if (ActiveTabIndex != _lastActiveTabIndexParam)
+        {
+            _lastActiveTabIndexParam = ActiveTabIndex;
+            if (ActiveTabId is null) { _activeIndex = ActiveTabIndex; _activeId = null; }
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await TryJsAsync("MyStackBlazor.dropDownPreventKeys", _listRef, NavKeys);
+
+        if (_focusPending is { } focusTab && _headerRefs.TryGetValue(focusTab, out var headerRef))
+        {
+            _focusPending = null;
+            try { await headerRef.FocusAsync(); } catch { }
+        }
+
+        if (_scrollPending is { } scrollTab)
+        {
+            _scrollPending = null;
+            if (Scrollable) await TryJsAsync("MyStackBlazor.tabStripScrollIntoView", HeaderId(scrollTab));
+        }
+
+        if (Scrollable && ScrollButtonsVisibility == TabStripScrollButtonsVisibility.Auto)
+        {
+            var overflow = false;
+            try { overflow = await JS.InvokeAsync<bool>("MyStackBlazor.tabStripHasOverflow", _listRef, IsVertical); } catch { }
+            if (overflow != _hasOverflow)
+            {
+                _hasOverflow = overflow;
+                StateHasChanged();
+            }
+        }
+    }
+
+    // ── Tab registration (called by StackTabStripTab) ────────────────────────
+    internal void AddTab(StackTabStripTab tab)
+    {
+        _tabs.Add(tab);
+        StateHasChanged();
+    }
+
+    internal void RemoveTab(StackTabStripTab tab)
+    {
+        _tabs.Remove(tab);
+        _headerRefs.Remove(tab);
+        if (!_disposed) _ = InvokeAsync(StateHasChanged);
+    }
+
+    internal void TabChanged() => StateHasChanged();
+
+    /// <summary>Re-renders the tab strip and its tabs.</summary>
+    public void Refresh()
+    {
+        StateHasChanged();
+        RefreshTabs();
+    }
+
+    private void RefreshTabs()
+    {
+        foreach (var tab in _tabs) tab.Refresh();
+    }
+
+    // ── Selection ────────────────────────────────────────────────────────────
+    private async Task SelectTabAsync(StackTabStripTab tab, bool focus)
+    {
+        if (!tab.IsSelectable) return;
+        if (focus) _focusPending = tab;
+        _scrollPending = tab;
+        if (ActiveTab == tab) return;
+
+        _activeId = tab.EffectiveId;
+        _activeIndex = null;
+        RefreshTabs();
+
+        await ActiveTabIdChanged.InvokeAsync(tab.EffectiveId);
+        await ActiveTabIndexChanged.InvokeAsync(_tabs.IndexOf(tab));
+    }
+
+    private async Task CloseTabAsync(StackTabStripTab tab)
+    {
+        var args = new TabStripTabCloseEventArgs { TabId = tab.EffectiveId, TabIndex = _tabs.IndexOf(tab) };
+        await OnTabClose.InvokeAsync(args);
+        if (args.IsCancelled) return;
+
+        if (ActiveTab == tab)
+        {
+            var index = _tabs.IndexOf(tab);
+            var next = _tabs.Skip(index + 1).FirstOrDefault(t => t.IsSelectable)
+                       ?? _tabs.Take(index).LastOrDefault(t => t.IsSelectable);
+            tab.IsClosed = true;
+            if (next is not null) await SelectTabAsync(next, focus: true);
+        }
+        else
+        {
+            tab.IsClosed = true;
+        }
+        RefreshTabs();
+    }
+
+    // ── Keyboard ─────────────────────────────────────────────────────────────
+    private async Task OnListKeyDown(KeyboardEventArgs e)
+    {
+        var usable = _tabs.Where(t => t.IsSelectable).ToList();
+        if (usable.Count == 0) return;
+
+        var current = ActiveTab is { } active ? usable.IndexOf(active) : -1;
+        var (prevKey, nextKey) = IsVertical ? ("ArrowUp", "ArrowDown") : ("ArrowLeft", "ArrowRight");
+
+        int? target = e.Key switch
+        {
+            _ when e.Key == nextKey => (int?)((current + 1) % usable.Count),
+            _ when e.Key == prevKey => (current - 1 + usable.Count) % usable.Count,
+            "Home" => 0,
+            "End"  => usable.Count - 1,
+            _      => null,
+        };
+
+        if (target is int t) await SelectTabAsync(usable[t], focus: true);
+    }
+
+    // ── Scrolling ────────────────────────────────────────────────────────────
+    private Task ScrollAsync(int direction) =>
+        TryJsAsync("MyStackBlazor.tabStripScroll", _listRef, direction, IsVertical);
+
+    private RenderFragment RenderScrollButton(int direction)
+    {
+        var label = (IsVertical, direction) switch
+        {
+            (true, < 0)  => "Scroll up",
+            (true, _)    => "Scroll down",
+            (false, < 0) => "Scroll left",
+            _            => "Scroll right",
+        };
+        var points = (IsVertical, direction) switch
+        {
+            (true, < 0)  => "18 15 12 9 6 15",
+            (true, _)    => "6 9 12 15 18 9",
+            (false, < 0) => "15 18 9 12 15 6",
+            _            => "9 18 15 12 9 6",
+        };
+
+        return @<button type="button"
+                        tabindex="-1"
+                        aria-label="@label"
+                        class="@ScrollButtonCls"
+                        @onclick="() => ScrollAsync(direction)">
+            <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <polyline points="@points" />
+            </svg>
+        </button>;
+    }
+
+    private async Task TryJsAsync(string identifier, params object[] args)
+    {
+        try { await JS.InvokeVoidAsync(identifier, args); }
+        catch { /* JS not loaded or prerendering. */ }
+    }
+
+    // ── CSS ──────────────────────────────────────────────────────────────────
+    private string WrapperCls =>
+        "flex min-w-0 " +
+        TabPosition switch
+        {
+            TabPosition.Bottom => "flex-col-reverse",
+            TabPosition.Left   => "flex-row",
+            TabPosition.Right  => "flex-row-reverse",
+            _                  => "flex-col",
+        } +
+        $" {Class}".TrimEnd();
+
+    private string? WrapperStyle
+    {
+        get
+        {
+            var parts = new List<string>();
+            if (Width is not null) parts.Add($"width:{Width}");
+            if (Height is not null) parts.Add($"height:{Height}");
+            return parts.Count == 0 ? null : string.Join(";", parts);
+        }
+    }
+
+    private string HeaderAreaCls =>
+        "flex shrink-0 border-border " +
+        TabPosition switch
+        {
+            TabPosition.Bottom => "items-stretch border-t",
+            TabPosition.Left   => "max-h-full flex-col border-r",
+            TabPosition.Right  => "max-h-full flex-col border-l",
+            _                  => "items-stretch border-b",
+        };
+
+    private string ListCls
+    {
+        get
+        {
+            var justify = TabAlignment switch
+            {
+                TabStripTabAlignment.Center  => "justify-center",
+                TabStripTabAlignment.End     => "justify-end",
+                TabStripTabAlignment.Justify => "justify-between",
+                _                            => "justify-start",
+            };
+            var layout = IsVertical
+                ? "flex min-h-0 flex-1 flex-col " + (Scrollable ? "overflow-y-auto [scrollbar-width:none] " : "")
+                : "flex min-w-0 flex-1 " + (Scrollable ? "overflow-x-auto [scrollbar-width:none] " : "flex-wrap ");
+            return layout + justify;
+        }
+    }
+
+    private string HeaderItemCls(StackTabStripTab tab) =>
+        "relative flex shrink-0 items-center " +
+        (TabAlignment == TabStripTabAlignment.Stretch ? "flex-1 " : "") +
+        tab.Class;
+
+    private string HeaderButtonCls(StackTabStripTab tab, bool active)
+    {
+        var size = Size switch
+        {
+            TabStripTheme.Size.Small => "px-3 py-1.5 text-xs",
+            TabStripTheme.Size.Large => "px-5 py-3 text-base",
+            _                        => "px-4 py-2 text-sm",
+        };
+        var indicator = TabPosition switch
+        {
+            TabPosition.Bottom => "border-t-2",
+            TabPosition.Left   => "border-r-2",
+            TabPosition.Right  => "border-l-2",
+            _                  => "border-b-2",
+        };
+        return "inline-flex w-full items-center gap-2 whitespace-nowrap font-medium transition-colors " +
+               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring " +
+               $"{size} {indicator} " +
+               (IsVertical ? "justify-start text-left " : "justify-center ") +
+               (tab.Closeable && !tab.Disabled ? "pr-8 " : "") +
+               (tab.Disabled
+                   ? "cursor-not-allowed border-transparent text-muted-foreground opacity-50"
+                   : active
+                       ? "border-primary text-foreground"
+                       : "cursor-pointer border-transparent text-muted-foreground hover:border-border hover:text-foreground");
+    }
+
+    private string ScrollButtonCls =>
+        "flex shrink-0 items-center justify-center text-muted-foreground transition-colors hover:bg-accent hover:text-foreground " +
+        (IsVertical ? "h-7 w-full" : "w-7");
+
+    private string ContentAreaCls =>
+        "min-h-0 min-w-0 flex-1" + (Height is not null ? " overflow-auto" : "");
+
+    internal string PanelCls =>
+        "p-4 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+    public void Dispose() => _disposed = true;
+}

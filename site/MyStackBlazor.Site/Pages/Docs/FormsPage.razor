@@ -49,6 +49,65 @@
     </div>
 </CodeSample>
 
+<!-- DropDownList -->
+<CodeSample Title="DropDownList"
+             Description="Telerik-style DropDownList: Data/TextField/ValueField binding, DefaultText, filtering, grouping, templates, virtual scrolling, OnRead, Size/Rounded/FillMode."
+             Code="@_dropDownListCode">
+    <div class="w-full max-w-sm space-y-4">
+        <StackDropDownList Data="@_ddlProducts" @bind-Value="_ddlProductId"
+                           TextField="@nameof(DdlProduct.Name)" ValueField="@nameof(DdlProduct.Id)"
+                           DefaultText="Select a product" Filterable FilterOperator="StringFilterOperator.Contains"
+                           FilterIgnoreDiacritics HighlightFilterMatch PersistFilter
+                           ShowClearButton />
+
+        <StackDropDownList Data="@_ddlProducts" @bind-Value="_ddlGroupedId"
+                           TextField="@nameof(DdlProduct.Name)" ValueField="@nameof(DdlProduct.Id)" GroupField="@nameof(DdlProduct.Category)"
+                           Size="@DropDownListTheme.Size.Small" Rounded="@DropDownListTheme.Rounded.Full" FillMode="@DropDownListTheme.FillMode.Outline">
+            <ItemTemplate>
+                <span class="flex w-full justify-between"><span>@context.Name</span><span class="text-muted-foreground">@context.Price.ToString("C")</span></span>
+            </ItemTemplate>
+            <FooterTemplate>@_ddlProducts.Count products</FooterTemplate>
+            <DropDownListSettings>
+                <StackDropDownListPopupSettings MaxHeight="220px" />
+            </DropDownListSettings>
+        </StackDropDownList>
+
+        <StackDropDownList Data="@_ddlNumbers" @bind-Value="_ddlNumber"
+                           ScrollMode="DropDownScrollMode.Virtual" ItemHeight="32" PageSize="20" Filterable />
+
+        <p class="text-sm text-muted-foreground">
+            Product: <strong>@(_ddlProductId == 0 ? "none" : _ddlProductId)</strong> &nbsp;|&nbsp;
+            Grouped: <strong>@_ddlGroupedId</strong> &nbsp;|&nbsp; Virtual: <strong>@_ddlNumber</strong>
+        </p>
+    </div>
+</CodeSample>
+
+<!-- DateRangePicker -->
+<CodeSample Title="DateRangePicker"
+             Description="Telerik-style DateRangePicker: StartValue/EndValue binding, two-month calendar with range preview, Min/Max, DisabledDates, week numbers, Month/Year/Decade/Century views, AllowReverse, typed input, keyboard navigation."
+             Code="@_dateRangeCode">
+    <div class="w-full max-w-xl space-y-4">
+        <StackDateRangePicker @bind-StartValue="_drpStart" @bind-EndValue="_drpEnd"
+                              Min="@DateTime.Today.AddYears(-1)" Max="@DateTime.Today.AddYears(1)"
+                              DisabledDates="@_drpHolidays" ShowWeekNumbers ShowClearButton
+                              Format="dd MMM yyyy" Width="100%"
+                              OnCalendarCellRender="@(a => { if (a.View == CalendarView.Month && a.Date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday) a.Class = "text-destructive"; })" />
+
+        <StackDateRangePicker T="DateTime?" @bind-StartValue="_drpMonthStart" @bind-EndValue="_drpMonthEnd"
+                              BottomView="CalendarView.Year" View="CalendarView.Year" Format="MMM yyyy"
+                              StartPlaceholder="From month" EndPlaceholder="To month"
+                              Size="sm" FillMode="outline" />
+
+        <p class="text-sm text-muted-foreground">
+            Range: <strong>@(_drpStart?.ToString("d") ?? "–") → @(_drpEnd?.ToString("d") ?? "–")</strong>
+            @if (_drpStart is not null && _drpEnd is not null)
+            {
+                <span> (@((_drpEnd.Value - _drpStart.Value).Days + 1) days)</span>
+            }
+        </p>
+    </div>
+</CodeSample>
+
 <!-- Switch -->
 <CodeSample Title="Switch" Code="@_switchCode">
     <div class="space-y-3 w-full max-w-sm">
@@ -486,6 +545,94 @@
 </CodeSample>
 
 @code {
+    // ── DateRangePicker data ─────────────────────────────────────────────────
+    private DateTime? _drpStart = DateTime.Today;
+    private DateTime? _drpEnd = DateTime.Today.AddDays(6);
+    private DateTime? _drpMonthStart, _drpMonthEnd;
+    private readonly List<DateTime> _drpHolidays = [DateTime.Today.AddDays(10), DateTime.Today.AddDays(11)];
+
+    private const string _dateRangeCode = """
+        <StackDateRangePicker @bind-StartValue="start" @bind-EndValue="end"
+                              Min="@DateTime.Today" Max="@DateTime.Today.AddYears(1)"
+                              DisabledDates="@holidays"
+                              Format="dd MMM yyyy"
+                              ShowWeekNumbers ShowClearButton AllowReverse
+                              OnChange="@(args => Console.WriteLine($"{args.StartValue} - {args.EndValue}"))"
+                              OnCalendarCellRender="@(args => { if (args.Date.DayOfWeek == DayOfWeek.Sunday) args.Class = "text-destructive"; })" />
+
+        <!-- Month-level range -->
+        <StackDateRangePicker @bind-StartValue="fromMonth" @bind-EndValue="toMonth"
+                              BottomView="CalendarView.Year" View="CalendarView.Year" Format="MMM yyyy" />
+
+        <!-- T can be DateTime, DateTime?, DateOnly or DateOnly? -->
+        <StackDateRangePicker T="DateOnly?" @bind-StartValue="checkIn" @bind-EndValue="checkOut"
+                              AdaptiveMode="AdaptiveMode.Auto" Title="Stay dates" />
+        """;
+
+    // ── DropDownList data ────────────────────────────────────────────────────
+    private record DdlProduct(int Id, string Name, string Category, decimal Price);
+
+    private readonly List<DdlProduct> _ddlProducts =
+    [
+        new(1, "Chai", "Beverages", 18m),
+        new(2, "Chang", "Beverages", 19m),
+        new(3, "Aniseed Syrup", "Condiments", 10m),
+        new(4, "Cajun Seasoning", "Condiments", 22m),
+        new(5, "Gumbo Mix", "Condiments", 21.35m),
+        new(6, "Mozzarella", "Dairy", 34.8m),
+        new(7, "Gorgonzola", "Dairy", 12.5m),
+    ];
+
+    private readonly List<string> _ddlNumbers = Enumerable.Range(1, 5000).Select(i => $"Item {i}").ToList();
+
+    private int _ddlProductId;
+    private int _ddlGroupedId = 3;
+    private string? _ddlNumber = "Item 1";
+
+    private const string _dropDownListCode = """
+        <StackDropDownList Data="@products" @bind-Value="productId"
+                           TextField="Name" ValueField="Id"
+                           DefaultText="Select a product"
+                           Filterable FilterOperator="StringFilterOperator.Contains"
+                           MinLength="1" FilterField="Name" FilterCaseSensitive="false"
+                           FilterIgnoreDiacritics HighlightFilterMatch PersistFilter
+                           ShowFilterClearButton FilterMaxLength="50"
+                           @bind-FilterValue="filterText"
+                           ShowClearButton
+                           OnChange="@(v => Console.WriteLine(v))" />
+
+        <!-- Grouping, templates, appearance and popup settings -->
+        <StackDropDownList Data="@products" @bind-Value="productId"
+                           TextField="Name" ValueField="Id" GroupField="Category"
+                           Size="@DropDownListTheme.Size.Small"
+                           Rounded="@DropDownListTheme.Rounded.Full"
+                           FillMode="@DropDownListTheme.FillMode.Outline">
+            <ItemTemplate>@context.Name — @context.Price.ToString("C")</ItemTemplate>
+            <FooterTemplate>@products.Count products</FooterTemplate>
+            <DropDownListSettings>
+                <StackDropDownListPopupSettings MaxHeight="220px" />
+            </DropDownListSettings>
+        </StackDropDownList>
+
+        <!-- Virtual scrolling -->
+        <StackDropDownList Data="@numbers" @bind-Value="number"
+                           ScrollMode="DropDownScrollMode.Virtual" ItemHeight="32" PageSize="20" />
+
+        <!-- Remote data -->
+        <StackDropDownList TItem="Product" TValue="int" @bind-Value="productId"
+                           TextField="Name" ValueField="Id" Filterable
+                           OnRead="@LoadProducts" />
+
+        @code {
+            async Task LoadProducts(DropDownListReadEventArgs<Product> args)
+            {
+                var result = await api.GetProducts(args.Request.FilterText, args.Request.Skip, args.Request.Take);
+                args.Data  = result.Items;
+                args.Total = result.Total;
+            }
+        }
+        """;
+
     private string? _name;
     private string? _email;
     private string? _floatName;

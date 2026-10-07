@@ -1,0 +1,1212 @@
+@namespace MyStackBlazor.Components.Form
+@typeparam TItem
+@typeparam TValue
+@implements IDisposable
+@implements IDropDownListPopupSettingsHost
+@inject IJSRuntime JS
+@using System.Globalization
+@using System.Linq.Expressions
+@using System.Reflection
+@using System.Text
+
+@*
+    Single-selection dropdown modelled on the Telerik DropDownList API.
+
+    <StackDropDownList Data="@products" @bind-Value="productId"
+                       TextField="@nameof(Product.Name)" ValueField="@nameof(Product.Id)"
+                       DefaultText="Select a product" Filterable />
+*@
+
+<CascadingValue Value="(IDropDownListPopupSettingsHost)this" IsFixed="true">
+    @DropDownListSettings
+</CascadingValue>
+
+<div class="@WrapperCls" style="@WrapperStyle" @attributes="AdditionalAttributes">
+
+    <!-- ── Trigger ──────────────────────────────────────────────── -->
+    <span @ref="_triggerRef"
+          id="@Id"
+          role="combobox"
+          tabindex="@(IsDisabled ? -1 : TabIndex ?? 0)"
+          aria-haspopup="listbox"
+          aria-expanded="@(_open ? "true" : "false")"
+          aria-controls="@(_open ? ListId : null)"
+          aria-activedescendant="@(_open && !Filterable ? ActiveDescendant : null)"
+          aria-disabled="@(IsDisabled ? "true" : null)"
+          aria-readonly="@(ReadOnly ? "true" : null)"
+          aria-invalid="@(IsInvalid ? "true" : null)"
+          aria-label="@AriaLabel"
+          aria-labelledby="@AriaLabelledBy"
+          aria-describedby="@AriaDescribedBy"
+          class="@TriggerCls"
+          @onclick="OnTriggerClick"
+          @onkeydown="OnTriggerKeyDown"
+          @onblur="OnTriggerBlur">
+
+        <span class="min-w-0 flex-1 truncate">
+            @if (TryGetSelectedItem(out var selectedItem))
+            {
+                @if (ValueTemplate is not null)
+                {
+                    @ValueTemplate(selectedItem)
+                }
+                else
+                {
+                    @TextOf(selectedItem)
+                }
+            }
+            else if (DefaultText is not null)
+            {
+                <span class="text-muted-foreground">@DefaultText</span>
+            }
+            else if (FirstSourceItem(out var firstItem))
+            {
+                @* Without DefaultText the DropDownList always shows an item, like Telerik. *@
+                @if (ValueTemplate is not null) { @ValueTemplate(firstItem) } else { @TextOf(firstItem) }
+            }
+            else
+            {
+                <text>&nbsp;</text>
+            }
+        </span>
+
+        @if (ShowClearButton && !IsDisabled && !ReadOnly && HasSelection)
+        {
+            <button type="button"
+                    tabindex="-1"
+                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    aria-label="Clear"
+                    @onclick="ClearAsync"
+                    @onclick:stopPropagation="true">
+                <svg class="h-3.5 w-3.5" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+            </button>
+        }
+
+        <svg class="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150 @(_open ? "rotate-180" : "")"
+             aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <polyline points="6 9 12 15 18 9" />
+        </svg>
+    </span>
+
+    <!-- ── Popup ────────────────────────────────────────────────── -->
+    @if (_open)
+    {
+        <div class="@OverlayCls" @onclick="OnOverlayClick" aria-hidden="true"></div>
+
+        <div class="@PopupCls" style="@PopupStyle">
+
+            @if (AdaptiveMode == AdaptiveMode.Auto)
+            {
+                <div class="hidden items-center justify-between border-b px-4 py-3 max-sm:flex">
+                    <span class="text-sm font-semibold">@(Title ?? DefaultText ?? "Select")</span>
+                    <button type="button"
+                            class="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+                            aria-label="Close"
+                            @onclick="() => CloseFromUserAsync(true)">
+                        <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                    </button>
+                </div>
+            }
+
+            @if (HeaderTemplate is not null)
+            {
+                <div class="border-b px-3 py-2 text-sm">@HeaderTemplate</div>
+            }
+
+            @if (Filterable)
+            {
+                <div class="flex items-center gap-2 border-b px-3 py-2">
+                    <svg class="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
+                    </svg>
+                    <input @ref="_filterRef"
+                           type="text"
+                           role="searchbox"
+                           autocomplete="off"
+                           class="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                           placeholder="@FilterPlaceholder"
+                           aria-label="@FilterPlaceholder"
+                           aria-controls="@ListId"
+                           aria-activedescendant="@ActiveDescendant"
+                           maxlength="@FilterMaxLength"
+                           inputmode="@InputMode"
+                           value="@_filterText"
+                           @oninput="OnFilterInput"
+                           @onkeydown="OnFilterKeyDown" />
+                    @if (ShowFilterClearButton && _filterText.Length > 0)
+                    {
+                        <button type="button"
+                                tabindex="-1"
+                                class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                                aria-label="Clear filter"
+                                @onclick="ClearFilterAsync">
+                            <svg class="h-3.5 w-3.5" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                        </button>
+                    }
+                </div>
+            }
+
+            <div id="@ListId"
+                 role="listbox"
+                 aria-label="@(AriaLabel ?? DefaultText)"
+                 class="@ListCls"
+                 style="@ListStyle">
+
+                @if (ShowDefaultItem)
+                {
+                    var defaultSelected = !HasSelection;
+                    <div id="@OptionId(-1)"
+                         role="option"
+                         data-index="-1"
+                         aria-selected="@(defaultSelected ? "true" : "false")"
+                         class="@OptionCls(defaultSelected, _focused == -1, "text-muted-foreground")"
+                         style="@OptionStyle"
+                         @onclick="() => SelectIndexAsync(-1, true)">
+                        @DefaultText
+                    </div>
+                }
+
+                @if (_loading)
+                {
+                    <div class="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
+                        <svg class="h-4 w-4 animate-spin" aria-hidden="true" focusable="false" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                        </svg>
+                        Loading…
+                    </div>
+                }
+                else if (IsRemoteVirtual)
+                {
+                    <Virtualize @ref="_virtualize" TItem="Row" ItemsProvider="_rowsProvider" ItemSize="ItemHeight" OverscanCount="OverscanCount" Context="row">
+                        <ItemContent>@RenderOption(row.Item, row.Index)</ItemContent>
+                        <Placeholder><div class="mx-1 my-0.5 animate-pulse rounded-sm bg-muted" style="@OptionStyle"></div></Placeholder>
+                        <EmptyContent>@RenderNoData()</EmptyContent>
+                    </Virtualize>
+                }
+                else if (_view.Count == 0)
+                {
+                    @RenderNoData()
+                }
+                else if (IsVirtual)
+                {
+                    <Virtualize TItem="Row" Items="_rows" ItemSize="ItemHeight" OverscanCount="OverscanCount" Context="row">
+                        @RenderOption(row.Item, row.Index)
+                    </Virtualize>
+                }
+                else
+                {
+                    string? previousGroup = null;
+                    @for (var i = 0; i < _view.Count; i++)
+                    {
+                        var item = _view[i];
+                        if (HasGroups)
+                        {
+                            var group = GroupOf(item);
+                            if (i == 0 || group != previousGroup)
+                            {
+                                <div role="presentation" class="px-2 pb-0.5 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                    @if (GroupHeaderTemplate is not null) { @GroupHeaderTemplate(group) } else { @group }
+                                </div>
+                            }
+                            previousGroup = group;
+                        }
+                        @RenderOption(item, i)
+                    }
+                }
+            </div>
+
+            @if (FooterTemplate is not null)
+            {
+                <div class="border-t px-3 py-2 text-sm">@FooterTemplate</div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    // ── Data ─────────────────────────────────────────────────────────────────
+    /// <summary>The items to show. Ignored when <see cref="OnRead"/> is set.</summary>
+    [Parameter] public IEnumerable<TItem>? Data { get; set; }
+
+    /// <summary>Property of <typeparamref name="TItem"/> that holds the display text. Supports nested paths ("Address.City").</summary>
+    [Parameter] public string TextField { get; set; } = "Text";
+
+    /// <summary>Property of <typeparamref name="TItem"/> that holds the value. When missing, the item itself is the value.</summary>
+    [Parameter] public string ValueField { get; set; } = "Value";
+
+    /// <summary>Property of <typeparamref name="TItem"/> used to group the items.</summary>
+    [Parameter] public string? GroupField { get; set; }
+
+    // ── Value ────────────────────────────────────────────────────────────────
+    [Parameter] public TValue? Value { get; set; }
+    [Parameter] public EventCallback<TValue?> ValueChanged { get; set; }
+    [Parameter] public Expression<Func<TValue?>>? ValueExpression { get; set; }
+
+    /// <summary>
+    /// Text shown when no value is selected; it is also rendered as the first (empty) option.
+    /// Without it, the first item is shown when <see cref="Value"/> matches no item.
+    /// </summary>
+    [Parameter] public string? DefaultText { get; set; }
+
+    /// <summary>Resolves the selected item when it is not in the loaded data (remote or virtual data).</summary>
+    [Parameter] public Func<TValue, Task<TItem>>? ValueMapper { get; set; }
+
+    // ── State ────────────────────────────────────────────────────────────────
+    [Parameter] public bool Enabled { get; set; } = true;
+    /// <summary>Alias for <c>Enabled="false"</c>, kept for consistency with the other Stack form controls.</summary>
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public bool ShowClearButton { get; set; }
+
+    // ── Filtering ────────────────────────────────────────────────────────────
+    [Parameter] public bool Filterable { get; set; }
+    [Parameter] public StringFilterOperator FilterOperator { get; set; } = StringFilterOperator.StartsWith;
+    [Parameter] public string FilterPlaceholder { get; set; } = "Filter…";
+    /// <summary>Delay in milliseconds before <see cref="OnRead"/> runs after the filter text changes.</summary>
+    [Parameter] public int FilterDebounceDelay { get; set; } = 150;
+    /// <summary>The <c>inputmode</c> attribute of the filter input (e.g. "text", "numeric", "search").</summary>
+    [Parameter] public string? InputMode { get; set; }
+    /// <summary>Minimum number of characters before the filter is applied.</summary>
+    [Parameter] public int MinLength { get; set; } = 1;
+    /// <summary>Property to filter on. Defaults to <see cref="TextField"/>.</summary>
+    [Parameter] public string? FilterField { get; set; }
+    [Parameter] public bool FilterCaseSensitive { get; set; }
+    /// <summary>When true, "e" matches "é", "u" matches "ü", and so on.</summary>
+    [Parameter] public bool FilterIgnoreDiacritics { get; set; }
+    /// <summary>Custom match function (item, filter text) that replaces <see cref="FilterOperator"/>. Local data only.</summary>
+    [Parameter] public Func<TItem, string, bool>? CustomFilter { get; set; }
+    /// <summary>The current filter text. Supports <c>@bind-FilterValue</c>.</summary>
+    [Parameter] public string? FilterValue { get; set; }
+    [Parameter] public EventCallback<string> FilterValueChanged { get; set; }
+    /// <summary>Keep the filter text when the popup closes instead of clearing it.</summary>
+    [Parameter] public bool PersistFilter { get; set; }
+    [Parameter] public bool ShowFilterClearButton { get; set; } = true;
+    [Parameter] public int? FilterMaxLength { get; set; }
+    /// <summary>Bold the part of each item's text that matches the filter (default item rendering only).</summary>
+    [Parameter] public bool HighlightFilterMatch { get; set; }
+
+    // ── Virtualization ───────────────────────────────────────────────────────
+    [Parameter] public DropDownScrollMode ScrollMode { get; set; } = DropDownScrollMode.Scrollable;
+    /// <summary>Item height in pixels. Required for <see cref="DropDownScrollMode.Virtual"/>.</summary>
+    [Parameter] public float ItemHeight { get; set; }
+    /// <summary>Number of items to keep rendered around the visible area when virtual.</summary>
+    [Parameter] public int PageSize { get; set; } = 20;
+
+    // ── Appearance ───────────────────────────────────────────────────────────
+    /// <summary>One of <see cref="DropDownListTheme.Size"/>: "sm", "md" (default), "lg".</summary>
+    [Parameter] public string Size { get; set; } = DropDownListTheme.Size.Medium;
+    /// <summary>One of <see cref="DropDownListTheme.Rounded"/>: "none", "sm", "md" (default), "lg", "full".</summary>
+    [Parameter] public string Rounded { get; set; } = DropDownListTheme.Rounded.Medium;
+    /// <summary>One of <see cref="DropDownListTheme.FillMode"/>: "solid" (default), "flat", "outline".</summary>
+    [Parameter] public string FillMode { get; set; } = DropDownListTheme.FillMode.Solid;
+    [Parameter] public string? Width { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public AdaptiveMode AdaptiveMode { get; set; } = AdaptiveMode.None;
+
+    // Shorthand popup settings; a <StackDropDownListPopupSettings> child wins over these.
+    [Parameter] public string? PopupHeight { get; set; }
+    [Parameter] public string? PopupWidth { get; set; }
+    [Parameter] public string? PopupClass { get; set; }
+
+    // ── Accessibility ────────────────────────────────────────────────────────
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public int? TabIndex { get; set; }
+    /// <summary>Header text of the popup action sheet. Applies only when <see cref="AdaptiveMode"/> is Auto.</summary>
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter] public string? AriaLabelledBy { get; set; }
+    [Parameter] public string? AriaDescribedBy { get; set; }
+
+    // ── Templates ────────────────────────────────────────────────────────────
+    [Parameter] public RenderFragment<TItem>? ItemTemplate { get; set; }
+    [Parameter] public RenderFragment<TItem>? ValueTemplate { get; set; }
+    [Parameter] public RenderFragment? HeaderTemplate { get; set; }
+    [Parameter] public RenderFragment? FooterTemplate { get; set; }
+    [Parameter] public RenderFragment? NoDataTemplate { get; set; }
+    [Parameter] public RenderFragment<string>? GroupHeaderTemplate { get; set; }
+    /// <summary>Holds a <see cref="StackDropDownListPopupSettings"/> child.</summary>
+    [Parameter] public RenderFragment? DropDownListSettings { get; set; }
+
+    // ── Events ───────────────────────────────────────────────────────────────
+    /// <summary>Fires when the user confirms a new value (selection from the popup, or blur after keyboard changes).</summary>
+    [Parameter] public EventCallback<object?> OnChange { get; set; }
+    [Parameter] public EventCallback<DropDownListOpenEventArgs> OnOpen { get; set; }
+    [Parameter] public EventCallback<DropDownListCloseEventArgs> OnClose { get; set; }
+    [Parameter] public EventCallback OnBlur { get; set; }
+    /// <summary>Loads data on demand (remote data, server filtering, virtual paging).</summary>
+    [Parameter] public EventCallback<DropDownListReadEventArgs<TItem>> OnRead { get; set; }
+    /// <summary>Called for every rendered item; set <c>args.Class</c> to style it.</summary>
+    [Parameter] public Action<DropDownListItemRenderEventArgs<TItem>>? OnItemRender { get; set; }
+
+    [CascadingParameter] private EditContext? EditContext { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    // ── Internal state ───────────────────────────────────────────────────────
+    private readonly record struct Row(TItem Item, int Index);
+
+    private static readonly string[] TriggerNavKeys = ["ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown", " ", "Enter"];
+    private static readonly string[] FilterNavKeys  = ["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Enter"];
+    private const int PageStep = 10;
+
+    private readonly string _uid = $"ddl-{Guid.NewGuid():N}"[..12];
+    private ElementReference _triggerRef;
+    private ElementReference _filterRef;
+    private Virtualize<Row>? _virtualize;
+    private ItemsProviderDelegate<Row> _rowsProvider = default!;
+
+    private bool _open;
+    private string _filterText = "";
+    private int? _focused;
+    private bool _focusFilterPending;
+    private bool _scrollPending;
+    private bool _pendingChange;
+    private bool _loading;
+    private bool _initialReadDone;
+    private string? _filterValueParam;
+    private string? _lastReadFilter;
+    private string? _filterFieldBuilt;
+    private Func<TItem, object?>? _filterAccessor;
+    private int _remoteTotal;
+
+    private List<TItem> _view = [];
+    private List<Row> _rows = [];
+    private List<TItem> _remoteData = [];
+    private readonly Dictionary<int, TItem> _virtualCache = new();
+
+    private TItem? _selectedItem;
+    private bool _hasSelectedItem;
+    private TValue? _mappedValue;
+    private bool _hasMappedValue;
+
+    private string _typeAhead = "";
+    private DateTime _typeAheadAt;
+
+    private CancellationTokenSource? _readCts;
+    private CancellationTokenSource? _debounceCts;
+
+    private StackDropDownListPopupSettings? _popupSettings;
+    private string? _textFieldBuilt, _valueFieldBuilt, _groupFieldBuilt;
+    private Func<TItem, object?>? _textAccessor, _valueAccessor, _groupAccessor;
+
+    private EditContext? _subscribedContext;
+    private FieldIdentifier? _fieldIdentifier;
+
+    // ── Derived state ────────────────────────────────────────────────────────
+    private bool IsDisabled => !Enabled || Disabled;
+    private bool IsVirtual => ScrollMode == DropDownScrollMode.Virtual && ItemHeight > 0;
+    private bool IsRemote => OnRead.HasDelegate;
+    private bool IsRemoteVirtual => IsRemote && IsVirtual;
+    private bool HasGroups => _groupAccessor is not null && !IsVirtual;
+    private bool ShowDefaultItem => DefaultText is not null && ActiveFilter.Length == 0;
+
+    /// <summary>The filter text actually applied: empty until <see cref="MinLength"/> characters are typed.</summary>
+    private string ActiveFilter => Filterable && _filterText.Length >= Math.Max(1, MinLength) ? _filterText : "";
+
+    private StringComparison FilterComparison =>
+        FilterCaseSensitive ? StringComparison.CurrentCulture : StringComparison.CurrentCultureIgnoreCase;
+    private int MinIndex => ShowDefaultItem ? -1 : 0;
+    private int ViewCount => IsRemoteVirtual ? _remoteTotal : _view.Count;
+    private int OverscanCount => Math.Max(3, PageSize / 2);
+    private bool HasSelection => TryGetSelectedItem(out _);
+
+    private bool IsInvalid =>
+        EditContext is not null && _fieldIdentifier is { } f && EditContext.GetValidationMessages(f).Any();
+
+    private string ListId => $"{Id ?? _uid}-listbox";
+    private string OptionId(int index) => $"{ListId}-{index}";
+    private string? ActiveDescendant => _focused is int f ? OptionId(f) : null;
+
+    private IEnumerable<TItem> SourceItems =>
+        IsRemote ? _remoteData.Concat(_virtualCache.Values) : Data ?? [];
+
+    // ── Lifecycle ────────────────────────────────────────────────────────────
+    protected override void OnInitialized()
+    {
+        _rowsProvider = ProvideRowsAsync;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        BuildAccessors();
+        SubscribeEditContext();
+
+        var filterFromParent = FilterValue is not null && FilterValue != _filterValueParam && FilterValue != _filterText;
+        _filterValueParam = FilterValue;
+        if (filterFromParent)
+        {
+            _filterText = FilterValue!;
+            if (IsRemote && _initialReadDone) await ReloadRemoteAsync();
+        }
+
+        if (!IsRemote)
+            BuildView();
+        else if (!IsVirtual && !_initialReadDone)
+        {
+            _initialReadDone = true;
+            await RequestDataAsync();
+        }
+
+        await MapValueAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await TryJsAsync("MyStackBlazor.dropDownPreventKeys", _triggerRef, TriggerNavKeys);
+
+        if (_open && _focusFilterPending)
+        {
+            _focusFilterPending = false;
+            try { await _filterRef.FocusAsync(); } catch { }
+            await TryJsAsync("MyStackBlazor.dropDownPreventKeys", _filterRef, FilterNavKeys);
+        }
+
+        if (_open && _scrollPending && _focused is int index)
+        {
+            _scrollPending = false;
+            await TryJsAsync("MyStackBlazor.dropDownScrollIntoView", ListId, index);
+        }
+    }
+
+    public void SetPopupSettings(StackDropDownListPopupSettings settings) => _popupSettings = settings;
+
+    // ── Public API (mirrors Telerik) ─────────────────────────────────────────
+    /// <summary>Opens the popup. Does not fire <see cref="OnOpen"/>.</summary>
+    public void Open()
+    {
+        if (IsDisabled || _open) return;
+        OpenCore();
+        StateHasChanged();
+    }
+
+    /// <summary>Closes the popup. Does not fire <see cref="OnClose"/>.</summary>
+    public void Close()
+    {
+        if (!_open) return;
+        CloseCore();
+        StateHasChanged();
+    }
+
+    /// <summary>Re-renders the component.</summary>
+    public void Refresh() => _ = InvokeAsync(StateHasChanged);
+
+    /// <summary>Re-reads the data (calls <see cref="OnRead"/> again when it is set).</summary>
+    public async Task Rebind()
+    {
+        if (IsRemoteVirtual)
+        {
+            _virtualCache.Clear();
+            if (_virtualize is not null) await _virtualize.RefreshDataAsync();
+        }
+        else if (IsRemote)
+        {
+            await RequestDataAsync();
+        }
+        else
+        {
+            BuildView();
+        }
+        StateHasChanged();
+    }
+
+    public ValueTask FocusAsync() => _triggerRef.FocusAsync();
+
+    // ── Field access ─────────────────────────────────────────────────────────
+    private void BuildAccessors()
+    {
+        if (_textFieldBuilt != TextField)   { _textAccessor  = BuildAccessor(TextField);  _textFieldBuilt  = TextField; }
+        if (_valueFieldBuilt != ValueField) { _valueAccessor = BuildAccessor(ValueField); _valueFieldBuilt = ValueField; }
+        if (_groupFieldBuilt != GroupField) { _groupAccessor = BuildAccessor(GroupField); _groupFieldBuilt = GroupField; }
+        if (_filterFieldBuilt != FilterField) { _filterAccessor = BuildAccessor(FilterField); _filterFieldBuilt = FilterField; }
+    }
+
+    private static Func<TItem, object?>? BuildAccessor(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+
+        var props = new List<PropertyInfo>();
+        var type = typeof(TItem);
+        foreach (var part in path.Split('.'))
+        {
+            var prop = type.GetProperty(part, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+            if (prop is null) return null;
+            props.Add(prop);
+            type = prop.PropertyType;
+        }
+
+        return item =>
+        {
+            object? current = item;
+            foreach (var prop in props)
+            {
+                if (current is null) return null;
+                current = prop.GetValue(current);
+            }
+            return current;
+        };
+    }
+
+    private string TextOf(TItem item) =>
+        (_textAccessor is not null ? _textAccessor(item)?.ToString() : item?.ToString()) ?? "";
+
+    private TValue? ValueOf(TItem item) =>
+        ConvertValue(_valueAccessor is not null ? _valueAccessor(item) : item);
+
+    private string GroupOf(TItem item) => _groupAccessor?.Invoke(item)?.ToString() ?? "";
+
+    private static TValue? ConvertValue(object? raw)
+    {
+        if (raw is null) return default;
+        if (raw is TValue typed) return typed;
+
+        var target = Nullable.GetUnderlyingType(typeof(TValue)) ?? typeof(TValue);
+        try
+        {
+            if (target.IsEnum) return (TValue)Enum.ToObject(target, raw);
+            if (target == typeof(Guid)) return (TValue)(object)Guid.Parse(raw.ToString()!);
+            return (TValue)Convert.ChangeType(raw, target, CultureInfo.InvariantCulture);
+        }
+        catch
+        {
+            return default;
+        }
+    }
+
+    private static bool ValuesEqual(TValue? a, TValue? b) => EqualityComparer<TValue?>.Default.Equals(a, b);
+
+    // ── Selected item ────────────────────────────────────────────────────────
+    private bool TryGetSelectedItem(out TItem item)
+    {
+        if (_hasSelectedItem && ValuesEqual(ValueOf(_selectedItem!), Value))
+        {
+            item = _selectedItem!;
+            return true;
+        }
+
+        foreach (var candidate in SourceItems)
+        {
+            if (ValuesEqual(ValueOf(candidate), Value))
+            {
+                item = candidate;
+                return true;
+            }
+        }
+
+        item = default!;
+        return false;
+    }
+
+    private bool FirstSourceItem(out TItem item)
+    {
+        foreach (var candidate in SourceItems)
+        {
+            item = candidate;
+            return true;
+        }
+        item = default!;
+        return false;
+    }
+
+    private bool IsSelectedItem(TItem item) => ValuesEqual(ValueOf(item), Value);
+
+    private async Task MapValueAsync()
+    {
+        if (ValueMapper is null || Value is null || ValuesEqual(Value, default)) return;
+        if (_hasMappedValue && ValuesEqual(_mappedValue, Value)) return;
+        if (TryGetSelectedItem(out _)) return;
+
+        _mappedValue = Value;
+        _hasMappedValue = true;
+        var mapped = await ValueMapper(Value!);
+        if (mapped is not null)
+        {
+            _selectedItem = mapped;
+            _hasSelectedItem = true;
+        }
+    }
+
+    // ── View building / filtering ────────────────────────────────────────────
+    private void BuildView()
+    {
+        IEnumerable<TItem> items = IsRemote ? _remoteData : Data ?? [];
+
+        // Remote data is filtered by the OnRead handler.
+        var filter = ActiveFilter;
+        if (!IsRemote && filter.Length > 0)
+            items = items.Where(i => CustomFilter?.Invoke(i, filter) ?? Matches(FilterTextOf(i), filter));
+
+        if (_groupAccessor is not null && !IsVirtual)
+            items = items.OrderBy(GroupOf, StringComparer.CurrentCulture);
+
+        _view = items.ToList();
+        _rows = IsVirtual ? _view.Select((item, index) => new Row(item, index)).ToList() : [];
+    }
+
+    private string FilterTextOf(TItem item) =>
+        _filterAccessor is not null ? _filterAccessor(item)?.ToString() ?? "" : TextOf(item);
+
+    private string NormalizeForFilter(string text)
+    {
+        if (!FilterIgnoreDiacritics) return text;
+        var decomposed = text.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder(decomposed.Length);
+        foreach (var c in decomposed)
+            if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark) sb.Append(c);
+        return sb.ToString().Normalize(NormalizationForm.FormC);
+    }
+
+    private bool Matches(string text, string filter)
+    {
+        text = NormalizeForFilter(text);
+        filter = NormalizeForFilter(filter);
+        var cmp = FilterComparison;
+        return FilterOperator switch
+        {
+            StringFilterOperator.Contains       => text.Contains(filter, cmp),
+            StringFilterOperator.DoesNotContain => !text.Contains(filter, cmp),
+            StringFilterOperator.EndsWith       => text.EndsWith(filter, cmp),
+            StringFilterOperator.IsEqualTo      => text.Equals(filter, cmp),
+            StringFilterOperator.IsNotEqualTo   => !text.Equals(filter, cmp),
+            _                                   => text.StartsWith(filter, cmp),
+        };
+    }
+
+    /// <summary>Start and length of the filter match inside <paramref name="text"/>, or null.</summary>
+    private (int Start, int Length)? MatchRange(string text, string filter)
+    {
+        var normText = NormalizeForFilter(text);
+        var normFilter = NormalizeForFilter(filter);
+        // Highlight indexes only line up when normalization kept the length.
+        if (normText.Length != text.Length || normFilter.Length == 0) return null;
+
+        var cmp = FilterComparison;
+        var start = FilterOperator switch
+        {
+            StringFilterOperator.Contains   => normText.IndexOf(normFilter, cmp),
+            StringFilterOperator.EndsWith   => normText.EndsWith(normFilter, cmp) ? normText.Length - normFilter.Length : -1,
+            StringFilterOperator.IsEqualTo  => normText.Equals(normFilter, cmp) ? 0 : -1,
+            StringFilterOperator.StartsWith => normText.StartsWith(normFilter, cmp) ? 0 : -1,
+            _                               => -1,
+        };
+        return start >= 0 && start + normFilter.Length <= text.Length ? (start, normFilter.Length) : null;
+    }
+
+    private Task OnFilterInput(ChangeEventArgs e) => ApplyFilterAsync(e.Value?.ToString() ?? "");
+
+    private async Task ClearFilterAsync()
+    {
+        await ApplyFilterAsync("");
+        try { await _filterRef.FocusAsync(); } catch { }
+    }
+
+    private async Task ApplyFilterAsync(string text)
+    {
+        _filterText = text;
+        _filterValueParam = text;
+        await FilterValueChanged.InvokeAsync(text);
+
+        if (IsRemote)
+        {
+            _debounceCts?.Cancel();
+            var cts = _debounceCts = new CancellationTokenSource();
+            try { await Task.Delay(FilterDebounceDelay, cts.Token); }
+            catch (TaskCanceledException) { return; }
+
+            await ReloadRemoteAsync();
+        }
+        else
+        {
+            BuildView();
+        }
+
+        _focused = ViewCount > 0 ? 0 : ShowDefaultItem ? -1 : null;
+        _scrollPending = true;
+    }
+
+    private async Task ReloadRemoteAsync()
+    {
+        // Typing below MinLength, or re-typing the same filter, needs no new request.
+        if ((ActiveFilter.Length == 0 ? null : ActiveFilter) == _lastReadFilter) return;
+
+        if (IsRemoteVirtual)
+        {
+            _virtualCache.Clear();
+            if (_virtualize is not null) await _virtualize.RefreshDataAsync();
+        }
+        else
+        {
+            await RequestDataAsync();
+        }
+    }
+
+    private DropDownListReadRequest BuildReadRequest(int skip, int take)
+    {
+        var filter = ActiveFilter.Length == 0 ? null : ActiveFilter;
+        _lastReadFilter = filter;
+        return new DropDownListReadRequest
+        {
+            FilterText = filter,
+            FilterOperator = FilterOperator,
+            FilterField = FilterField ?? TextField,
+            CaseSensitive = FilterCaseSensitive,
+            Skip = skip,
+            Take = take,
+        };
+    }
+
+    // ── Remote data (OnRead) ─────────────────────────────────────────────────
+    private async Task RequestDataAsync()
+    {
+        _readCts?.Cancel();
+        var cts = _readCts = new CancellationTokenSource();
+
+        _loading = true;
+        var args = new DropDownListReadEventArgs<TItem>
+        {
+            Request = BuildReadRequest(0, 0),
+            CancellationToken = cts.Token,
+        };
+        await OnRead.InvokeAsync(args);
+        if (cts.IsCancellationRequested) return;
+
+        _remoteData = args.Data?.ToList() ?? [];
+        _loading = false;
+        BuildView();
+        await MapValueAsync();
+    }
+
+    private async ValueTask<ItemsProviderResult<Row>> ProvideRowsAsync(ItemsProviderRequest request)
+    {
+        var args = new DropDownListReadEventArgs<TItem>
+        {
+            Request = BuildReadRequest(request.StartIndex, request.Count),
+            CancellationToken = request.CancellationToken,
+        };
+        await OnRead.InvokeAsync(args);
+
+        var rows = new List<Row>();
+        var index = request.StartIndex;
+        foreach (var item in args.Data ?? [])
+        {
+            _virtualCache[index] = item;
+            rows.Add(new Row(item, index++));
+        }
+        _remoteTotal = args.Total;
+        return new ItemsProviderResult<Row>(rows, args.Total);
+    }
+
+    private bool TryItemAt(int index, out TItem item)
+    {
+        if (IsRemoteVirtual) return _virtualCache.TryGetValue(index, out item!);
+        if (index >= 0 && index < _view.Count) { item = _view[index]; return true; }
+        item = default!;
+        return false;
+    }
+
+    private int? IndexOfValue()
+    {
+        if (IsRemoteVirtual)
+        {
+            foreach (var (index, item) in _virtualCache)
+                if (IsSelectedItem(item)) return index;
+        }
+        else
+        {
+            for (var i = 0; i < _view.Count; i++)
+                if (IsSelectedItem(_view[i])) return i;
+        }
+        return ShowDefaultItem && !HasSelection ? -1 : null;
+    }
+
+    // ── Open / close ─────────────────────────────────────────────────────────
+    private void OpenCore()
+    {
+        _open = true;
+        if (!PersistFilter && _filterText.Length > 0) ResetFilter();
+        if (!IsRemote) BuildView();
+        _focused = IndexOfValue() ?? (ViewCount > 0 ? MinIndex : ShowDefaultItem ? -1 : null);
+        _scrollPending = true;
+        _focusFilterPending = Filterable;
+    }
+
+    private void CloseCore()
+    {
+        _open = false;
+        _focused = null;
+        _typeAhead = "";
+
+        if (!PersistFilter && _filterText.Length > 0) ResetFilter();
+    }
+
+    private void ResetFilter()
+    {
+        var hadActiveFilter = ActiveFilter.Length > 0;
+        _filterText = "";
+        _filterValueParam = "";
+        _ = FilterValueChanged.InvokeAsync("");
+
+        if (!hadActiveFilter) return;
+        if (IsRemoteVirtual) _virtualCache.Clear();
+        else if (IsRemote) _ = InvokeAsync(RequestDataAsync);
+        else BuildView();
+    }
+
+    private async Task OpenFromUserAsync()
+    {
+        if (IsDisabled || ReadOnly || _open) return;
+        var args = new DropDownListOpenEventArgs();
+        await OnOpen.InvokeAsync(args);
+        if (args.IsCancelled) return;
+        OpenCore();
+    }
+
+    private async Task<bool> CloseFromUserAsync(bool refocus)
+    {
+        if (!_open) return true;
+        var args = new DropDownListCloseEventArgs();
+        await OnClose.InvokeAsync(args);
+        if (args.IsCancelled) return false;
+
+        CloseCore();
+        await CommitChangeAsync();
+        if (refocus)
+        {
+            try { await _triggerRef.FocusAsync(); } catch { }
+        }
+        return true;
+    }
+
+    // ── Selection ────────────────────────────────────────────────────────────
+    private async Task SelectIndexAsync(int index, bool close)
+    {
+        TValue? newValue = default;
+        TItem item = default!;
+        var hasItem = index >= 0 && TryItemAt(index, out item);
+        if (index >= 0 && !hasItem) return;
+        if (hasItem) newValue = ValueOf(item);
+
+        await SetValueAsync(newValue, item, hasItem);
+
+        if (close) await CloseFromUserAsync(refocus: true);
+    }
+
+    private async Task SetValueAsync(TValue? newValue, TItem item, bool hasItem)
+    {
+        if (ValuesEqual(newValue, Value)) return;
+
+        Value = newValue;
+        _selectedItem = item;
+        _hasSelectedItem = hasItem;
+        _pendingChange = true;
+
+        await ValueChanged.InvokeAsync(Value);
+        if (EditContext is not null && _fieldIdentifier is { } field)
+            EditContext.NotifyFieldChanged(field);
+    }
+
+    private async Task ClearAsync()
+    {
+        await SetValueAsync(default, default!, false);
+        await CommitChangeAsync();
+    }
+
+    private async Task CommitChangeAsync()
+    {
+        if (!_pendingChange) return;
+        _pendingChange = false;
+        await OnChange.InvokeAsync(Value);
+    }
+
+    // ── Mouse / focus ────────────────────────────────────────────────────────
+    private async Task OnTriggerClick()
+    {
+        if (_open) await CloseFromUserAsync(refocus: true);
+        else await OpenFromUserAsync();
+    }
+
+    private async Task OnOverlayClick()
+    {
+        if (await CloseFromUserAsync(refocus: false))
+            await OnBlur.InvokeAsync();
+    }
+
+    private async Task OnTriggerBlur()
+    {
+        // While open, focus legitimately moves into the popup (filter box, option clicks).
+        if (_open) return;
+        await CommitChangeAsync();
+        await OnBlur.InvokeAsync();
+    }
+
+    // ── Keyboard ─────────────────────────────────────────────────────────────
+    private async Task OnTriggerKeyDown(KeyboardEventArgs e)
+    {
+        if (IsDisabled) return;
+        if (_open)
+        {
+            await HandleOpenKeyAsync(e, fromFilter: false);
+            return;
+        }
+        if (ReadOnly) return;
+
+        switch (e.Key)
+        {
+            case "ArrowDown" when e.AltKey:
+            case "Enter":
+            case " ":
+                await OpenFromUserAsync();
+                break;
+            case "ArrowDown": await StepSelectionAsync(1); break;
+            case "ArrowUp":   await StepSelectionAsync(-1); break;
+            case "Home":      await SelectIndexAsync(MinIndex, close: false); break;
+            case "End":       if (ViewCount > 0) await SelectIndexAsync(ViewCount - 1, close: false); break;
+            default:
+                if (IsPrintable(e) && TypeAheadIndex(e.Key) is int match)
+                    await SelectIndexAsync(match, close: false);
+                break;
+        }
+    }
+
+    private Task OnFilterKeyDown(KeyboardEventArgs e) => HandleOpenKeyAsync(e, fromFilter: true);
+
+    private async Task HandleOpenKeyAsync(KeyboardEventArgs e, bool fromFilter)
+    {
+        switch (e.Key)
+        {
+            case "ArrowUp" when e.AltKey:
+            case "Escape":
+                await CloseFromUserAsync(refocus: true);
+                break;
+            case "ArrowDown": MoveFocus(1); break;
+            case "ArrowUp":   MoveFocus(-1); break;
+            case "PageDown":  MoveFocus(PageStep); break;
+            case "PageUp":    MoveFocus(-PageStep); break;
+            case "Home" when !fromFilter: SetFocus(MinIndex); break;
+            case "End" when !fromFilter:  SetFocus(ViewCount - 1); break;
+            case "Enter":
+            case " " when !fromFilter:
+                if (_focused is int index) await SelectIndexAsync(index, close: true);
+                else await CloseFromUserAsync(refocus: true);
+                break;
+            case "Tab":
+                if (await CloseFromUserAsync(refocus: false) && fromFilter)
+                    await OnBlur.InvokeAsync();
+                break;
+            default:
+                if (!fromFilter && IsPrintable(e) && TypeAheadIndex(e.Key) is int match)
+                    SetFocus(match);
+                break;
+        }
+    }
+
+    private async Task StepSelectionAsync(int delta)
+    {
+        if (ViewCount == 0) return;
+        var current = IndexOfValue() ?? MinIndex - 1;
+        var next = Math.Clamp(current + delta, MinIndex, ViewCount - 1);
+        if (next != current) await SelectIndexAsync(next, close: false);
+    }
+
+    private void MoveFocus(int delta)
+    {
+        var current = _focused ?? MinIndex - 1;
+        SetFocus(current + delta);
+    }
+
+    private void SetFocus(int index)
+    {
+        if (ViewCount == 0 && !ShowDefaultItem) { _focused = null; return; }
+        _focused = Math.Clamp(index, MinIndex, Math.Max(MinIndex, ViewCount - 1));
+        _scrollPending = true;
+    }
+
+    private static bool IsPrintable(KeyboardEventArgs e) =>
+        e.Key.Length == 1 && !e.CtrlKey && !e.AltKey && !e.MetaKey;
+
+    /// <summary>Finds the next item whose text starts with the keys typed in the last 500 ms.</summary>
+    private int? TypeAheadIndex(string key)
+    {
+        if (IsRemoteVirtual || _view.Count == 0) return null;
+
+        var now = DateTime.UtcNow;
+        if ((now - _typeAheadAt).TotalMilliseconds > 500) _typeAhead = "";
+        _typeAheadAt = now;
+        _typeAhead += key;
+
+        var current = _open ? _focused ?? -1 : IndexOfValue() ?? -1;
+        // A single key cycles through matches; a longer buffer refines the current match.
+        var start = _typeAhead.Length == 1 ? current + 1 : Math.Max(current, 0);
+        for (var i = 0; i < _view.Count; i++)
+        {
+            var index = (start + i) % _view.Count;
+            if (TextOf(_view[index]).StartsWith(_typeAhead, StringComparison.CurrentCultureIgnoreCase))
+                return index;
+        }
+        return null;
+    }
+
+    // ── Validation ───────────────────────────────────────────────────────────
+    private void SubscribeEditContext()
+    {
+        if (ValueExpression is not null && _fieldIdentifier is null)
+            _fieldIdentifier = FieldIdentifier.Create(ValueExpression);
+
+        if (ReferenceEquals(_subscribedContext, EditContext)) return;
+        if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged -= OnValidationStateChanged;
+        _subscribedContext = EditContext;
+        if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged += OnValidationStateChanged;
+    }
+
+    private void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs e) =>
+        _ = InvokeAsync(StateHasChanged);
+
+    // ── Rendering helpers ────────────────────────────────────────────────────
+    private RenderFragment RenderOption(TItem item, int index)
+    {
+        var selected = IsSelectedItem(item);
+        string? extra = null;
+        if (OnItemRender is not null)
+        {
+            var args = new DropDownListItemRenderEventArgs<TItem> { Item = item };
+            OnItemRender(args);
+            extra = args.Class;
+        }
+
+        return @<div id="@OptionId(index)"
+                     role="option"
+                     data-index="@index"
+                     aria-selected="@(selected ? "true" : "false")"
+                     class="@OptionCls(selected, _focused == index, extra)"
+                     style="@OptionStyle"
+                     @onclick="() => SelectIndexAsync(index, true)">
+            @if (ItemTemplate is not null)
+            {
+                @ItemTemplate(item)
+            }
+            else if (HighlightFilterMatch && ActiveFilter.Length > 0 && MatchRange(TextOf(item), ActiveFilter) is var (start, length))
+            {
+                var text = TextOf(item);
+                <span class="truncate">@text[..start]<strong class="font-semibold underline underline-offset-2">@text.Substring(start, length)</strong>@text[(start + length)..]</span>
+            }
+            else
+            {
+                <span class="truncate">@TextOf(item)</span>
+            }
+        </div>;
+    }
+
+    private RenderFragment RenderNoData() =>
+        @<div class="py-6 text-center text-sm text-muted-foreground">
+            @if (NoDataTemplate is not null) { @NoDataTemplate } else { <text>No data found.</text> }
+        </div>;
+
+    private async Task TryJsAsync(string identifier, params object[] args)
+    {
+        try { await JS.InvokeVoidAsync(identifier, args); }
+        catch { /* JS not loaded or prerendering — keyboard still works, the page may just scroll. */ }
+    }
+
+    // ── CSS ──────────────────────────────────────────────────────────────────
+    private string WrapperCls => $"relative inline-flex w-full flex-col {Class}".Trim();
+    private string? WrapperStyle => Width is null ? null : $"width:{Width}";
+
+    private string SizeCls => Size switch
+    {
+        DropDownListTheme.Size.Small => "h-8 px-2 text-xs",
+        DropDownListTheme.Size.Large => "h-12 px-4 text-base",
+        _                            => "h-10 px-3 text-sm",
+    };
+
+    private string RoundedCls => FillMode == DropDownListTheme.FillMode.Flat ? "rounded-none" : Rounded switch
+    {
+        DropDownListTheme.Rounded.None  => "rounded-none",
+        DropDownListTheme.Rounded.Small => "rounded-sm",
+        DropDownListTheme.Rounded.Large => "rounded-lg",
+        DropDownListTheme.Rounded.Full  => "rounded-full",
+        _                               => "rounded-md",
+    };
+
+    private string FillCls => FillMode switch
+    {
+        DropDownListTheme.FillMode.Flat    => "border-0 border-b-2 border-input bg-transparent",
+        DropDownListTheme.FillMode.Outline => "border-2 border-input bg-transparent",
+        _                                  => "border border-input bg-background shadow-sm",
+    };
+
+    private string TriggerCls =>
+        "flex w-full select-none items-center justify-between gap-2 text-left ring-offset-background transition-colors " +
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
+        $"{SizeCls} {RoundedCls} {FillCls} " +
+        (_open ? "ring-2 ring-ring ring-offset-2 " : "") +
+        (IsDisabled ? "cursor-not-allowed opacity-50 " : ReadOnly ? "cursor-default " : "cursor-pointer hover:border-ring/50 ") +
+        (IsInvalid ? "border-destructive focus-visible:ring-destructive" : "");
+
+    private string OverlayCls =>
+        "fixed inset-0 z-40" + (AdaptiveMode == AdaptiveMode.Auto ? " max-sm:bg-black/40" : "");
+
+    private string PopupCls =>
+        "absolute left-0 top-full z-50 mt-1 min-w-full overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg animate-fade-in " +
+        (AdaptiveMode == AdaptiveMode.Auto
+            ? "max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:mt-0 max-sm:w-full! max-sm:max-w-none! max-sm:rounded-b-none max-sm:rounded-t-xl "
+            : "") +
+        (_popupSettings?.Class ?? PopupClass);
+
+    private string? PopupStyle => JoinStyles(
+        ("width", _popupSettings?.Width ?? PopupWidth),
+        ("min-width", _popupSettings?.MinWidth),
+        ("max-width", _popupSettings?.MaxWidth));
+
+    private string ListCls =>
+        "overflow-y-auto overscroll-contain p-1" + (AdaptiveMode == AdaptiveMode.Auto ? " max-sm:max-h-[60vh]!" : "");
+
+    private string? ListStyle
+    {
+        get
+        {
+            var height = _popupSettings?.Height ?? PopupHeight;
+            var maxHeight = _popupSettings?.MaxHeight;
+            // Virtual scrolling needs a fixed-height scroll container.
+            if (IsVirtual) height ??= "200px";
+            else if (height is null) maxHeight ??= "15rem";
+            return JoinStyles(("height", height), ("min-height", _popupSettings?.MinHeight), ("max-height", maxHeight));
+        }
+    }
+
+    private string? OptionStyle => IsVirtual ? $"height:{ItemHeight.ToString(CultureInfo.InvariantCulture)}px" : null;
+
+    private string OptionCls(bool selected, bool focused, string? extra)
+    {
+        var padding = Size switch
+        {
+            DropDownListTheme.Size.Small => "px-2 py-1 text-xs",
+            DropDownListTheme.Size.Large => "px-3 py-2 text-base",
+            _                            => "px-2 py-1.5 text-sm",
+        };
+        return "relative flex w-full cursor-pointer select-none items-center gap-2 rounded-sm outline-none transition-colors " +
+               $"{padding} " +
+               (selected ? "bg-primary/10 font-medium text-primary " : "") +
+               (focused ? "bg-accent text-accent-foreground " : "hover:bg-accent hover:text-accent-foreground ") +
+               extra;
+    }
+
+    private static string? JoinStyles(params (string Name, string? Value)[] styles)
+    {
+        var parts = styles.Where(s => !string.IsNullOrEmpty(s.Value)).Select(s => $"{s.Name}:{s.Value}");
+        var css = string.Join(";", parts);
+        return css.Length == 0 ? null : css;
+    }
+
+    public void Dispose()
+    {
+        _readCts?.Cancel();
+        _debounceCts?.Cancel();
+        if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged -= OnValidationStateChanged;
+    }
+}

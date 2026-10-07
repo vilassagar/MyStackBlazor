@@ -1,0 +1,23 @@
+@namespace MyStackBlazor.Components.Navigation
+@inherits ButtonGroupItemBase
+
+@* A regular (non-toggle) button inside a StackButtonGroup. *@
+
+@if (Visible)
+{
+    <button type="button"
+            id="@Id"
+            title="@Title"
+            tabindex="@TabIndex"
+            aria-label="@AriaLabel"
+            disabled="@IsDisabled"
+            class="@ComputeClass(selected: false)"
+            @onclick="OnClick"
+            @attributes="AdditionalAttributes">
+        @if (Icon is not null)
+        {
+            <StackIcon Name="@Icon" Size="sm" />
+        }
+        @ChildContent
+    </button>
+}

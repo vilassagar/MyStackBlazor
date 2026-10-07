@@ -1,13 +1,170 @@
 @namespace MyStackBlazor.Components.Navigation
 
-<div class="inline-flex rounded-md shadow-sm [&>*:not(:first-child)]:rounded-l-none [&>*:not(:last-child)]:rounded-r-none [&>*:not(:first-child)]:-ml-px @Class"
-     role="group"
-     @attributes="AdditionalAttributes">
-    @ChildContent
-</div>
+@*
+    Joins buttons into one control, modelled on the Telerik ButtonGroup API.
+
+    Plain buttons (backward compatible):
+        <StackButtonGroup><StackButton>Left</StackButton><StackButton>Right</StackButton></StackButtonGroup>
+
+    Group buttons with selection:
+        <StackButtonGroup SelectionMode="ButtonGroupSelectionMode.Single" ThemeColor="primary" FillMode="outline">
+            <StackButtonGroupToggleButton @bind-Selected="isDay">Day</StackButtonGroupToggleButton>
+            <StackButtonGroupToggleButton @bind-Selected="isWeek">Week</StackButtonGroupToggleButton>
+            <StackButtonGroupButton OnClick="Today">Today</StackButtonGroupButton>
+        </StackButtonGroup>
+*@
+
+<CascadingValue Value="this" IsFixed="true">
+    <div id="@Id"
+         role="group"
+         aria-label="@AriaLabel"
+         aria-disabled="@(Enabled ? null : "true")"
+         class="@GroupCls"
+         style="@(Width is null ? null : $"width:{Width}")"
+         @attributes="AdditionalAttributes">
+        @ChildContent
+    </div>
+</CascadingValue>
 
 @code {
     [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Single (radio-like) or Multiple selection for <see cref="StackButtonGroupToggleButton"/> children.</summary>
+    [Parameter] public ButtonGroupSelectionMode SelectionMode { get; set; } = ButtonGroupSelectionMode.Single;
+
+    /// <summary>Disables every button in the group when false.</summary>
+    [Parameter] public bool Enabled { get; set; } = true;
+
+    /// <summary>Group width, e.g. "100%". Buttons stretch equally to fill it.</summary>
+    [Parameter] public string? Width { get; set; }
+
+    // ── Appearance (applies to StackButtonGroupButton / StackButtonGroupToggleButton) ──
+    /// <summary>One of <see cref="ButtonGroupTheme.Size"/>: "sm", "md" (default), "lg".</summary>
+    [Parameter] public string Size { get; set; } = ButtonGroupTheme.Size.Medium;
+    /// <summary>One of <see cref="ButtonGroupTheme.Rounded"/>: "none", "sm", "md" (default), "lg", "full".</summary>
+    [Parameter] public string Rounded { get; set; } = ButtonGroupTheme.Rounded.Medium;
+    /// <summary>One of <see cref="ButtonGroupTheme.FillMode"/>: "solid" (default), "outline", "flat", "clear", "link".</summary>
+    [Parameter] public string FillMode { get; set; } = ButtonGroupTheme.FillMode.Solid;
+    /// <summary>One of <see cref="ButtonGroupTheme.ThemeColor"/>. Defaults to "base".</summary>
+    [Parameter] public string ThemeColor { get; set; } = ButtonGroupTheme.ThemeColor.Base;
+
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
     [Parameter] public string? Class { get; set; }
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private readonly List<IButtonGroupItem> _items = [];
+
+    // Inner corners are squared off and borders overlap, so any button child (including StackButton) joins up.
+    private string GroupCls =>
+        "inline-flex rounded-md shadow-sm " +
+        "[&>*:not(:first-child)]:rounded-l-none [&>*:not(:last-child)]:rounded-r-none [&>*:not(:first-child)]:-ml-px " +
+        "[&>*:focus-visible]:z-10 " +
+        (Width is not null ? "[&>*]:flex-1 " : "") +
+        Class;
+
+    protected override void OnParametersSet()
+    {
+        // Group-level parameters (Enabled, Size, ThemeColor…) affect every button.
+        foreach (var item in _items) item.Refresh();
+    }
+
+    internal void Register(IButtonGroupItem item) => _items.Add(item);
+    internal void Unregister(IButtonGroupItem item) => _items.Remove(item);
+
+    /// <summary>In Single mode, deselects every other toggle button.</summary>
+    internal async Task OnToggleSelectedAsync(StackButtonGroupToggleButton selected)
+    {
+        if (SelectionMode != ButtonGroupSelectionMode.Single) return;
+        foreach (var toggle in _items.OfType<StackButtonGroupToggleButton>().ToList())
+        {
+            if (toggle != selected && toggle.IsSelected)
+                await toggle.SetSelectedAsync(false);
+        }
+    }
+
+    // ── Button styling shared by the group's buttons ─────────────────────────
+    internal string ButtonCls(bool selected, bool disabled, string? themeColorOverride, string? extra)
+    {
+        var size = Size switch
+        {
+            ButtonGroupTheme.Size.Small => "h-8 px-3 text-xs",
+            ButtonGroupTheme.Size.Large => "h-12 px-6 text-base",
+            _                           => "h-10 px-4 text-sm",
+        };
+        var rounded = Rounded switch
+        {
+            ButtonGroupTheme.Rounded.None  => "rounded-none",
+            ButtonGroupTheme.Rounded.Small => "rounded-sm",
+            ButtonGroupTheme.Rounded.Large => "rounded-lg",
+            ButtonGroupTheme.Rounded.Full  => "rounded-full",
+            _                              => "rounded-md",
+        };
+        var palette = Palette(themeColorOverride ?? ThemeColor);
+        var fill = FillMode switch
+        {
+            ButtonGroupTheme.FillMode.Outline => $"border {palette.Outline} bg-transparent " + (selected ? palette.OutlineSelected : palette.OutlineHover),
+            ButtonGroupTheme.FillMode.Flat    => $"border border-transparent bg-transparent {palette.Text} " + (selected ? palette.FlatSelected : palette.FlatHover),
+            ButtonGroupTheme.FillMode.Clear   => $"border border-transparent bg-transparent {palette.Text} " + (selected ? palette.FlatSelected : "hover:opacity-75"),
+            ButtonGroupTheme.FillMode.Link    => $"border border-transparent bg-transparent {palette.Text} underline-offset-4 hover:underline " + (selected ? "underline" : ""),
+            _                                 => $"border {palette.Solid} " + (selected ? palette.SolidSelected : palette.SolidHover),
+        };
+
+        return "relative inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors " +
+               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ring-offset-background " +
+               $"{size} {rounded} {fill} " +
+               (selected ? "z-[1] " : "") +
+               (disabled ? "pointer-events-none opacity-50 " : "cursor-pointer ") +
+               extra;
+    }
+
+    private readonly record struct ColorPalette(
+        string Solid, string SolidHover, string SolidSelected,
+        string Outline, string OutlineHover, string OutlineSelected,
+        string Text, string FlatHover, string FlatSelected);
+
+    // Full class names are spelled out so Tailwind can find them.
+    private static ColorPalette Palette(string themeColor) => themeColor switch
+    {
+        ButtonGroupTheme.ThemeColor.Primary => new(
+            "border-primary bg-primary text-primary-foreground", "hover:bg-primary/90", "shadow-inner brightness-90",
+            "border-primary text-primary", "hover:bg-primary/10", "bg-primary text-primary-foreground",
+            "text-primary", "hover:bg-primary/10", "bg-primary/15"),
+        ButtonGroupTheme.ThemeColor.Secondary => new(
+            "border-secondary bg-secondary text-secondary-foreground", "hover:bg-secondary/80", "shadow-inner brightness-95",
+            "border-secondary-foreground/40 text-secondary-foreground", "hover:bg-secondary", "bg-secondary text-secondary-foreground",
+            "text-secondary-foreground", "hover:bg-secondary", "bg-secondary"),
+        ButtonGroupTheme.ThemeColor.Tertiary => new(
+            "border-violet-600 bg-violet-600 text-white", "hover:bg-violet-600/90", "shadow-inner brightness-90",
+            "border-violet-600 text-violet-600", "hover:bg-violet-600/10", "bg-violet-600 text-white",
+            "text-violet-600", "hover:bg-violet-600/10", "bg-violet-600/15"),
+        ButtonGroupTheme.ThemeColor.Info => new(
+            "border-sky-600 bg-sky-600 text-white", "hover:bg-sky-600/90", "shadow-inner brightness-90",
+            "border-sky-600 text-sky-600", "hover:bg-sky-600/10", "bg-sky-600 text-white",
+            "text-sky-600", "hover:bg-sky-600/10", "bg-sky-600/15"),
+        ButtonGroupTheme.ThemeColor.Success => new(
+            "border-emerald-600 bg-emerald-600 text-white", "hover:bg-emerald-600/90", "shadow-inner brightness-90",
+            "border-emerald-600 text-emerald-600", "hover:bg-emerald-600/10", "bg-emerald-600 text-white",
+            "text-emerald-600", "hover:bg-emerald-600/10", "bg-emerald-600/15"),
+        ButtonGroupTheme.ThemeColor.Warning => new(
+            "border-amber-500 bg-amber-500 text-black", "hover:bg-amber-500/90", "shadow-inner brightness-90",
+            "border-amber-500 text-amber-600", "hover:bg-amber-500/10", "bg-amber-500 text-black",
+            "text-amber-600", "hover:bg-amber-500/10", "bg-amber-500/15"),
+        ButtonGroupTheme.ThemeColor.Error => new(
+            "border-destructive bg-destructive text-destructive-foreground", "hover:bg-destructive/90", "shadow-inner brightness-90",
+            "border-destructive text-destructive", "hover:bg-destructive/10", "bg-destructive text-destructive-foreground",
+            "text-destructive", "hover:bg-destructive/10", "bg-destructive/15"),
+        ButtonGroupTheme.ThemeColor.Dark or ButtonGroupTheme.ThemeColor.Inverse => new(
+            "border-zinc-900 bg-zinc-900 text-white", "hover:bg-zinc-800", "shadow-inner bg-zinc-700",
+            "border-zinc-900 text-zinc-900 dark:border-zinc-200 dark:text-zinc-100", "hover:bg-zinc-900/10", "bg-zinc-900 text-white",
+            "text-zinc-900 dark:text-zinc-100", "hover:bg-zinc-900/10", "bg-zinc-900/15"),
+        ButtonGroupTheme.ThemeColor.Light => new(
+            "border-zinc-200 bg-zinc-100 text-zinc-900", "hover:bg-zinc-200", "shadow-inner bg-zinc-300",
+            "border-zinc-300 text-zinc-700 dark:text-zinc-200", "hover:bg-zinc-100 dark:hover:bg-zinc-800", "bg-zinc-200 text-zinc-900",
+            "text-zinc-700 dark:text-zinc-200", "hover:bg-zinc-100 dark:hover:bg-zinc-800", "bg-zinc-200 dark:bg-zinc-700"),
+        _ => new(
+            "border-input bg-background text-foreground", "hover:bg-accent hover:text-accent-foreground", "bg-muted shadow-inner",
+            "border-input text-foreground", "hover:bg-accent hover:text-accent-foreground", "bg-accent text-accent-foreground",
+            "text-foreground", "hover:bg-accent hover:text-accent-foreground", "bg-accent text-accent-foreground"),
+    };
 }

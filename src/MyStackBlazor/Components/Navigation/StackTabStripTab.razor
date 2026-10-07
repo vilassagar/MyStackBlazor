@@ -1,0 +1,81 @@
+@namespace MyStackBlazor.Components.Navigation
+@implements IDisposable
+
+@* The panel renders here; the header is rendered by the parent StackTabStrip. *@
+@if (Parent is not null && IsShown && (IsActive || Parent.PersistTabContent))
+{
+    <div role="tabpanel"
+         id="@Parent.PanelId(this)"
+         aria-labelledby="@Parent.HeaderId(this)"
+         tabindex="0"
+         hidden="@(!IsActive)"
+         class="@Parent.PanelCls">
+        @(Content ?? ChildContent)
+    </div>
+}
+
+@code {
+    [CascadingParameter] private StackTabStrip? Parent { get; set; }
+
+    /// <summary>Text shown in the tab header.</summary>
+    [Parameter] public string? Title { get; set; }
+
+    /// <summary>Unique id of the tab, used with <c>ActiveTabId</c>. Generated when not set.</summary>
+    [Parameter] public string? Id { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool Visible { get; set; } = true;
+
+    /// <summary>Shows a close button in the header. Closing fires <c>StackTabStrip.OnTabClose</c>.</summary>
+    [Parameter] public bool Closeable { get; set; }
+
+    /// <summary>CSS classes for the tab header.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Custom header markup; replaces <see cref="Title"/>.</summary>
+    [Parameter] public RenderFragment? HeaderTemplate { get; set; }
+
+    /// <summary>Tab content. Use it together with <see cref="HeaderTemplate"/>; otherwise put content as child content.</summary>
+    [Parameter] public RenderFragment? Content { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private readonly string _autoId = $"tab-{Guid.NewGuid():N}"[..12];
+    private (string?, string?, bool, bool, bool, string?) _headerSnapshot;
+    private bool _registered;
+
+    internal string EffectiveId => Id ?? _autoId;
+
+    /// <summary>Set when the user closed the tab with its close button.</summary>
+    internal bool IsClosed { get; set; }
+
+    internal bool IsShown => Visible && !IsClosed;
+    internal bool IsSelectable => IsShown && !Disabled;
+    private bool IsActive => Parent?.ActiveTab == this;
+
+    protected override void OnInitialized()
+    {
+        Parent?.AddTab(this);
+        _registered = true;
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Templates are excluded: they are new delegates on every render and would re-render the strip forever.
+        var snapshot = (Title, Id, Disabled, Visible, Closeable, Class);
+        if (_hasSnapshot && snapshot == _headerSnapshot) return;
+
+        var isFirst = !_hasSnapshot;
+        _headerSnapshot = snapshot;
+        _hasSnapshot = true;
+        if (!isFirst) Parent?.TabChanged();
+    }
+
+    private bool _hasSnapshot;
+
+    internal void Refresh() => StateHasChanged();
+
+    public void Dispose()
+    {
+        if (_registered) Parent?.RemoveTab(this);
+    }
+}
