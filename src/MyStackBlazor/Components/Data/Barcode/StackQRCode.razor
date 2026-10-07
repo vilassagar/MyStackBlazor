@@ -1,0 +1,187 @@
+@namespace MyStackBlazor.Components.Data
+@implements IQRCodeHost
+@using System.Globalization
+@using System.Text
+
+@*
+    QR code rendered as SVG, modelled on the Telerik QRCode API.
+
+    <StackQRCode Value="https://example.com" Size="200px" ErrorCorrection="QRCodeErrorCorrection.High">
+        <StackQRCodeOverlay ImageUrl="logo.svg" Width="40" Height="40" />
+    </StackQRCode>
+*@
+
+<CascadingValue Value="(IQRCodeHost)this" IsFixed="true">
+    @ChildContent
+</CascadingValue>
+
+@if (_error is not null)
+{
+    <div id="@Id"
+         role="alert"
+         class="@($"inline-flex items-center justify-center rounded-md border border-dashed border-destructive/60 bg-destructive/5 p-3 text-center text-xs text-destructive {Class}".TrimEnd())"
+         style="@($"width:{Size};height:{Size}")"
+         @attributes="AdditionalAttributes">
+        @_error
+    </div>
+}
+else if (_matrix is not null)
+{
+    var total = _matrix.Size + 2 * QuietZone;
+    <svg id="@Id"
+         xmlns="http://www.w3.org/2000/svg"
+         role="img"
+         aria-label="@(AriaLabel ?? $"QR code: {Value}")"
+         class="@Class"
+         width="@Size"
+         height="@Size"
+         viewBox="@($"0 0 {total} {total}")"
+         shape-rendering="crispEdges"
+         style="@BorderStyle"
+         data-version="@_matrix.Version"
+         data-mask="@_matrix.Mask"
+         @attributes="AdditionalAttributes">
+        <rect width="@total" height="@total" fill="@Background" />
+        <path fill="@Color" d="@_path" />
+        @if (_overlay is not null)
+        {
+            @RenderOverlay(total)
+        }
+    </svg>
+}
+
+@code {
+    /// <summary>Optional StackQRCodeBorder and StackQRCodeOverlay settings.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public string? Value { get; set; }
+
+    /// <summary>Width and height as a CSS length (default "200px").</summary>
+    [Parameter] public string Size { get; set; } = "200px";
+
+    [Parameter] public QRCodeErrorCorrection ErrorCorrection { get; set; } = QRCodeErrorCorrection.Low;
+    [Parameter] public QRCodeEncoding Encoding { get; set; } = QRCodeEncoding.ISO_8859_1;
+
+    [Parameter] public string Background { get; set; } = "white";
+    /// <summary>Colour of the dark modules.</summary>
+    [Parameter] public string Color { get; set; } = "black";
+
+    /// <summary>Light margin around the symbol, in modules (default 4, the size scanners expect).</summary>
+    [Parameter] public int QuietZone { get; set; } = 4;
+
+    /// <summary>Kept for Telerik parity; the QR code always renders as SVG.</summary>
+    [Parameter] public BarcodeRenderingMode RenderAs { get; set; } = BarcodeRenderingMode.Svg;
+
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private QRCodeMatrix? _matrix;
+    private string _path = "";
+    private string? _error;
+    private (string? Value, QRCodeErrorCorrection Ecl, QRCodeEncoding Encoding, int Quiet)? _encodedFor;
+    private StackQRCodeBorder? _border;
+    private StackQRCodeOverlay? _overlay;
+    private (string, double)? _borderSnapshot;
+    private (QRCodeOverlayType, string?, double?, double?)? _overlaySnapshot;
+
+    private string? BorderStyle => _border is { Width: > 0 } b
+        ? $"border:{b.Width.ToString(CultureInfo.InvariantCulture)}px solid {b.Color};box-sizing:border-box"
+        : null;
+
+    protected override void OnParametersSet()
+    {
+        var key = (Value, ErrorCorrection, Encoding, Math.Max(0, QuietZone));
+        if (_encodedFor == key) return;
+        _encodedFor = key;
+        try
+        {
+            if (string.IsNullOrEmpty(Value)) throw new ArgumentException("A value is required.");
+            _matrix = QRCodeEncoder.Encode(Value, ErrorCorrection, Encoding);
+            _path = BuildPath(_matrix, Math.Max(0, QuietZone));
+            _error = null;
+        }
+        catch (ArgumentException ex)
+        {
+            _matrix = null;
+            _error = $"Cannot render QR code: {ex.Message}";
+        }
+    }
+
+    /// <summary>Re-renders the QR code.</summary>
+    public void Refresh() => _ = InvokeAsync(StateHasChanged);
+
+    /// <summary>One path for all dark modules; horizontal runs are merged to keep it small.</summary>
+    private static string BuildPath(QRCodeMatrix m, int offset)
+    {
+        var sb = new StringBuilder();
+        for (var y = 0; y < m.Size; y++)
+        {
+            for (var x = 0; x < m.Size; x++)
+            {
+                if (!m[x, y]) continue;
+                var start = x;
+                while (x + 1 < m.Size && m[x + 1, y]) x++;
+                var run = x - start + 1;
+                sb.Append('M').Append(start + offset).Append(',').Append(y + offset)
+                  .Append('h').Append(run).Append("v1h-").Append(run).Append('z');
+            }
+        }
+        return sb.ToString();
+    }
+
+    void IQRCodeHost.SetBorder(StackQRCodeBorder? border)
+    {
+        _border = border;
+        var snapshot = border is null ? ((string, double)?)null : (border.Color, border.Width);
+        if (snapshot == _borderSnapshot) return;
+        _borderSnapshot = snapshot;
+        StateHasChanged();
+    }
+
+    void IQRCodeHost.SetOverlay(StackQRCodeOverlay? overlay)
+    {
+        _overlay = overlay;
+        var snapshot = overlay is null ? ((QRCodeOverlayType, string?, double?, double?)?)null : (overlay.Type, overlay.ImageUrl, overlay.Width, overlay.Height);
+        if (snapshot == _overlaySnapshot) return;
+        _overlaySnapshot = snapshot;
+        StateHasChanged();
+    }
+
+    private RenderFragment RenderOverlay(int total)
+    {
+        // Overlay sizes are in pixels; convert them to modules using the rendered size when it is in px.
+        var sizePx = Size.EndsWith("px", StringComparison.OrdinalIgnoreCase)
+                     && double.TryParse(Size[..^2], NumberStyles.Float, CultureInfo.InvariantCulture, out var px) ? px : (double?)null;
+        double ToModules(double? pixels, double fallbackFraction) =>
+            pixels is double p && sizePx is double s && s > 0 ? p / s * total : total * fallbackFraction;
+
+        var overlay = _overlay!;
+        if (overlay.Type == QRCodeOverlayType.Swiss)
+        {
+            // Swiss QR-bill: a black square with a white cross, about 7/46 of the code.
+            var side = ToModules(overlay.Width, 7.0 / 46);
+            var x = (total - side) / 2;
+            var arm = side * 0.6;
+            var bar = side * 0.19;
+            return @<g data-overlay="swiss">
+                <rect x="@N(x - side * 0.08)" y="@N(x - side * 0.08)" width="@N(side * 1.16)" height="@N(side * 1.16)" fill="white" />
+                <rect x="@N(x)" y="@N(x)" width="@N(side)" height="@N(side)" fill="black" />
+                <rect x="@N(total / 2.0 - bar / 2)" y="@N(total / 2.0 - arm / 2)" width="@N(bar)" height="@N(arm)" fill="white" />
+                <rect x="@N(total / 2.0 - arm / 2)" y="@N(total / 2.0 - bar / 2)" width="@N(arm)" height="@N(bar)" fill="white" />
+            </g>;
+        }
+
+        if (string.IsNullOrEmpty(overlay.ImageUrl)) return _ => { };
+        var width = ToModules(overlay.Width, 0.2);
+        var height = overlay.Height is null ? width : ToModules(overlay.Height, 0.2);
+        return @<image data-overlay="image"
+                       href="@overlay.ImageUrl"
+                       x="@N((total - width) / 2)" y="@N((total - height) / 2)"
+                       width="@N(width)" height="@N(height)"
+                       preserveAspectRatio="xMidYMid meet" />;
+    }
+
+    private static string N(double value) => Math.Round(value, 3).ToString(CultureInfo.InvariantCulture);
+}

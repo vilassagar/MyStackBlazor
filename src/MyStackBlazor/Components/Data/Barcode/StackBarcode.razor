@@ -1,0 +1,181 @@
+@namespace MyStackBlazor.Components.Data
+@implements IBarcodeHost
+@using System.Globalization
+@using System.Text.RegularExpressions
+
+@*
+    One-dimensional barcode rendered as SVG, modelled on the Telerik Barcode API.
+
+    <StackBarcode Type="BarcodeType.EAN13" Value="590123412345" Width="300" Height="120">
+        <StackBarcodeBorder Color="#ccc" Width="1" />
+        <StackBarcodeText Font="14px monospace" />
+    </StackBarcode>
+*@
+
+<CascadingValue Value="(IBarcodeHost)this" IsFixed="true">
+    @ChildContent
+</CascadingValue>
+
+@if (_error is not null)
+{
+    <div id="@Id"
+         role="alert"
+         class="@($"inline-flex items-center justify-center rounded-md border border-dashed border-destructive/60 bg-destructive/5 px-3 text-center text-xs text-destructive {Class}".TrimEnd())"
+         style="@($"width:{Px(Width)};height:{Px(Height)}")"
+         @attributes="AdditionalAttributes">
+        @_error
+    </div>
+}
+else if (_encoding is not null)
+{
+    var layout = Layout(_encoding);
+    <svg id="@Id"
+         xmlns="http://www.w3.org/2000/svg"
+         role="img"
+         aria-label="@(AriaLabel ?? $"{Type} barcode {Value}")"
+         class="@Class"
+         width="@Px(Width)"
+         height="@Px(Height)"
+         viewBox="@($"0 0 {Num(Width)} {Num(Height)}")"
+         shape-rendering="crispEdges"
+         data-encoded="@_encoding.EncodedValue"
+         @attributes="AdditionalAttributes">
+        <rect x="0" y="0" width="@Num(Width)" height="@Num(Height)" fill="@Background" />
+
+        @if (_border is { Width: > 0 } border)
+        {
+            var half = border.Width / 2;
+            <rect x="@Num(half)" y="@Num(half)" width="@Num(Width - border.Width)" height="@Num(Height - border.Width)"
+                  fill="none" stroke="@border.Color" stroke-width="@Num(border.Width)" stroke-dasharray="@DashArray(border)" />
+        }
+
+        <g fill="@Color" data-bars="@_encoding.Bars.Count">
+            @foreach (var bar in _encoding.Bars)
+            {
+                var top = layout.Y + bar.Top * layout.BarHeight;
+                var height = layout.BarHeight * (1 - bar.Top) + (bar.Guard && layout.ShowText ? layout.TextHeight / 2 : 0);
+                <rect x="@Num(layout.X + bar.Start * layout.Module)" y="@Num(top)" width="@Num(bar.Width * layout.Module)" height="@Num(height)" />
+            }
+        </g>
+
+        @if (layout.ShowText)
+        {
+            <g fill="@(_text?.Color ?? Color)" style="@($"font:{TextFont}")" text-anchor="middle" shape-rendering="auto">
+                @foreach (var segment in _encoding.Text)
+                {
+                    @* Razor reserves <text>, so the SVG text element is emitted as encoded markup. *@
+                    @((MarkupString)$"<text x=\"{Num(layout.X + segment.Center * layout.Module)}\" y=\"{Num(layout.Y + layout.BarHeight + TextMargin + FontSize * 0.85)}\">{System.Net.WebUtility.HtmlEncode(segment.Text)}</text>")
+                }
+            </g>
+        }
+    </svg>
+}
+
+@code {
+    /// <summary>Optional StackBarcodeBorder and StackBarcodeText settings.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public BarcodeType Type { get; set; } = BarcodeType.Code39;
+    [Parameter] public string? Value { get; set; }
+
+    /// <summary>Adds the optional check digit for symbologies where it is optional (Code 39, Code 11).</summary>
+    [Parameter] public bool Checksum { get; set; }
+
+    /// <summary>Width in pixels (default 300).</summary>
+    [Parameter] public double Width { get; set; } = 300;
+    /// <summary>Height in pixels (default 100).</summary>
+    [Parameter] public double Height { get; set; } = 100;
+    /// <summary>Space between the edge and the bars, in pixels.</summary>
+    [Parameter] public double Padding { get; set; } = 0;
+
+    [Parameter] public string Background { get; set; } = "white";
+    /// <summary>Bar colour.</summary>
+    [Parameter] public string Color { get; set; } = "black";
+
+    /// <summary>Kept for Telerik parity; the barcode always renders as SVG.</summary>
+    [Parameter] public BarcodeRenderingMode RenderAs { get; set; } = BarcodeRenderingMode.Svg;
+
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private BarcodeEncoding? _encoding;
+    private string? _error;
+    private StackBarcodeBorder? _border;
+    private StackBarcodeText? _text;
+    private (string?, string, double, bool, double)? _textSnapshot;
+    private (string, double, BarcodeDashType)? _borderSnapshot;
+
+    private bool TextVisible => _text?.Visible ?? true;
+    private string TextFont => _text?.Font ?? "16px Consolas, Monaco, 'Sans Mono', monospace, sans-serif";
+    private double TextMargin => _text?.Margin ?? 2;
+
+    private double FontSize
+    {
+        get
+        {
+            var match = Regex.Match(TextFont, @"(\d+(?:\.\d+)?)px");
+            return match.Success ? double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture) : 16;
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        try
+        {
+            _encoding = BarcodeEncoder.Encode(Type, Value, Checksum);
+            _error = null;
+        }
+        catch (ArgumentException ex)
+        {
+            _encoding = null;
+            _error = $"Cannot render {Type}: {ex.Message}";
+        }
+    }
+
+    /// <summary>Re-renders the barcode.</summary>
+    public void Refresh() => _ = InvokeAsync(StateHasChanged);
+
+    void IBarcodeHost.SetBorder(StackBarcodeBorder? border)
+    {
+        var snapshot = border is null ? ((string, double, BarcodeDashType)?)null : (border.Color, border.Width, border.DashType);
+        _border = border;
+        if (snapshot == _borderSnapshot) return;
+        _borderSnapshot = snapshot;
+        StateHasChanged();
+    }
+
+    void IBarcodeHost.SetText(StackBarcodeText? text)
+    {
+        var snapshot = text is null ? ((string?, string, double, bool, double)?)null : (text.Color, text.Font, text.Margin, text.Visible, 0d);
+        _text = text;
+        if (snapshot == _textSnapshot) return;
+        _textSnapshot = snapshot;
+        StateHasChanged();
+    }
+
+    private readonly record struct BarLayout(double X, double Y, double Module, double BarHeight, double TextHeight, bool ShowText);
+
+    private BarLayout Layout(BarcodeEncoding encoding)
+    {
+        var inset = Padding + (_border?.Width ?? 0);
+        var innerWidth = Math.Max(1, Width - 2 * inset);
+        var innerHeight = Math.Max(1, Height - 2 * inset);
+        var showText = TextVisible && encoding.Text.Count > 0;
+        var textHeight = showText ? FontSize + TextMargin : 0;
+        var barHeight = Math.Max(1, innerHeight - textHeight);
+        return new BarLayout(inset, inset, innerWidth / encoding.Modules, barHeight, textHeight, showText);
+    }
+
+    private static string? DashArray(StackBarcodeBorder border) => border.DashType switch
+    {
+        BarcodeDashType.Dash     => Num(border.Width * 4) + " " + Num(border.Width * 2),
+        BarcodeDashType.Dot      => Num(border.Width) + " " + Num(border.Width * 2),
+        BarcodeDashType.LongDash => Num(border.Width * 8) + " " + Num(border.Width * 3),
+        _                        => null,
+    };
+
+    private static string Num(double value) => Math.Round(value, 3).ToString(CultureInfo.InvariantCulture);
+    private static string Px(double value) => Num(value) + "px";
+}

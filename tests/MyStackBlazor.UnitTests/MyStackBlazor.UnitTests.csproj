@@ -26,6 +26,7 @@
     <ProjectReference Include="..\..\src\MyStackBlazor\MyStackBlazor.csproj" />
     <ProjectReference Include="..\..\src\MyStackBlazor.Security\MyStackBlazor.Security.csproj" />
     <ProjectReference Include="..\..\src\MyStackBlazor.Accessibility\MyStackBlazor.Accessibility.csproj" />
+    <ProjectReference Include="..\..\src\MyStackBlazor.Calendar\MyStackBlazor.Calendar.csproj" />
   </ItemGroup>
 
 </Project>

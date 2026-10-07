@@ -631,7 +631,129 @@
     </div>
 </CodeSample>
 
+
+<!-- Barcode -->
+<CodeSample Title="Barcode"
+             Description="Telerik-style Barcode rendered as SVG: Code 11/39/93/128, GS1-128, EAN-8/13, UPC-A/E, MSI and POSTNET, with Border and Text settings."
+             Code="@_barcodeCode">
+    <div class="w-full space-y-4">
+        <div class="flex flex-wrap items-end gap-3">
+            <label class="text-sm">
+                <span class="mb-1 block font-medium">Type</span>
+                <select class="h-9 rounded-md border border-input bg-background px-2 text-sm" @bind="_bcType">
+                    @foreach (var t in Enum.GetValues<BarcodeType>())
+                    {
+                        <option value="@t">@t</option>
+                    }
+                </select>
+            </label>
+            <label class="text-sm">
+                <span class="mb-1 block font-medium">Value</span>
+                <input class="h-9 w-56 rounded-md border border-input bg-background px-2 text-sm" @bind="_bcValue" @bind:event="oninput" />
+            </label>
+            <label class="flex items-center gap-2 pb-2 text-sm">
+                <input type="checkbox" @bind="_bcChecksum" /> Checksum
+            </label>
+        </div>
+
+        <StackBarcode Type="_bcType" Value="@_bcValue" Checksum="_bcChecksum" Width="360" Height="130" Padding="8">
+            <StackBarcodeBorder Color="#d4d4d8" Width="1" />
+        </StackBarcode>
+
+        <div class="flex flex-wrap gap-6">
+            <StackBarcode Type="BarcodeType.EAN13" Value="590123412345" Width="220" Height="110" />
+            <StackBarcode Type="BarcodeType.UPCA" Value="03600029145" Width="220" Height="110" />
+            <StackBarcode Type="BarcodeType.GS1128" Value="(01)09501101530003(10)ABC" Width="320" Height="110" Color="#1e3a8a">
+                <StackBarcodeText Font="12px monospace" Color="#1e3a8a" />
+            </StackBarcode>
+            <StackBarcode Type="BarcodeType.POSTNET" Value="12345-6789" Width="260" Height="50">
+                <StackBarcodeText Visible="false" />
+            </StackBarcode>
+        </div>
+    </div>
+</CodeSample>
+
+<!-- QR Code -->
+<CodeSample Title="QR Code"
+             Description="Telerik-style QRCode rendered as SVG: error-correction levels, ISO-8859-1 or UTF-8 encoding, colours, border and an image or Swiss-cross overlay."
+             Code="@_qrCode">
+    <div class="w-full space-y-4">
+        <div class="flex flex-wrap items-end gap-3">
+            <label class="text-sm">
+                <span class="mb-1 block font-medium">Value</span>
+                <input class="h-9 w-72 rounded-md border border-input bg-background px-2 text-sm" @bind="_qrValue" @bind:event="oninput" />
+            </label>
+            <label class="text-sm">
+                <span class="mb-1 block font-medium">Error correction</span>
+                <select class="h-9 rounded-md border border-input bg-background px-2 text-sm" @bind="_qrEcl">
+                    @foreach (var level in Enum.GetValues<QRCodeErrorCorrection>())
+                    {
+                        <option value="@level">@level</option>
+                    }
+                </select>
+            </label>
+        </div>
+        <div class="flex flex-wrap items-start gap-6">
+            <StackQRCode Value="@_qrValue" ErrorCorrection="_qrEcl" Encoding="QRCodeEncoding.UTF_8" Size="180px" />
+            <StackQRCode Value="@_qrValue" ErrorCorrection="QRCodeErrorCorrection.High" Encoding="QRCodeEncoding.UTF_8"
+                         Size="180px" Color="#1e3a8a" Background="#eff6ff">
+                <StackQRCodeBorder Color="#93c5fd" Width="2" />
+                <StackQRCodeOverlay ImageUrl="@_qrLogo" Width="40" Height="40" />
+            </StackQRCode>
+            <StackQRCode Value="SPC&#10;0200&#10;1&#10;CH4431999123000889012" ErrorCorrection="QRCodeErrorCorrection.Medium" Encoding="QRCodeEncoding.UTF_8" Size="180px">
+                <StackQRCodeOverlay Type="QRCodeOverlayType.Swiss" />
+            </StackQRCode>
+        </div>
+    </div>
+</CodeSample>
+
 @code {
+    // ── QR code demo ─────────────────────────────────────────────────────────
+    private string _qrValue = "https://example.com/mystackblazor";
+    private QRCodeErrorCorrection _qrEcl = QRCodeErrorCorrection.Medium;
+
+    // A tiny inline logo so the demo needs no image file.
+    private const string _qrLogo =
+        "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><rect width='40' height='40' rx='8' fill='%232563eb'/><text x='20' y='26' font-family='sans-serif' font-size='16' font-weight='700' fill='white' text-anchor='middle'>MS</text></svg>";
+
+    private const string _qrCode = """
+        <StackQRCode Value="https://example.com" Size="180px"
+                     ErrorCorrection="QRCodeErrorCorrection.Medium"
+                     Encoding="QRCodeEncoding.UTF_8"
+                     Color="black" Background="white" />
+
+        <!-- Logo in the centre: use High error correction so the covered part can be recovered -->
+        <StackQRCode Value="https://example.com" ErrorCorrection="QRCodeErrorCorrection.High">
+            <StackQRCodeBorder Color="#93c5fd" Width="2" />
+            <StackQRCodeOverlay ImageUrl="logo.png" Width="40" Height="40" />
+        </StackQRCode>
+
+        <!-- Swiss QR-bill -->
+        <StackQRCode Value="@swissPaymentPayload" Encoding="QRCodeEncoding.UTF_8">
+            <StackQRCodeOverlay Type="QRCodeOverlayType.Swiss" />
+        </StackQRCode>
+        """;
+
+    // ── Barcode demo ─────────────────────────────────────────────────────────
+    private BarcodeType _bcType = BarcodeType.Code128;
+    private string _bcValue = "MyStackBlazor-2026";
+    private bool _bcChecksum;
+
+    private const string _barcodeCode = """
+        <StackBarcode Type="BarcodeType.Code128" Value="MyStackBlazor-2026"
+                      Width="360" Height="130" Padding="8"
+                      Color="black" Background="white" Checksum="false">
+            <StackBarcodeBorder Color="#d4d4d8" Width="1" DashType="BarcodeDashType.Solid" />
+            <StackBarcodeText Visible="true" Font="16px monospace" Color="black" />
+        </StackBarcode>
+
+        <!-- Retail codes: the check digit is calculated (or validated if you include it) -->
+        <StackBarcode Type="BarcodeType.EAN13" Value="590123412345" />
+
+        <!-- GS1-128: application identifiers in parentheses -->
+        <StackBarcode Type="BarcodeType.GS1128" Value="(01)09501101530003(10)ABC" />
+        """;
+
     // ── Sample data ──────────────────────────────────────────────────────────
 
     record Person(string Name, string Role, bool Active, DateOnly Joined)

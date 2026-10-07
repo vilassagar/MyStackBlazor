@@ -108,6 +108,27 @@
     </div>
 </CodeSample>
 
+<!-- AutoComplete -->
+<CodeSample Title="AutoComplete"
+             Description="Telerik-style AutoComplete: free text with suggestions from Data (ValueField), filtering, grouping, templates, OnRead for server data, and Size/Rounded/FillMode."
+             Code="@_autoCompleteCode">
+    <div class="w-full max-w-sm space-y-4">
+        <StackAutoComplete Data="@_acCountries" @bind-Value="_acCountry" ValueField="Name"
+                           Filterable FilterOperator="StringFilterOperator.Contains" MinLength="1"
+                           Placeholder="Type a country…" GroupField="Region" />
+
+        <StackAutoComplete Data="@_acCountries" @bind-Value="_acCountry2" ValueField="Name"
+                           Filterable Placeholder="With templates" Size="sm" FillMode="outline">
+            <ItemTemplate>
+                <span class="flex w-full justify-between"><span>@context.Name</span><span class="text-xs text-muted-foreground">@context.Region</span></span>
+            </ItemTemplate>
+            <NoDataTemplate><span>No country starts with "@_acCountry2"</span></NoDataTemplate>
+        </StackAutoComplete>
+
+        <p class="text-sm text-muted-foreground">Values: <strong>@(_acCountry ?? "–")</strong> · <strong>@(_acCountry2 ?? "–")</strong></p>
+    </div>
+</CodeSample>
+
 <!-- Switch -->
 <CodeSample Title="Switch" Code="@_switchCode">
     <div class="space-y-3 w-full max-w-sm">
@@ -545,6 +566,31 @@
 </CodeSample>
 
 @code {
+    // ── AutoComplete demo ────────────────────────────────────────────────────
+    public record AcCountry(string Name, string Region);
+
+    private readonly List<AcCountry> _acCountries =
+    [
+        new("Argentina", "Americas"), new("Brazil", "Americas"), new("Canada", "Americas"), new("Chile", "Americas"),
+        new("China", "Asia"), new("India", "Asia"), new("Japan", "Asia"), new("Singapore", "Asia"),
+        new("France", "Europe"), new("Germany", "Europe"), new("Italy", "Europe"), new("Spain", "Europe"),
+    ];
+
+    private string? _acCountry;
+    private string? _acCountry2;
+
+    private const string _autoCompleteCode = """
+        <StackAutoComplete Data="@countries" @bind-Value="country" ValueField="Name"
+                           Filterable FilterOperator="StringFilterOperator.Contains"
+                           MinLength="1" DebounceDelay="150" GroupField="Region"
+                           Placeholder="Type a country…" ShowClearButton
+                           OnChange="@(v => Console.WriteLine(v))" />
+
+        <!-- Server data -->
+        <StackAutoComplete TItem="Country" @bind-Value="country" ValueField="Name"
+                           OnRead="@(async args => args.Data = await api.Search(args.Request.FilterText))" />
+        """;
+
     // ── DateRangePicker data ─────────────────────────────────────────────────
     private DateTime? _drpStart = DateTime.Today;
     private DateTime? _drpEnd = DateTime.Today.AddDays(6);

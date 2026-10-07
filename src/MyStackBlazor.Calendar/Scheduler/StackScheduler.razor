@@ -1,0 +1,1284 @@
+@namespace MyStackBlazor.Calendar
+@typeparam TItem
+@implements IStackSchedulerHost
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Web
+
+@*
+    Scheduler modelled on the Telerik Scheduler API.
+
+    <StackScheduler Data="@appointments" @bind-Date="date" @bind-View="view"
+                    AllowCreate AllowUpdate AllowDelete
+                    OnCreate="Create" OnUpdate="Update" OnDelete="Delete">
+        <SchedulerViews>
+            <StackSchedulerDayView StartTime="@DateTime.Today.AddHours(7)" />
+            <StackSchedulerWeekView />
+            <StackSchedulerMonthView />
+        </SchedulerViews>
+    </StackScheduler>
+*@
+
+<CascadingValue Value="(IStackSchedulerHost)this" IsFixed="true">
+    @SchedulerViews
+    @SchedulerResources
+    @SchedulerSettings
+</CascadingValue>
+
+@{ Prepare(); }
+
+<div class="@($"flex flex-col overflow-hidden rounded-md border bg-background text-foreground {Class}".TrimEnd())"
+     style="@RootStyle"
+     @attributes="AdditionalAttributes">
+
+    <!-- ── Toolbar ───────────────────────────────────────────────── -->
+    <div class="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
+        <div class="flex items-center gap-1">
+            <button type="button" class="@ToolbarButtonCls" @onclick="GoToTodayAsync">Today</button>
+            <button type="button" class="@IconButtonCls" aria-label="Previous" @onclick="() => NavigateAsync(-1)">
+                <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><polyline points="15 18 9 12 15 6" /></svg>
+            </button>
+            <button type="button" class="@IconButtonCls" aria-label="Next" @onclick="() => NavigateAsync(1)">
+                <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><polyline points="9 18 15 12 9 6" /></svg>
+            </button>
+            <h2 class="ml-2 text-sm font-semibold sm:text-base" aria-live="polite">@PeriodLabel</h2>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+            @if (_cv.ViewType != SchedulerView.Month)
+            {
+                <button type="button" class="@ToolbarButtonCls" aria-pressed="@(_showWorkHours ? "true" : "false")" @onclick="ToggleWorkHoursAsync">
+                    @(_showWorkHours ? "Show full day" : "Show business hours")
+                </button>
+            }
+            <div role="group" aria-label="Views" class="inline-flex rounded-md border p-0.5">
+                @foreach (var view in Views)
+                {
+                    var v = view;
+                    var active = v == _cv;
+                    <button type="button"
+                            aria-pressed="@(active ? "true" : "false")"
+                            class="@($"rounded px-3 py-1 text-xs font-medium transition-colors {(active ? "bg-primary text-primary-foreground" : "hover:bg-accent")}")"
+                            @onclick="() => SetViewAsync(v.ViewType)">
+                        @ViewName(v)
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- ── View ──────────────────────────────────────────────────── -->
+    <div class="relative min-h-0 flex-1 overflow-auto" role="region" aria-label="@($"{ViewName(_cv)} view, {PeriodLabel}")">
+        @switch (_cv.ViewType)
+        {
+            case SchedulerView.Month:
+                @RenderMonth()
+                break;
+            case SchedulerView.Timeline:
+                @RenderTimeline()
+                break;
+            default:
+                @RenderTimeGrid()
+                break;
+        }
+    </div>
+
+    <!-- ── Edit form ─────────────────────────────────────────────── -->
+    @if (_editor is not null)
+    {
+        @RenderEditor(_editor)
+    }
+
+    <!-- ── Prompts (occurrence / series, delete confirmation) ────── -->
+    @if (_prompt is not null)
+    {
+        <div class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" @onclick="() => _prompt = null">
+            <div role="alertdialog" aria-modal="true" aria-labelledby="@($"{_uid}-prompt")"
+                 class="w-full max-w-sm rounded-lg border bg-background p-5 shadow-xl"
+                 @onclick:stopPropagation="true">
+                <h2 id="@($"{_uid}-prompt")" class="text-base font-semibold">@_prompt.Title</h2>
+                <p class="mt-2 text-sm text-muted-foreground">@_prompt.Message</p>
+                <div class="mt-5 flex flex-wrap justify-end gap-2">
+                    <button type="button" class="@SecondaryButtonCls" @onclick="() => _prompt = null">Cancel</button>
+                    @foreach (var button in _prompt.Buttons)
+                    {
+                        var b = button;
+                        <button type="button"
+                                class="@(b.Destructive ? DestructiveButtonCls : PrimaryButtonCls)"
+                                @onclick="() => RunPromptAsync(b)">
+                            @b.Label
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    // ── Data & navigation ────────────────────────────────────────────────────
+    [Parameter] public IEnumerable<TItem>? Data { get; set; }
+
+    /// <summary>The date the view is built around. Supports <c>@bind-Date</c>.</summary>
+    [Parameter] public DateTime Date { get; set; } = DateTime.Today;
+    [Parameter] public EventCallback<DateTime> DateChanged { get; set; }
+
+    /// <summary>The active view. Supports <c>@bind-View</c>.</summary>
+    [Parameter] public SchedulerView View { get; set; } = SchedulerView.Day;
+    [Parameter] public EventCallback<SchedulerView> ViewChanged { get; set; }
+
+    /// <summary>Show only business hours (WorkDayStart–WorkDayEnd) in time views. Supports <c>@bind-ShowWorkHours</c>.</summary>
+    [Parameter] public bool ShowWorkHours { get; set; }
+    [Parameter] public EventCallback<bool> ShowWorkHoursChanged { get; set; }
+
+    // ── Declarative children ─────────────────────────────────────────────────
+    /// <summary>View declarations: StackSchedulerDayView, WeekView, MultiDayView, MonthView, TimelineView.</summary>
+    [Parameter] public RenderFragment? SchedulerViews { get; set; }
+    /// <summary>StackSchedulerResource declarations.</summary>
+    [Parameter] public RenderFragment? SchedulerResources { get; set; }
+    /// <summary>Holds a StackSchedulerGroupSettings.</summary>
+    [Parameter] public RenderFragment? SchedulerSettings { get; set; }
+
+    // ── Field mapping ────────────────────────────────────────────────────────
+    [Parameter] public string IdField { get; set; } = "Id";
+    [Parameter] public string StartField { get; set; } = "Start";
+    [Parameter] public string EndField { get; set; } = "End";
+    [Parameter] public string TitleField { get; set; } = "Title";
+    [Parameter] public string DescriptionField { get; set; } = "Description";
+    [Parameter] public string IsAllDayField { get; set; } = "IsAllDay";
+    /// <summary>String property holding an RRULE, e.g. "FREQ=WEEKLY;BYDAY=MO,WE".</summary>
+    [Parameter] public string RecurrenceRuleField { get; set; } = "RecurrenceRule";
+    /// <summary>List&lt;DateTime&gt; property with the start times of removed or edited occurrences.</summary>
+    [Parameter] public string RecurrenceExceptionsField { get; set; } = "RecurrenceExceptions";
+    /// <summary>Property that links an edited occurrence (exception item) to its series' id.</summary>
+    [Parameter] public string RecurrenceIdField { get; set; } = "RecurrenceId";
+
+    // ── Editing ──────────────────────────────────────────────────────────────
+    [Parameter] public bool AllowCreate { get; set; }
+    /// <summary>Allows editing (double-click) and moving items by drag and drop.</summary>
+    [Parameter] public bool AllowUpdate { get; set; }
+    [Parameter] public bool AllowDelete { get; set; }
+    /// <summary>Ask for confirmation before deleting a (non-recurring) item.</summary>
+    [Parameter] public bool ConfirmDelete { get; set; }
+    /// <summary>Creates new items for the edit form. Defaults to <c>Activator.CreateInstance&lt;TItem&gt;()</c>.</summary>
+    [Parameter] public Func<TItem>? OnModelInit { get; set; }
+
+    // ── Appearance ───────────────────────────────────────────────────────────
+    [Parameter] public string? Height { get; set; } = "600px";
+    [Parameter] public string? Width { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    // ── Templates ────────────────────────────────────────────────────────────
+    [Parameter] public RenderFragment<TItem>? ItemTemplate { get; set; }
+    [Parameter] public RenderFragment<TItem>? AllDayItemTemplate { get; set; }
+    [Parameter] public RenderFragment<DateTime>? DateHeaderTemplate { get; set; }
+
+    // ── Events ───────────────────────────────────────────────────────────────
+    [Parameter] public EventCallback<SchedulerCreateEventArgs> OnCreate { get; set; }
+    [Parameter] public EventCallback<SchedulerUpdateEventArgs> OnUpdate { get; set; }
+    [Parameter] public EventCallback<SchedulerDeleteEventArgs> OnDelete { get; set; }
+    [Parameter] public EventCallback<SchedulerEditEventArgs> OnEdit { get; set; }
+    [Parameter] public EventCallback<SchedulerCancelEventArgs> OnCancel { get; set; }
+    [Parameter] public EventCallback<SchedulerItemClickEventArgs> OnItemClick { get; set; }
+    [Parameter] public EventCallback<SchedulerItemClickEventArgs> OnItemDoubleClick { get; set; }
+    [Parameter] public EventCallback<SchedulerItemClickEventArgs> OnItemContextMenu { get; set; }
+    /// <summary>Called for every rendered item; set <c>args.Class</c> to style it.</summary>
+    [Parameter] public Action<SchedulerItemRenderEventArgs>? OnItemRender { get; set; }
+    /// <summary>Called for every slot; set <c>args.Class</c> to style it.</summary>
+    [Parameter] public Action<SchedulerCellRenderEventArgs>? OnCellRender { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    // ── Internal types ───────────────────────────────────────────────────────
+    /// <summary>An item as shown on screen. Recurring series produce one per occurrence.</summary>
+    private sealed record Occ(TItem Item, TItem Master, DateTime Start, DateTime End, bool IsAllDay, bool IsOccurrence)
+    {
+        public bool IsSpanning => IsAllDay || End - Start >= TimeSpan.FromDays(1);
+    }
+
+    private sealed record PromptButton(string Label, Func<Task> Action, bool Destructive = false);
+    private sealed record Prompt(string Title, string Message, List<PromptButton> Buttons);
+
+    private sealed class EditorState
+    {
+        public bool IsNew;
+        public Occ? Source;
+        public bool EditOccurrence;
+        public string Title = "";
+        public string? Description;
+        public DateTime Start;
+        public DateTime End;
+        public bool IsAllDay;
+        public RecurrenceFrequency? Frequency;
+        public int Interval = 1;
+        public HashSet<DayOfWeek> ByDay = [];
+        public string EndMode = "never";
+        public int Count = 10;
+        public DateTime Until = DateTime.Today.AddMonths(1);
+        public Dictionary<string, string> ResourceKeys = [];
+        public string? Error;
+
+        public string FrequencyKey
+        {
+            get => Frequency?.ToString() ?? "";
+            set => Frequency = string.IsNullOrEmpty(value) ? null : Enum.Parse<RecurrenceFrequency>(value);
+        }
+    }
+
+    private static readonly SchedulerViewBase[] DefaultViews =
+        [new StackSchedulerDayView(), new StackSchedulerWeekView(), new StackSchedulerMonthView()];
+
+    // ── State ────────────────────────────────────────────────────────────────
+    private readonly string _uid = $"sch-{Guid.NewGuid():N}"[..12];
+    private readonly List<SchedulerViewBase> _views = [];
+    private readonly List<StackSchedulerResource> _resources = [];
+    private StackSchedulerGroupSettings? _groupSettings;
+
+    private DateTime _date = DateTime.Today;
+    private SchedulerView _view = SchedulerView.Day;
+    private bool _showWorkHours;
+    private DateTime? _lastDateParam;
+    private SchedulerView? _lastViewParam;
+    private bool? _lastWorkHoursParam;
+
+    // Per-render caches (filled by Prepare)
+    private SchedulerViewBase _cv = DefaultViews[0];
+    private DateTime _rangeStart, _rangeEnd;
+    private TimeSpan _visibleStart, _visibleEnd;
+    private List<Occ> _occs = [];
+    private StackSchedulerResource? _groupResource;
+    private List<ResourceOption?> _groups = [null];
+    private Dictionary<StackSchedulerResource, IReadOnlyList<ResourceOption>> _options = [];
+
+    private Occ? _drag;
+    private EditorState? _editor;
+    private Prompt? _prompt;
+    private bool _skipRender;
+
+    private CultureInfo Culture => CultureInfo.CurrentCulture;
+    private IReadOnlyList<SchedulerViewBase> Views => _views.Count > 0 ? _views : DefaultViews;
+
+    // ── Host registration ────────────────────────────────────────────────────
+    void IStackSchedulerHost.Register(object child)
+    {
+        switch (child)
+        {
+            case SchedulerViewBase view: _views.Add(view); break;
+            case StackSchedulerResource resource: _resources.Add(resource); break;
+            case StackSchedulerGroupSettings settings: _groupSettings = settings; break;
+        }
+        StateHasChanged();
+    }
+
+    void IStackSchedulerHost.Unregister(object child)
+    {
+        switch (child)
+        {
+            case SchedulerViewBase view: _views.Remove(view); break;
+            case StackSchedulerResource resource: _resources.Remove(resource); break;
+            case StackSchedulerGroupSettings settings when _groupSettings == settings: _groupSettings = null; break;
+        }
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    void IStackSchedulerHost.ConfigChanged() => StateHasChanged();
+
+    // ── Lifecycle ────────────────────────────────────────────────────────────
+    protected override void OnParametersSet()
+    {
+        if (Date != _lastDateParam) { _lastDateParam = Date; _date = Date.Date; }
+        if (View != _lastViewParam) { _lastViewParam = View; _view = View; }
+        if (ShowWorkHours != _lastWorkHoursParam) { _lastWorkHoursParam = ShowWorkHours; _showWorkHours = ShowWorkHours; }
+    }
+
+    protected override bool ShouldRender()
+    {
+        if (!_skipRender) return true;
+        _skipRender = false;
+        return false;
+    }
+
+    /// <summary>Re-reads <see cref="Data"/> and re-renders.</summary>
+    public void Rebind() => _ = InvokeAsync(StateHasChanged);
+
+    /// <summary>Re-renders the scheduler.</summary>
+    public void Refresh() => _ = InvokeAsync(StateHasChanged);
+
+    private void Prepare()
+    {
+        _cv = Views.FirstOrDefault(v => v.ViewType == _view) ?? Views[0];
+        (_rangeStart, _rangeEnd) = RangeOf(_cv, _date);
+        (_visibleStart, _visibleEnd) = _showWorkHours ? (_cv.WorkStart, _cv.WorkEnd) : (_cv.StartOfDay, _cv.EndOfDay);
+        if (_visibleEnd <= _visibleStart) (_visibleStart, _visibleEnd) = (TimeSpan.Zero, TimeSpan.FromDays(1));
+
+        _options = _resources.ToDictionary(r => r, r => r.Options);
+        var groupField = _groupSettings?.Resources?.FirstOrDefault();
+        _groupResource = groupField is null ? null : _resources.FirstOrDefault(r => r.Field == groupField);
+        _groups = _groupResource is not null && _cv.ViewType != SchedulerView.Month
+            ? _options[_groupResource].Cast<ResourceOption?>().ToList()
+            : [null];
+        if (_groups.Count == 0) _groups = [null];
+
+        _occs = BuildOccurrences(_rangeStart, _rangeEnd);
+    }
+
+    // ── Ranges & navigation ──────────────────────────────────────────────────
+    private DateTime WeekStart(DateTime date) =>
+        date.Date.AddDays(-(((int)date.DayOfWeek - (int)Culture.DateTimeFormat.FirstDayOfWeek + 7) % 7));
+
+    private (DateTime, DateTime) RangeOf(SchedulerViewBase view, DateTime date) => view switch
+    {
+        StackSchedulerWeekView            => (WeekStart(date), WeekStart(date).AddDays(7)),
+        StackSchedulerMultiDayView multi  => (date, date.AddDays(Math.Max(1, multi.NumberOfDays))),
+        StackSchedulerMonthView           => (WeekStart(new DateTime(date.Year, date.Month, 1)), WeekStart(new DateTime(date.Year, date.Month, 1)).AddDays(42)),
+        StackSchedulerTimelineView line   => (date, date.AddDays(Math.Max(1, line.NumberOfDays))),
+        _                                 => (date, date.AddDays(1)),
+    };
+
+    private DateTime Step(DateTime date, int direction) => _cv switch
+    {
+        StackSchedulerWeekView           => date.AddDays(7 * direction),
+        StackSchedulerMultiDayView multi => date.AddDays(Math.Max(1, multi.NumberOfDays) * direction),
+        StackSchedulerMonthView          => date.AddMonths(direction),
+        StackSchedulerTimelineView line  => date.AddDays(Math.Max(1, line.NumberOfDays) * direction),
+        _                                => date.AddDays(direction),
+    };
+
+    private string PeriodLabel
+    {
+        get
+        {
+            var last = _rangeEnd.AddDays(-1);
+            return _cv.ViewType switch
+            {
+                SchedulerView.Month => _date.ToString("MMMM yyyy", Culture),
+                SchedulerView.Day   => _date.ToString("D", Culture),
+                _ when _rangeStart == last => _rangeStart.ToString("D", Culture),
+                _ when _rangeStart.Year != last.Year => $"{_rangeStart.ToString("MMM d, yyyy", Culture)} – {last.ToString("MMM d, yyyy", Culture)}",
+                _ => $"{_rangeStart.ToString("MMM d", Culture)} – {last.ToString("MMM d, yyyy", Culture)}",
+            };
+        }
+    }
+
+    private static string ViewName(SchedulerViewBase view) => view switch
+    {
+        StackSchedulerMultiDayView multi => $"{multi.NumberOfDays} Days",
+        _                                => view.ViewType.ToString(),
+    };
+
+    private async Task SetDateAsync(DateTime date)
+    {
+        _date = date.Date;
+        _lastDateParam = _date;
+        await DateChanged.InvokeAsync(_date);
+    }
+
+    private async Task SetViewAsync(SchedulerView view)
+    {
+        if (_view == view) return;
+        _view = view;
+        _lastViewParam = view;
+        await ViewChanged.InvokeAsync(view);
+    }
+
+    private Task NavigateAsync(int direction) => SetDateAsync(Step(_date, direction));
+    private Task GoToTodayAsync() => SetDateAsync(DateTime.Today);
+
+    private async Task GoToDayAsync(DateTime date)
+    {
+        await SetDateAsync(date);
+        if (Views.Any(v => v.ViewType == SchedulerView.Day)) await SetViewAsync(SchedulerView.Day);
+    }
+
+    private async Task ToggleWorkHoursAsync()
+    {
+        _showWorkHours = !_showWorkHours;
+        _lastWorkHoursParam = _showWorkHours;
+        await ShowWorkHoursChanged.InvokeAsync(_showWorkHours);
+    }
+
+    // ── Items & occurrences ──────────────────────────────────────────────────
+    private string TitleOf(TItem item) => SchedulerFieldMap<TItem>.Get(item, TitleField)?.ToString() ?? "";
+
+    private List<Occ> BuildOccurrences(DateTime from, DateTime to)
+    {
+        var list = new List<Occ>();
+        foreach (var item in Data ?? [])
+        {
+            var start = SchedulerFieldMap<TItem>.GetDate(item, StartField);
+            var end = SchedulerFieldMap<TItem>.GetDate(item, EndField);
+            if (end < start) end = start;
+            var allDay = SchedulerFieldMap<TItem>.Get(item, IsAllDayField) is true;
+            var rule = SchedulerRecurrenceRule.Parse(SchedulerFieldMap<TItem>.Get(item, RecurrenceRuleField) as string);
+
+            if (rule is null)
+            {
+                if (Overlaps(start, end, from, to)) list.Add(new Occ(item, item, start, end, allDay, false));
+                continue;
+            }
+
+            var exceptions = (SchedulerFieldMap<TItem>.Get(item, RecurrenceExceptionsField) as IEnumerable<DateTime>)?.ToList() ?? [];
+            var duration = end - start;
+            foreach (var occurrenceStart in rule.GetOccurrences(start, duration, from, to))
+            {
+                if (exceptions.Any(x => x == occurrenceStart || (x.TimeOfDay == TimeSpan.Zero && x.Date == occurrenceStart.Date))) continue;
+                var clone = SchedulerFieldMap<TItem>.Clone(item, OnModelInit);
+                SchedulerFieldMap<TItem>.Set(clone, StartField, occurrenceStart);
+                SchedulerFieldMap<TItem>.Set(clone, EndField, occurrenceStart + duration);
+                list.Add(new Occ(clone, item, occurrenceStart, occurrenceStart + duration, allDay, true));
+            }
+        }
+        return list.OrderBy(o => o.Start).ThenByDescending(o => o.End - o.Start).ToList();
+    }
+
+    private static bool Overlaps(DateTime start, DateTime end, DateTime from, DateTime to) =>
+        start == end ? start >= from && start < to : start < to && end > from;
+
+    private static bool ValuesEqual(object? a, object? b) =>
+        Equals(a, b) || (a is not null && b is not null && a.ToString() == b.ToString());
+
+    private bool MatchesGroup(Occ occ, ResourceOption? group) =>
+        group is null || _groupResource is null || ValuesEqual(SchedulerFieldMap<TItem>.Get(occ.Master, _groupResource.Field), group.Value);
+
+    private string? ColorOf(Occ occ)
+    {
+        foreach (var (resource, options) in _options)
+        {
+            var value = SchedulerFieldMap<TItem>.Get(occ.Master, resource.Field);
+            if (value is null) continue;
+            var color = options.FirstOrDefault(o => ValuesEqual(o.Value, value))?.Color;
+            if (!string.IsNullOrEmpty(color)) return color;
+        }
+        return null;
+    }
+
+    private string TimeText(Occ occ) =>
+        occ.IsAllDay ? "All day"
+        : occ.Start.Date == occ.End.Date || occ.End == occ.Start.Date.AddDays(1)
+            ? $"{occ.Start.ToString("t", Culture)} – {occ.End.ToString("t", Culture)}"
+            : $"{occ.Start.ToString("g", Culture)} – {occ.End.ToString("g", Culture)}";
+
+    /// <summary>Assigns side-by-side lanes to overlapping items. Returns (occ, lane, lanes in its cluster).</summary>
+    private static List<(Occ Occ, int Lane, int Lanes)> LayoutLanes(IEnumerable<(Occ Occ, double Start, double End)> items)
+    {
+        var result = new List<(Occ, int, int)>();
+        var cluster = new List<(Occ Occ, int Lane)>();
+        var laneEnds = new List<double>();
+        var clusterEnd = double.MinValue;
+
+        void Flush()
+        {
+            foreach (var (occ, lane) in cluster) result.Add((occ, lane, laneEnds.Count));
+            cluster.Clear();
+            laneEnds.Clear();
+        }
+
+        foreach (var (occ, start, end) in items.OrderBy(i => i.Start).ThenByDescending(i => i.End - i.Start))
+        {
+            if (start >= clusterEnd) Flush();
+            var lane = laneEnds.FindIndex(e => e <= start);
+            if (lane < 0) { lane = laneEnds.Count; laneEnds.Add(end); }
+            else laneEnds[lane] = end;
+            cluster.Add((occ, lane));
+            clusterEnd = Math.Max(clusterEnd == double.MinValue ? end : clusterEnd, end);
+        }
+        Flush();
+        return result;
+    }
+
+    // ── Time grid (Day / Week / MultiDay) ────────────────────────────────────
+    private RenderFragment RenderTimeGrid()
+    {
+        var days = Enumerable.Range(0, (int)(_rangeEnd - _rangeStart).TotalDays).Select(i => _rangeStart.AddDays(i)).ToList();
+        var columns = _groups.SelectMany(g => days.Select(d => (Day: d, Group: g))).ToList();
+        var slotMinutes = _cv.SafeSlotDuration;
+        var divisions = _cv.SafeSlotDivisions;
+        var totalMinutes = (_visibleEnd - _visibleStart).TotalMinutes;
+        var slotCount = (int)Math.Ceiling(totalMinutes / slotMinutes);
+        var rowRem = 1.5;
+        var columnHeight = $"{(slotCount * divisions * rowRem).ToString(CultureInfo.InvariantCulture)}rem";
+        var template = $"grid-template-columns:4.5rem repeat({columns.Count}, minmax(7rem, 1fr))";
+        var grouped = _groupResource is not null;
+
+        return @<div class="min-w-fit">
+            <!-- Header: groups, days, all-day row -->
+            <div class="sticky top-0 z-20 grid border-b bg-background" style="@template">
+                @if (grouped)
+                {
+                    <div class="border-b"></div>
+                    @foreach (var group in _groups)
+                    {
+                        <div class="flex items-center justify-center gap-1.5 border-b border-l px-2 py-1.5 text-xs font-semibold" style="@($"grid-column: span {days.Count}")">
+                            @if (group?.Color is not null) { <span class="h-2.5 w-2.5 rounded-full" style="@($"background-color:{group.Color}")"></span> }
+                            @group?.Text
+                        </div>
+                    }
+                }
+
+                <div></div>
+                @foreach (var (day, _) in columns)
+                {
+                    var d = day;
+                    var isToday = d == DateTime.Today;
+                    <div class="border-l px-1 py-1.5 text-center">
+                        @if (DateHeaderTemplate is not null)
+                        {
+                            @DateHeaderTemplate(d)
+                        }
+                        else
+                        {
+                            <button type="button" class="inline-flex flex-col items-center rounded-md px-2 py-0.5 hover:bg-accent" @onclick="() => GoToDayAsync(d)">
+                                <span class="text-[11px] uppercase text-muted-foreground">@d.ToString("ddd", Culture)</span>
+                                <span class="@($"text-lg leading-tight {(isToday ? "flex h-8 w-8 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground" : "font-medium")}")">@d.Day</span>
+                            </button>
+                        }
+                    </div>
+                }
+
+                <div class="flex items-start justify-end border-t px-2 py-1 text-[11px] text-muted-foreground">all day</div>
+                @foreach (var (day, group) in columns)
+                {
+                    var d = day;
+                    var g = group;
+                    var spanning = _occs.Where(o => o.IsSpanning && o.Start < d.AddDays(1) && o.End > d && MatchesGroup(o, g)).ToList();
+                    <div class="@($"min-h-8 space-y-0.5 border-l border-t p-0.5 {CellClass(d, d.AddDays(1), true, g)}")"
+                         data-slot="@($"allday-{d:yyyy-MM-dd}")"
+                         @ondblclick="() => BeginCreateAsync(d, d.AddDays(1), true, g)"
+                         @ondragover:preventDefault="true"
+                         @ondrop="() => DropAsync(d, true, g)">
+                        @foreach (var occ in spanning)
+                        {
+                            @RenderItem(occ, null, compact: true)
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- Body: time gutter + day columns -->
+            <div class="grid" style="@template">
+                <div class="relative" style="@($"height:{columnHeight}")">
+                    @for (var i = 0; i < slotCount; i++)
+                    {
+                        var label = DateTime.Today.Add(_visibleStart).AddMinutes(i * slotMinutes);
+                        <div class="relative pr-2 text-right text-[11px] text-muted-foreground" style="@($"height:{(divisions * rowRem).ToString(CultureInfo.InvariantCulture)}rem")">
+                            <span class="relative -top-2">@(i == 0 ? "" : label.ToString("t", Culture))</span>
+                        </div>
+                    }
+                </div>
+
+                @foreach (var (day, group) in columns)
+                {
+                    var d = day;
+                    var g = group;
+                    var columnStart = d + _visibleStart;
+                    var columnEnd = d + _visibleEnd;
+                    var timed = _occs
+                        .Where(o => !o.IsSpanning && MatchesGroup(o, g) && Overlaps(o.Start, DisplayEnd(o), columnStart, columnEnd))
+                        .Select(o => (o, (Clamp(o.Start, columnStart, columnEnd) - columnStart).TotalMinutes, (Clamp(DisplayEnd(o), columnStart, columnEnd) - columnStart).TotalMinutes));
+                    var nowOffset = (DateTime.Now - columnStart).TotalMinutes;
+
+                    <div class="relative border-l" style="@($"height:{columnHeight}")">
+                        @for (var i = 0; i < slotCount * divisions; i++)
+                        {
+                            var cellStart = columnStart.AddMinutes(i * (double)slotMinutes / divisions);
+                            var cellEnd = cellStart.AddMinutes((double)slotMinutes / divisions);
+                            var lastInSlot = (i + 1) % divisions == 0;
+                            var nonWork = !_showWorkHours && (cellStart.TimeOfDay < _cv.WorkStart || cellStart.TimeOfDay >= _cv.WorkEnd);
+                            var c = cellStart;
+                            <div class="@($"border-b {(lastInSlot ? "border-border" : "border-dashed border-border/50")} {(nonWork ? "bg-muted/40" : "")} {CellClass(cellStart, cellEnd, false, g)}")"
+                                 style="@($"height:{rowRem.ToString(CultureInfo.InvariantCulture)}rem")"
+                                 data-slot="@cellStart.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture)"
+                                 @ondblclick="() => BeginCreateAsync(c, c.AddMinutes(slotMinutes), false, g)"
+                                 @ondragover:preventDefault="true"
+                                 @ondrop="() => DropAsync(c, false, g)"></div>
+                        }
+
+                        @foreach (var (occ, lane, lanes) in LayoutLanes(timed))
+                        {
+                            var top = (Clamp(occ.Start, columnStart, columnEnd) - columnStart).TotalMinutes / totalMinutes * 100;
+                            var height = (Clamp(DisplayEnd(occ), columnStart, columnEnd) - Clamp(occ.Start, columnStart, columnEnd)).TotalMinutes / totalMinutes * 100;
+                            var style = FormattableString.Invariant($"position:absolute;top:{top:0.###}%;height:{height:0.###}%;min-height:1.25rem;left:calc({lane * 100.0 / lanes:0.###}% + 2px);width:calc({100.0 / lanes:0.###}% - 4px);");
+                            @RenderItem(occ, style, compact: false)
+                        }
+
+                        @if (nowOffset >= 0 && nowOffset <= totalMinutes)
+                        {
+                            <div class="pointer-events-none absolute inset-x-0 z-10 border-t-2 border-red-500" style="@FormattableString.Invariant($"top:{nowOffset / totalMinutes * 100:0.###}%")" aria-hidden="true">
+                                <span class="absolute -left-1 -top-[5px] h-2 w-2 rounded-full bg-red-500"></span>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>;
+    }
+
+    private static DateTime Clamp(DateTime value, DateTime min, DateTime max) => value < min ? min : value > max ? max : value;
+
+    /// <summary>Zero-length items still get a visible height.</summary>
+    private static DateTime DisplayEnd(Occ occ) => occ.End > occ.Start ? occ.End : occ.Start.AddMinutes(15);
+
+    // ── Month ────────────────────────────────────────────────────────────────
+    private RenderFragment RenderMonth()
+    {
+        var perSlot = (_cv as StackSchedulerMonthView)?.ItemsPerSlot ?? 2;
+        var firstDay = Culture.DateTimeFormat.FirstDayOfWeek;
+        var dayNames = Enumerable.Range(0, 7).Select(i => Culture.DateTimeFormat.AbbreviatedDayNames[((int)firstDay + i) % 7]).ToList();
+
+        return @<div class="flex h-full min-h-[36rem] flex-col">
+            <div class="grid grid-cols-7 border-b">
+                @foreach (var name in dayNames)
+                {
+                    <div class="border-l px-2 py-1.5 text-center text-xs font-medium text-muted-foreground first:border-l-0">@name</div>
+                }
+            </div>
+            <div class="grid flex-1 grid-cols-7 grid-rows-6">
+                @for (var i = 0; i < 42; i++)
+                {
+                    var d = _rangeStart.AddDays(i);
+                    var inMonth = d.Month == _date.Month;
+                    var isToday = d == DateTime.Today;
+                    var dayItems = _occs.Where(o => Overlaps(o.Start, o.End, d, d.AddDays(1)))
+                                        .OrderByDescending(o => o.IsSpanning).ThenBy(o => o.Start).ToList();
+                    var hidden = Math.Max(0, dayItems.Count - perSlot);
+                    <div class="@($"flex min-h-24 flex-col gap-0.5 overflow-hidden border-b border-l p-1 [&:nth-child(7n+1)]:border-l-0 {(inMonth ? "" : "bg-muted/30 text-muted-foreground")} {CellClass(d, d.AddDays(1), true, null)}")"
+                         data-slot="@($"day-{d:yyyy-MM-dd}")"
+                         @ondblclick="() => BeginCreateAsync(d, d.AddDays(1), true, null)"
+                         @ondragover:preventDefault="true"
+                         @ondrop="() => DropAsync(d, true, null)">
+                        <button type="button"
+                                class="@($"self-end rounded-full px-1.5 text-xs hover:bg-accent {(isToday ? "bg-primary font-semibold text-primary-foreground hover:bg-primary/90" : "")}")"
+                                aria-label="@d.ToString("D", Culture)"
+                                @onclick="() => GoToDayAsync(d)">
+                            @d.Day
+                        </button>
+                        @foreach (var occ in dayItems.Take(perSlot))
+                        {
+                            @RenderItem(occ, null, compact: true)
+                        }
+                        @if (hidden > 0)
+                        {
+                            <button type="button" class="self-start rounded px-1 text-[11px] font-medium text-primary hover:underline" @onclick="() => GoToDayAsync(d)">
+                                +@hidden more
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+        </div>;
+    }
+
+    // ── Timeline ─────────────────────────────────────────────────────────────
+    private RenderFragment RenderTimeline()
+    {
+        var timeline = _cv as StackSchedulerTimelineView;
+        var columnWidth = Math.Max(30, timeline?.ColumnWidth ?? 100);
+        var slotMinutes = _cv.SafeSlotDuration;
+        var totalMinutes = (_visibleEnd - _visibleStart).TotalMinutes;
+        var slotsPerDay = (int)Math.Ceiling(totalMinutes / slotMinutes);
+        var days = Enumerable.Range(0, (int)(_rangeEnd - _rangeStart).TotalDays).Select(i => _rangeStart.AddDays(i)).ToList();
+        var trackWidth = days.Count * slotsPerDay * columnWidth;
+        const int itemHeight = 44;
+
+        double X(DateTime t)
+        {
+            var dayIndex = Math.Clamp((t.Date - _rangeStart).Days, 0, days.Count);
+            var minutes = Math.Clamp((t.TimeOfDay - _visibleStart).TotalMinutes, 0, totalMinutes);
+            if (dayIndex == days.Count) { dayIndex--; minutes = totalMinutes; }
+            return dayIndex * slotsPerDay * columnWidth + minutes / slotMinutes * columnWidth;
+        }
+
+        return @<div class="min-w-fit">
+            <div class="sticky top-0 z-20 bg-background">
+                <div class="flex border-b">
+                    <div class="sticky left-0 z-10 w-40 shrink-0 border-r bg-background"></div>
+                    @foreach (var day in days)
+                    {
+                        var d = day;
+                        <div class="shrink-0 border-r px-2 py-1.5 text-xs font-semibold" style="@($"width:{slotsPerDay * columnWidth}px")">
+                            @if (DateHeaderTemplate is not null) { @DateHeaderTemplate(d) } else { @d.ToString("D", Culture) }
+                        </div>
+                    }
+                </div>
+                <div class="flex border-b">
+                    <div class="sticky left-0 z-10 w-40 shrink-0 border-r bg-background"></div>
+                    @foreach (var day in days)
+                    {
+                        @for (var i = 0; i < slotsPerDay; i++)
+                        {
+                            var label = day.Add(_visibleStart).AddMinutes(i * slotMinutes);
+                            <div class="shrink-0 border-r px-1.5 py-1 text-[11px] text-muted-foreground" style="@($"width:{columnWidth}px")">@label.ToString("t", Culture)</div>
+                        }
+                    }
+                </div>
+            </div>
+
+            @foreach (var group in _groups)
+            {
+                var g = group;
+                var rowItems = _occs.Where(o => MatchesGroup(o, g))
+                    .Select(o => (o, X(o.Start), Math.Max(X(DisplayEnd(o)), X(o.Start) + 8)))
+                    .Where(t => t.Item3 > 0 && t.Item2 < trackWidth && Overlaps(t.o.Start, DisplayEnd(t.o), _rangeStart, _rangeEnd))
+                    .ToList();
+                var laid = LayoutLanes(rowItems);
+                var lanes = laid.Count == 0 ? 1 : laid.Max(l => l.Lane) + 1;
+                var rowHeight = lanes * (itemHeight + 4) + 8;
+
+                <div class="flex border-b">
+                    <div class="sticky left-0 z-10 flex w-40 shrink-0 items-center gap-2 border-r bg-background px-3 text-sm font-medium">
+                        @if (g?.Color is not null) { <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="@($"background-color:{g.Color}")"></span> }
+                        <span class="truncate">@(g?.Text ?? "All")</span>
+                    </div>
+                    <div class="relative shrink-0" style="@($"width:{trackWidth}px;height:{rowHeight}px")">
+                        <div class="absolute inset-0 flex">
+                            @foreach (var day in days)
+                            {
+                                @for (var i = 0; i < slotsPerDay; i++)
+                                {
+                                    var cellStart = day.Add(_visibleStart).AddMinutes(i * slotMinutes);
+                                    var c = cellStart;
+                                    var nonWork = !_showWorkHours && (c.TimeOfDay < _cv.WorkStart || c.TimeOfDay >= _cv.WorkEnd);
+                                    <div class="@($"h-full shrink-0 border-r {(nonWork ? "bg-muted/40" : "")} {CellClass(c, c.AddMinutes(slotMinutes), false, g)}")"
+                                         style="@($"width:{columnWidth}px")"
+                                         data-slot="@c.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture)"
+                                         @ondblclick="() => BeginCreateAsync(c, c.AddMinutes(slotMinutes), false, g)"
+                                         @ondragover:preventDefault="true"
+                                         @ondrop="() => DropAsync(c, false, g)"></div>
+                                }
+                            }
+                        </div>
+                        @foreach (var (occ, lane, _) in laid)
+                        {
+                            var left = X(occ.Start);
+                            var width = Math.Max(X(DisplayEnd(occ)) - left, 8);
+                            var style = FormattableString.Invariant($"position:absolute;left:{left + 2:0.#}px;width:{width - 4:0.#}px;top:{4 + lane * (itemHeight + 4)}px;height:{itemHeight}px;");
+                            @RenderItem(occ, style, compact: false)
+                        }
+                    </div>
+                </div>
+            }
+        </div>;
+    }
+
+    // ── Items ────────────────────────────────────────────────────────────────
+    private RenderFragment RenderItem(Occ occ, string? positionStyle, bool compact)
+    {
+        string? extra = null;
+        if (OnItemRender is not null)
+        {
+            var args = new SchedulerItemRenderEventArgs { Item = occ.Item! };
+            OnItemRender(args);
+            extra = args.Class;
+        }
+
+        var color = ColorOf(occ);
+        var title = TitleOf(occ.Item);
+        var time = TimeText(occ);
+        var draggable = CanDrag(occ);
+        var template = compact && occ.IsSpanning ? AllDayItemTemplate ?? ItemTemplate : ItemTemplate;
+        var cls = "group overflow-hidden rounded-md border border-black/10 text-left text-xs shadow-sm outline-none transition-shadow " +
+                  "hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 " +
+                  (compact ? "relative block w-full px-1.5 py-0.5 " : "px-1.5 py-1 ") +
+                  (color is null ? "bg-primary text-primary-foreground " : "text-white ") +
+                  (draggable ? "cursor-move " : "cursor-pointer ") +
+                  extra;
+        var style = positionStyle + (color is null ? "" : $"background-color:{color};");
+
+        return @<div role="button"
+                     tabindex="0"
+                     class="@cls"
+                     style="@style"
+                     title="@($"{title}\n{time}")"
+                     aria-label="@($"{title}, {time}{(occ.IsOccurrence ? ", recurring" : "")}")"
+                     data-item="@title"
+                     draggable="@(draggable ? "true" : "false")"
+                     @ondragstart="() => _drag = occ"
+                     @onclick="e => OnItemClickAsync(occ, e)"
+                     @onclick:stopPropagation="true"
+                     @ondblclick="e => OnItemDoubleClickAsync(occ, e)"
+                     @ondblclick:stopPropagation="true"
+                     @oncontextmenu="e => OnItemContextMenuAsync(occ, e)"
+                     @oncontextmenu:preventDefault="@OnItemContextMenu.HasDelegate"
+                     @onkeydown="e => OnItemKeyDownAsync(occ, e)">
+            @if (template is not null)
+            {
+                @template(occ.Item)
+            }
+            else
+            {
+                <div class="flex items-center gap-1 font-medium">
+                    <span class="truncate">@title</span>
+                    @if (occ.IsOccurrence)
+                    {
+                        <svg class="h-3 w-3 shrink-0 opacity-80" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path d="M17 1l4 4-4 4" /><path d="M3 11V9a4 4 0 014-4h14" /><path d="M7 23l-4-4 4-4" /><path d="M21 13v2a4 4 0 01-4 4H3" /></svg>
+                    }
+                </div>
+                @if (!compact)
+                {
+                    <div class="truncate opacity-85">@time</div>
+                }
+            }
+            @if (AllowDelete)
+            {
+                <button type="button"
+                        tabindex="-1"
+                        class="absolute right-0.5 top-0.5 hidden h-4 w-4 items-center justify-center rounded-full bg-black/25 text-white hover:bg-black/40 group-hover:flex group-focus-visible:flex"
+                        aria-label="@($"Delete {title}")"
+                        @onclick="() => RequestDeleteAsync(occ)"
+                        @onclick:stopPropagation="true">
+                    <svg class="h-2.5 w-2.5" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                </button>
+            }
+        </div>;
+    }
+
+    private string? CellClass(DateTime start, DateTime end, bool allDay, ResourceOption? group)
+    {
+        if (OnCellRender is null) return null;
+        var args = new SchedulerCellRenderEventArgs { Start = start, End = end, IsAllDay = allDay, View = _cv.ViewType, Resource = group?.Value };
+        OnCellRender(args);
+        return args.Class;
+    }
+
+    private async Task OnItemClickAsync(Occ occ, MouseEventArgs e)
+    {
+        var args = new SchedulerItemClickEventArgs { Item = occ.Item!, EventArgs = e };
+        await OnItemClick.InvokeAsync(args);
+        if (!args.ShouldRender) _skipRender = true;
+    }
+
+    private async Task OnItemDoubleClickAsync(Occ occ, MouseEventArgs e)
+    {
+        var args = new SchedulerItemClickEventArgs { Item = occ.Item!, EventArgs = e };
+        await OnItemDoubleClick.InvokeAsync(args);
+        if (AllowUpdate) await BeginEditAsync(occ);
+        else if (!args.ShouldRender) _skipRender = true;
+    }
+
+    private async Task OnItemContextMenuAsync(Occ occ, MouseEventArgs e)
+    {
+        var args = new SchedulerItemClickEventArgs { Item = occ.Item!, EventArgs = e };
+        await OnItemContextMenu.InvokeAsync(args);
+        if (!args.ShouldRender) _skipRender = true;
+    }
+
+    private async Task OnItemKeyDownAsync(Occ occ, KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "Enter" when AllowUpdate: await BeginEditAsync(occ); break;
+            case "Delete" when AllowDelete: await RequestDeleteAsync(occ); break;
+            default: _skipRender = true; break;
+        }
+    }
+
+    // ── Drag & drop ──────────────────────────────────────────────────────────
+    private bool CanDrag(Occ occ) => AllowUpdate && !occ.IsOccurrence;
+
+    private async Task DropAsync(DateTime target, bool dayCell, ResourceOption? group)
+    {
+        if (_drag is not { } occ) return;
+        _drag = null;
+        if (!CanDrag(occ)) return;
+
+        // Day cells keep the item's time of day; time slots set it.
+        var newStart = dayCell ? target.Date + occ.Start.TimeOfDay : target;
+        var moved = SchedulerFieldMap<TItem>.Clone(occ.Master, OnModelInit);
+        SchedulerFieldMap<TItem>.Set(moved, StartField, newStart);
+        SchedulerFieldMap<TItem>.Set(moved, EndField, newStart + (occ.End - occ.Start));
+        if (group is not null && _groupResource is not null)
+            SchedulerFieldMap<TItem>.Set(moved, _groupResource.Field, group.Value);
+
+        await OnUpdate.InvokeAsync(new SchedulerUpdateEventArgs { Item = moved! });
+    }
+
+    // ── Create / edit ────────────────────────────────────────────────────────
+    private async Task BeginCreateAsync(DateTime start, DateTime end, bool allDay, ResourceOption? group)
+    {
+        if (!AllowCreate) { _skipRender = true; return; }
+
+        var resources = new Dictionary<string, object?>();
+        if (group is not null && _groupResource is not null) resources[_groupResource.Field] = group.Value;
+
+        var args = new SchedulerEditEventArgs { IsNew = true, Start = start, End = end, IsAllDay = allDay, Resources = resources };
+        await OnEdit.InvokeAsync(args);
+        if (args.IsCancelled) return;
+
+        var editor = new EditorState
+        {
+            IsNew = true,
+            Start = start,
+            End = allDay ? end.AddDays(-1) : end,
+            IsAllDay = allDay,
+            Until = start.Date.AddMonths(1),
+            ByDay = [start.DayOfWeek],
+        };
+        foreach (var resource in _resources)
+        {
+            var options = _options.GetValueOrDefault(resource) ?? resource.Options;
+            var index = resources.TryGetValue(resource.Field, out var value)
+                ? options.ToList().FindIndex(o => ValuesEqual(o.Value, value))
+                : -1;
+            editor.ResourceKeys[resource.Field] = index >= 0 ? index.ToString(CultureInfo.InvariantCulture) : "";
+        }
+        _editor = editor;
+    }
+
+    private Task BeginEditAsync(Occ occ)
+    {
+        if (!AllowUpdate) return Task.CompletedTask;
+        if (occ.IsOccurrence)
+        {
+            _prompt = new Prompt("Edit recurring item", "Do you want to edit only this occurrence or the whole series?",
+            [
+                new("Edit this occurrence", () => OpenEditorAsync(occ, occurrenceOnly: true)),
+                new("Edit the series", () => OpenEditorAsync(occ, occurrenceOnly: false)),
+            ]);
+            return Task.CompletedTask;
+        }
+        return OpenEditorAsync(occ, occurrenceOnly: false);
+    }
+
+    private async Task OpenEditorAsync(Occ occ, bool occurrenceOnly)
+    {
+        var source = occurrenceOnly ? occ.Item : occ.Master;
+        var start = occurrenceOnly ? occ.Start : SchedulerFieldMap<TItem>.GetDate(occ.Master, StartField);
+        var end = occurrenceOnly ? occ.End : SchedulerFieldMap<TItem>.GetDate(occ.Master, EndField);
+
+        var args = new SchedulerEditEventArgs { Item = source, IsNew = false, Start = start, End = end, IsAllDay = occ.IsAllDay };
+        await OnEdit.InvokeAsync(args);
+        if (args.IsCancelled) return;
+
+        var rule = occurrenceOnly ? null : SchedulerRecurrenceRule.Parse(SchedulerFieldMap<TItem>.Get(occ.Master, RecurrenceRuleField) as string);
+        var editor = new EditorState
+        {
+            Source = occ,
+            EditOccurrence = occurrenceOnly,
+            Title = TitleOf(occ.Master),
+            Description = SchedulerFieldMap<TItem>.Get(occ.Master, DescriptionField)?.ToString(),
+            Start = start,
+            // All-day items end at midnight of the next day; the form shows the last day.
+            End = occ.IsAllDay && end.TimeOfDay == TimeSpan.Zero && end > start ? end.AddDays(-1) : end,
+            IsAllDay = occ.IsAllDay,
+            Frequency = rule?.Frequency,
+            Interval = rule?.Interval ?? 1,
+            ByDay = rule?.ByDay.Count > 0 ? [.. rule.ByDay] : [start.DayOfWeek],
+            EndMode = rule?.Count is not null ? "count" : rule?.Until is not null ? "until" : "never",
+            Count = rule?.Count ?? 10,
+            Until = rule?.Until ?? start.Date.AddMonths(1),
+        };
+        foreach (var resource in _resources)
+        {
+            var value = SchedulerFieldMap<TItem>.Get(occ.Master, resource.Field);
+            var index = (_options.GetValueOrDefault(resource) ?? resource.Options).ToList().FindIndex(o => ValuesEqual(o.Value, value));
+            editor.ResourceKeys[resource.Field] = index >= 0 ? index.ToString(CultureInfo.InvariantCulture) : "";
+        }
+        _editor = editor;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_editor is not { } editor) return;
+
+        if (string.IsNullOrWhiteSpace(editor.Title)) { editor.Error = "Title is required."; return; }
+        var start = editor.IsAllDay ? editor.Start.Date : editor.Start;
+        var end = editor.IsAllDay ? editor.End.Date.AddDays(1) : editor.End;
+        if (end < start) { editor.Error = "The end must be after the start."; return; }
+
+        string? rule = null;
+        if (!editor.EditOccurrence && editor.Frequency is RecurrenceFrequency frequency)
+        {
+            rule = new SchedulerRecurrenceRule
+            {
+                Frequency = frequency,
+                Interval = Math.Max(1, editor.Interval),
+                ByDay = frequency == RecurrenceFrequency.Weekly ? [.. editor.ByDay] : [],
+                Count = editor.EndMode == "count" ? Math.Max(1, editor.Count) : null,
+                Until = editor.EndMode == "until" ? editor.Until.Date.AddDays(1).AddSeconds(-1) : null,
+            }.ToString();
+        }
+
+        void Apply(TItem item, bool setRule)
+        {
+            SchedulerFieldMap<TItem>.Set(item, TitleField, editor.Title.Trim());
+            SchedulerFieldMap<TItem>.Set(item, DescriptionField, editor.Description);
+            SchedulerFieldMap<TItem>.Set(item, StartField, start);
+            SchedulerFieldMap<TItem>.Set(item, EndField, end);
+            SchedulerFieldMap<TItem>.Set(item, IsAllDayField, editor.IsAllDay);
+            if (setRule) SchedulerFieldMap<TItem>.Set(item, RecurrenceRuleField, rule);
+            foreach (var resource in _resources)
+            {
+                var key = editor.ResourceKeys.GetValueOrDefault(resource.Field);
+                var options = _options.GetValueOrDefault(resource) ?? resource.Options;
+                object? value = int.TryParse(key, out var index) && index < options.Count ? options[index].Value : null;
+                SchedulerFieldMap<TItem>.Set(item, resource.Field, value);
+            }
+        }
+
+        _editor = null;
+
+        if (editor.IsNew)
+        {
+            var created = OnModelInit is not null ? OnModelInit() : Activator.CreateInstance<TItem>();
+            Apply(created, setRule: true);
+            await OnCreate.InvokeAsync(new SchedulerCreateEventArgs { Item = created! });
+        }
+        else if (editor.EditOccurrence && editor.Source is { } occ)
+        {
+            // Editing one occurrence: add an exception item and exclude the date from the series.
+            var exception = SchedulerFieldMap<TItem>.Clone(occ.Master, OnModelInit);
+            Apply(exception, setRule: false);
+            SchedulerFieldMap<TItem>.Set(exception, RecurrenceRuleField, null);
+            SchedulerFieldMap<TItem>.Set(exception, RecurrenceExceptionsField, null);
+            SchedulerFieldMap<TItem>.Set(exception, RecurrenceIdField, SchedulerFieldMap<TItem>.Get(occ.Master, IdField));
+            SchedulerFieldMap<TItem>.Set(exception, IdField, null);
+            await OnCreate.InvokeAsync(new SchedulerCreateEventArgs { Item = exception! });
+            await OnUpdate.InvokeAsync(new SchedulerUpdateEventArgs { Item = WithException(occ)! });
+        }
+        else if (editor.Source is { } source)
+        {
+            var updated = SchedulerFieldMap<TItem>.Clone(source.Master, OnModelInit);
+            Apply(updated, setRule: true);
+            await OnUpdate.InvokeAsync(new SchedulerUpdateEventArgs { Item = updated! });
+        }
+    }
+
+    private Task OnEditorKeyDown(KeyboardEventArgs e) => e.Key == "Escape" ? CancelEditAsync() : Task.CompletedTask;
+
+    private async Task CancelEditAsync()
+    {
+        if (_editor is not { } editor) return;
+        _editor = null;
+        await OnCancel.InvokeAsync(new SchedulerCancelEventArgs { Item = editor.Source is { } source ? source.Master : null, IsNew = editor.IsNew });
+    }
+
+    private async Task DeleteFromEditorAsync()
+    {
+        if (_editor?.Source is not { } occ) return;
+        var occurrenceOnly = _editor.EditOccurrence;
+        _editor = null;
+        if (occurrenceOnly) await OnUpdate.InvokeAsync(new SchedulerUpdateEventArgs { Item = WithException(occ)! });
+        else await DeleteItemAsync(occ.Master);
+    }
+
+    private TItem WithException(Occ occ)
+    {
+        var master = SchedulerFieldMap<TItem>.Clone(occ.Master, OnModelInit);
+        var exceptions = (SchedulerFieldMap<TItem>.Get(master, RecurrenceExceptionsField) as IEnumerable<DateTime>)?.ToList() ?? [];
+        exceptions.Add(occ.Start);
+        SchedulerFieldMap<TItem>.Set(master, RecurrenceExceptionsField, exceptions);
+        return master;
+    }
+
+    // ── Delete ───────────────────────────────────────────────────────────────
+    private Task RequestDeleteAsync(Occ occ)
+    {
+        if (!AllowDelete) return Task.CompletedTask;
+        var title = TitleOf(occ.Master);
+
+        if (occ.IsOccurrence)
+        {
+            _prompt = new Prompt("Delete recurring item", $"Do you want to delete only this occurrence of \"{title}\" or the whole series?",
+            [
+                new("Delete this occurrence", () => OnUpdate.InvokeAsync(new SchedulerUpdateEventArgs { Item = WithException(occ)! }), Destructive: true),
+                new("Delete the series", () => DeleteItemAsync(occ.Master), Destructive: true),
+            ]);
+            return Task.CompletedTask;
+        }
+
+        if (ConfirmDelete)
+        {
+            _prompt = new Prompt("Delete item", $"Are you sure you want to delete \"{title}\"?",
+                [new("Delete", () => DeleteItemAsync(occ.Master), Destructive: true)]);
+            return Task.CompletedTask;
+        }
+
+        return DeleteItemAsync(occ.Master);
+    }
+
+    private Task DeleteItemAsync(TItem item) => OnDelete.InvokeAsync(new SchedulerDeleteEventArgs { Item = item! });
+
+    private async Task RunPromptAsync(PromptButton button)
+    {
+        _prompt = null;
+        await button.Action();
+    }
+
+    // ── Edit form ────────────────────────────────────────────────────────────
+    private RenderFragment RenderEditor(EditorState editor)
+    {
+        var heading = editor.IsNew ? "Create event" : editor.EditOccurrence ? "Edit occurrence" : "Edit event";
+        var firstDay = Culture.DateTimeFormat.FirstDayOfWeek;
+        var weekDays = Enumerable.Range(0, 7).Select(i => (DayOfWeek)(((int)firstDay + i) % 7)).ToList();
+        var titleId = $"{_uid}-editor-title";
+
+        return @<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @onclick="CancelEditAsync">
+            <div role="dialog" aria-modal="true" aria-labelledby="@titleId"
+                 class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border bg-background p-5 shadow-xl"
+                 @onclick:stopPropagation="true"
+                 @onkeydown="OnEditorKeyDown">
+                <h2 id="@titleId" class="text-lg font-semibold">@heading</h2>
+
+                <div class="mt-4 space-y-3 text-sm">
+                    <label class="block">
+                        <span class="mb-1 block font-medium">Title</span>
+                        <input type="text" class="@InputCls" @bind="editor.Title" @bind:event="oninput" aria-required="true" />
+                    </label>
+
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" class="h-4 w-4 accent-primary" @bind="editor.IsAllDay" />
+                        <span>All day</span>
+                    </label>
+
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <label class="block">
+                            <span class="mb-1 block font-medium">Start</span>
+                            @if (editor.IsAllDay)
+                            {
+                                <input type="date" class="@InputCls" @bind="editor.Start" />
+                            }
+                            else
+                            {
+                                <input type="datetime-local" class="@InputCls" @bind="editor.Start" />
+                            }
+                        </label>
+                        <label class="block">
+                            <span class="mb-1 block font-medium">End</span>
+                            @if (editor.IsAllDay)
+                            {
+                                <input type="date" class="@InputCls" @bind="editor.End" />
+                            }
+                            else
+                            {
+                                <input type="datetime-local" class="@InputCls" @bind="editor.End" />
+                            }
+                        </label>
+                    </div>
+
+                    @if (!editor.EditOccurrence)
+                    {
+                        <div class="rounded-md border p-3">
+                            <label class="block">
+                                <span class="mb-1 block font-medium">Repeat</span>
+                                <select class="@InputCls" @bind="editor.FrequencyKey">
+                                    <option value="">Never</option>
+                                    <option value="Daily">Daily</option>
+                                    <option value="Weekly">Weekly</option>
+                                    <option value="Monthly">Monthly</option>
+                                    <option value="Yearly">Yearly</option>
+                                </select>
+                            </label>
+
+                            @if (editor.Frequency is RecurrenceFrequency frequency)
+                            {
+                                <label class="mt-3 flex items-center gap-2">
+                                    <span>Every</span>
+                                    <input type="number" min="1" class="@($"{InputCls} w-20")" @bind="editor.Interval" />
+                                    <span>@(frequency switch { RecurrenceFrequency.Daily => "day(s)", RecurrenceFrequency.Weekly => "week(s)", RecurrenceFrequency.Monthly => "month(s)", _ => "year(s)" })</span>
+                                </label>
+
+                                @if (frequency == RecurrenceFrequency.Weekly)
+                                {
+                                    <div class="mt-3 flex flex-wrap gap-1" role="group" aria-label="Repeat on">
+                                        @foreach (var day in weekDays)
+                                        {
+                                            var d = day;
+                                            var on = editor.ByDay.Contains(d);
+                                            <button type="button"
+                                                    aria-pressed="@(on ? "true" : "false")"
+                                                    class="@($"h-8 w-10 rounded-md border text-xs font-medium {(on ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent")}")"
+                                                    @onclick="() => { if (!editor.ByDay.Remove(d)) editor.ByDay.Add(d); }">
+                                                @Culture.DateTimeFormat.AbbreviatedDayNames[(int)d]
+                                            </button>
+                                        }
+                                    </div>
+                                }
+
+                                <fieldset class="mt-3 space-y-2">
+                                    <legend class="mb-1 font-medium">Ends</legend>
+                                    <label class="flex items-center gap-2">
+                                        <input type="radio" name="@($"{_uid}-end")" checked="@(editor.EndMode == "never")" @onchange="@(() => editor.EndMode = "never")" />
+                                        <span>Never</span>
+                                    </label>
+                                    <label class="flex items-center gap-2">
+                                        <input type="radio" name="@($"{_uid}-end")" checked="@(editor.EndMode == "count")" @onchange="@(() => editor.EndMode = "count")" />
+                                        <span>After</span>
+                                        <input type="number" min="1" class="@($"{InputCls} w-20")" @bind="editor.Count" disabled="@(editor.EndMode != "count")" />
+                                        <span>occurrences</span>
+                                    </label>
+                                    <label class="flex items-center gap-2">
+                                        <input type="radio" name="@($"{_uid}-end")" checked="@(editor.EndMode == "until")" @onchange="@(() => editor.EndMode = "until")" />
+                                        <span>On</span>
+                                        <input type="date" class="@($"{InputCls} w-44")" @bind="editor.Until" disabled="@(editor.EndMode != "until")" />
+                                    </label>
+                                </fieldset>
+                            }
+                        </div>
+                    }
+
+                    @foreach (var resource in _resources)
+                    {
+                        var r = resource;
+                        var options = _options.GetValueOrDefault(r) ?? r.Options;
+                        <label class="block">
+                            <span class="mb-1 block font-medium">@(r.Title ?? r.Field)</span>
+                            <select class="@InputCls"
+                                    value="@editor.ResourceKeys.GetValueOrDefault(r.Field)"
+                                    @onchange="@(e => editor.ResourceKeys[r.Field] = e.Value?.ToString() ?? "")">
+                                <option value="">None</option>
+                                @for (var i = 0; i < options.Count; i++)
+                                {
+                                    <option value="@i.ToString(CultureInfo.InvariantCulture)">@options[i].Text</option>
+                                }
+                            </select>
+                        </label>
+                    }
+
+                    <label class="block">
+                        <span class="mb-1 block font-medium">Description</span>
+                        <textarea rows="3" class="@($"{InputCls} h-auto py-2")" @bind="editor.Description"></textarea>
+                    </label>
+
+                    @if (editor.Error is not null)
+                    {
+                        <p role="alert" class="text-sm font-medium text-destructive">@editor.Error</p>
+                    }
+                </div>
+
+                <div class="mt-5 flex items-center gap-2">
+                    @if (!editor.IsNew && AllowDelete)
+                    {
+                        <button type="button" class="@DestructiveButtonCls" @onclick="DeleteFromEditorAsync">Delete</button>
+                    }
+                    <div class="flex-1"></div>
+                    <button type="button" class="@SecondaryButtonCls" @onclick="CancelEditAsync">Cancel</button>
+                    <button type="button" class="@PrimaryButtonCls" @onclick="SaveAsync">Save</button>
+                </div>
+            </div>
+        </div>;
+    }
+
+    // ── CSS ──────────────────────────────────────────────────────────────────
+    private string? RootStyle
+    {
+        get
+        {
+            var parts = new List<string>();
+            if (Height is not null) parts.Add($"height:{Height}");
+            if (Width is not null) parts.Add($"width:{Width}");
+            return parts.Count == 0 ? null : string.Join(";", parts);
+        }
+    }
+
+    private const string ToolbarButtonCls =
+        "rounded-md border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+    private const string IconButtonCls =
+        "rounded-md p-1.5 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+    private const string InputCls =
+        "h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50";
+    private const string PrimaryButtonCls =
+        "rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90";
+    private const string SecondaryButtonCls =
+        "rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent";
+    private const string DestructiveButtonCls =
+        "rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90";
+}

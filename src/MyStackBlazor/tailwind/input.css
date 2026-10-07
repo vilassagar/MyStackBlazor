@@ -7,6 +7,7 @@
 /* ../../../ → repo root  (where samples/ lives)                          */
 @source "../**/*.razor";
 @source "../**/*.html";
+@source "../../MyStackBlazor.Calendar/**/*.razor";
 @source "../../../samples/**/*.razor";
 @source "../../../samples/**/*.html";
 

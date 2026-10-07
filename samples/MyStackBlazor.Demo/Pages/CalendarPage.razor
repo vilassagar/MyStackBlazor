@@ -59,7 +59,161 @@
     <p class="text-sm text-muted-foreground">See CalendarPage.razor for the full working example.</p>
 </DemoSection>
 
+
+<!-- Scheduler (Telerik-style) -->
+<h2 class="mt-12 mb-1 text-2xl font-bold">Scheduler</h2>
+<p class="mb-4 text-muted-foreground">
+    <code>StackScheduler&lt;TItem&gt;</code> follows the Telerik Scheduler API: bind your own model through field mappings,
+    declare views, resources and grouping, and handle OnCreate / OnUpdate / OnDelete. Double-click a slot to create,
+    double-click an item to edit, drag to move.
+</p>
+<DemoSection Title="Scheduler" Code="@_schedulerCode">
+    <div class="w-full">
+        <StackScheduler Data="@_schAppointments" @bind-Date="_schDate" @bind-View="_schView"
+                        AllowCreate AllowUpdate AllowDelete ConfirmDelete
+                        OnCreate="SchCreate" OnUpdate="SchUpdate" OnDelete="SchDelete"
+                        OnModelInit="@(() => new SchAppointment())"
+                        Height="640px">
+            <SchedulerViews>
+                <StackSchedulerDayView StartTime="@DateTime.Today.AddHours(7)" EndTime="@DateTime.Today.AddHours(20)" />
+                <StackSchedulerWeekView StartTime="@DateTime.Today.AddHours(7)" EndTime="@DateTime.Today.AddHours(20)" />
+                <StackSchedulerMultiDayView NumberOfDays="3" StartTime="@DateTime.Today.AddHours(7)" EndTime="@DateTime.Today.AddHours(20)" />
+                <StackSchedulerMonthView ItemsPerSlot="3" />
+                <StackSchedulerTimelineView NumberOfDays="2" StartTime="@DateTime.Today.AddHours(8)" EndTime="@DateTime.Today.AddHours(18)" ColumnWidth="80" />
+            </SchedulerViews>
+            <SchedulerResources>
+                <StackSchedulerResource Field="RoomId" Title="Room" Data="@_schRooms" />
+            </SchedulerResources>
+        </StackScheduler>
+    </div>
+</DemoSection>
+
+<DemoSection Title="Scheduler — grouped by resource" Description="StackSchedulerGroupSettings splits the day/week and timeline views per room." Code="@_schedulerGroupCode" Class="mt-6">
+    <div class="w-full">
+        <StackScheduler Data="@_schAppointments" Date="@_schDate" View="SchedulerView.Timeline"
+                        AllowUpdate OnUpdate="SchUpdate" Height="360px">
+            <SchedulerViews>
+                <StackSchedulerTimelineView StartTime="@DateTime.Today.AddHours(8)" EndTime="@DateTime.Today.AddHours(18)" ColumnWidth="70" />
+                <StackSchedulerDayView StartTime="@DateTime.Today.AddHours(8)" EndTime="@DateTime.Today.AddHours(18)" />
+            </SchedulerViews>
+            <SchedulerResources>
+                <StackSchedulerResource Field="RoomId" Title="Room" Data="@_schRooms" />
+            </SchedulerResources>
+            <SchedulerSettings>
+                <StackSchedulerGroupSettings Resources="@_schGroupBy" Orientation="SchedulerGroupOrientation.Horizontal" />
+            </SchedulerSettings>
+        </StackScheduler>
+    </div>
+</DemoSection>
+
 @code {
+    // ── Scheduler demo ───────────────────────────────────────────────────────
+    public class SchAppointment
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = "";
+        public string? Description { get; set; }
+        public DateTime Start { get; set; }
+        public DateTime End { get; set; }
+        public bool IsAllDay { get; set; }
+        public string? RecurrenceRule { get; set; }
+        public List<DateTime>? RecurrenceExceptions { get; set; }
+        public int? RecurrenceId { get; set; }
+        public int? RoomId { get; set; }
+    }
+
+    public record SchRoom(int Value, string Text, string Color);
+
+    private readonly List<SchRoom> _schRooms =
+    [
+        new(1, "Meeting Room 101", "#6366f1"),
+        new(2, "Meeting Room 202", "#10b981"),
+        new(3, "Board Room", "#f59e0b"),
+    ];
+
+    private readonly List<string> _schGroupBy = ["RoomId"];
+    private DateTime _schDate = DateTime.Today;
+    private SchedulerView _schView = SchedulerView.Week;
+    private int _schNextId = 100;
+
+    private List<SchAppointment> _schAppointments = SchSeed();
+
+    private static List<SchAppointment> SchSeed()
+    {
+        var today = DateTime.Today;
+        var monday = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
+        return
+        [
+            new() { Id = 1, Title = "Daily standup", Start = monday.AddHours(9), End = monday.AddHours(9.25), RecurrenceRule = "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", RoomId = 1 },
+            new() { Id = 2, Title = "Design review", Start = today.AddHours(11), End = today.AddHours(12.5), RoomId = 2, Description = "New onboarding flow" },
+            new() { Id = 3, Title = "Lunch & learn", Start = today.AddHours(12), End = today.AddHours(13), RoomId = 3 },
+            new() { Id = 4, Title = "Customer call", Start = today.AddDays(1).AddHours(15), End = today.AddDays(1).AddHours(16), RoomId = 1 },
+            new() { Id = 5, Title = "Company offsite", Start = today.AddDays(2), End = today.AddDays(4), IsAllDay = true },
+            new() { Id = 6, Title = "Sprint planning", Start = monday.AddHours(13), End = monday.AddHours(15), RecurrenceRule = "FREQ=WEEKLY;INTERVAL=2;COUNT=6", RoomId = 3 },
+        ];
+    }
+
+    private void SchCreate(SchedulerCreateEventArgs args)
+    {
+        var item = (SchAppointment)args.Item;
+        item.Id = ++_schNextId;
+        _schAppointments = [.. _schAppointments, item];
+    }
+
+    private void SchUpdate(SchedulerUpdateEventArgs args)
+    {
+        var item = (SchAppointment)args.Item;
+        _schAppointments = _schAppointments.Select(a => a.Id == item.Id ? item : a).ToList();
+    }
+
+    private void SchDelete(SchedulerDeleteEventArgs args)
+    {
+        var item = (SchAppointment)args.Item;
+        _schAppointments = _schAppointments.Where(a => a.Id != item.Id && a.RecurrenceId != item.Id).ToList();
+    }
+
+    private const string _schedulerCode = """
+        <StackScheduler Data="@appointments" @bind-Date="date" @bind-View="view"
+                        AllowCreate AllowUpdate AllowDelete ConfirmDelete
+                        OnCreate="Create" OnUpdate="Update" OnDelete="Delete">
+            <SchedulerViews>
+                <StackSchedulerDayView StartTime="@DateTime.Today.AddHours(7)" EndTime="@DateTime.Today.AddHours(20)" />
+                <StackSchedulerWeekView SlotDuration="60" SlotDivisions="2" />
+                <StackSchedulerMultiDayView NumberOfDays="3" />
+                <StackSchedulerMonthView ItemsPerSlot="3" />
+                <StackSchedulerTimelineView NumberOfDays="2" ColumnWidth="80" />
+            </SchedulerViews>
+            <SchedulerResources>
+                <StackSchedulerResource Field="RoomId" Title="Room" Data="@rooms"
+                                        TextField="Text" ValueField="Value" ColorField="Color" />
+            </SchedulerResources>
+        </StackScheduler>
+
+        @code {
+            // Field names default to Id, Start, End, Title, Description, IsAllDay,
+            // RecurrenceRule, RecurrenceExceptions, RecurrenceId — map others with *Field parameters.
+            void Create(SchedulerCreateEventArgs args) => appointments.Add((Appointment)args.Item);
+            void Update(SchedulerUpdateEventArgs args) { var a = (Appointment)args.Item; /* replace by Id */ }
+            void Delete(SchedulerDeleteEventArgs args) => appointments.Remove((Appointment)args.Item);
+        }
+        """;
+
+    private const string _schedulerGroupCode = """
+        <StackScheduler Data="@appointments" View="SchedulerView.Timeline">
+            <SchedulerViews>
+                <StackSchedulerTimelineView />
+                <StackSchedulerDayView />
+            </SchedulerViews>
+            <SchedulerResources>
+                <StackSchedulerResource Field="RoomId" Title="Room" Data="@rooms" />
+            </SchedulerResources>
+            <SchedulerSettings>
+                <StackSchedulerGroupSettings Resources="@(new List<string> { "RoomId" })"
+                                             Orientation="SchedulerGroupOrientation.Horizontal" />
+            </SchedulerSettings>
+        </StackScheduler>
+        """;
+
     // ── People (team calendars) ────────────────────────────────────────────
     private readonly MyStackBlazor.Calendar.Models.CalendarPerson _alice  = new() { Id = "alice",  Name = "Alice Chen",    Color = "blue"   };
     private readonly MyStackBlazor.Calendar.Models.CalendarPerson _bob    = new() { Id = "bob",    Name = "Sam Rivera",    Color = "green"  };

@@ -1,197 +1,683 @@
 @namespace MyStackBlazor.Components.Form
 @typeparam TItem
+@implements IDisposable
+@implements IDropDownListPopupSettingsHost
+@inject IJSRuntime JS
+@using System.Globalization
+@using System.Linq.Expressions
+@using System.Reflection
 
-<div class="relative">
-    <div class="relative flex items-center">
-        <input type="text"
+@*
+    Free-text input with suggestions, modelled on the Telerik AutoComplete API.
+
+    <StackAutoComplete Data="@countries" @bind-Value="country" ValueField="Name"
+                       Filterable FilterOperator="StringFilterOperator.Contains" Placeholder="Country" />
+
+    The earlier API (Search / SearchAsync / ItemText / SelectedItem / DebounceMs / MinChars / NoResultsText / Disabled)
+    still works.
+*@
+
+<CascadingValue Value="(IDropDownListPopupSettingsHost)this" IsFixed="true">
+    @AutoCompleteSettings
+</CascadingValue>
+
+<div class="@WrapperCls" style="@WrapperStyle" @attributes="AdditionalAttributes">
+    <div class="@InputBoxCls">
+        <input @ref="_inputRef"
                id="@Id"
-               value="@_inputText"
-               placeholder="@Placeholder"
-               disabled="@Disabled"
+               type="text"
+               role="combobox"
                autocomplete="off"
-               class="flex h-10 w-full rounded-md border-2 border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 @Class"
-               @oninput="OnInput"
-               @onfocus="OnFocus"
-               @onblur="OnBlur"
-               @onkeydown="OnKeyDown" />
+               aria-autocomplete="list"
+               aria-haspopup="listbox"
+               aria-expanded="@(_open ? "true" : "false")"
+               aria-controls="@(_open ? ListId : null)"
+               aria-activedescendant="@(_open && _focused is int f ? OptionId(f) : null)"
+               aria-invalid="@(IsInvalid ? "true" : null)"
+               aria-label="@AriaLabel"
+               aria-labelledby="@AriaLabelledBy"
+               aria-describedby="@AriaDescribedBy"
+               inputmode="@InputMode"
+               tabindex="@TabIndex"
+               placeholder="@Placeholder"
+               disabled="@IsDisabled"
+               readonly="@ReadOnly"
+               class="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+               value="@_text"
+               @oninput="OnInputAsync"
+               @onkeydown="OnKeyDownAsync"
+               @onblur="OnBlurAsync" />
 
-        @if (_isLoading)
+        @if (_loading)
         {
-            <span class="pointer-events-none absolute right-3">
-                <StackSpinner Size="xs" />
-            </span>
+            <svg class="h-4 w-4 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" focusable="false" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+            </svg>
         }
-        else if (!string.IsNullOrEmpty(_inputText))
+        else if (ShowClearButton && _text.Length > 0 && !IsDisabled && !ReadOnly)
         {
             <button type="button"
-                    class="absolute right-3 text-muted-foreground hover:text-foreground"
+                    tabindex="-1"
+                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    aria-label="Clear"
                     @onmousedown:preventDefault="true"
-                    @onclick="Clear">
-                <svg class="h-3.5 w-3.5" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                    @onclick="ClearAsync">
+                <svg class="h-3.5 w-3.5" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
             </button>
         }
     </div>
 
-    @if (_isOpen && (_suggestions.Count > 0 || (_hasSearched && !_isLoading)))
+    @if (_open)
     {
-        <div class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border bg-popover shadow-md">
-            @if (_suggestions.Count > 0)
+        @* mousedown is cancelled so the input keeps focus while the user clicks in the popup. *@
+        <div class="@PopupCls" style="@PopupStyle" @onmousedown:preventDefault="true">
+            @if (AdaptiveMode == AdaptiveMode.Auto)
             {
-                @for (var i = 0; i < _suggestions.Count; i++)
-                {
-                    var idx  = i;
-                    var item = _suggestions[i];
+                <div class="hidden items-center justify-between border-b px-4 py-3 max-sm:flex">
+                    <span class="text-sm font-semibold">@(Title ?? Placeholder ?? "Suggestions")</span>
                     <button type="button"
-                            class="flex w-full items-center px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground @(idx == _focusedIndex ? "bg-accent text-accent-foreground" : "")"
-                            @onmousedown:preventDefault="true"
-                            @onclick="() => SelectItem(item)">
-                        @if (ItemTemplate is not null)
-                        {
-                            @ItemTemplate(item)
-                        }
-                        else
-                        {
-                            @GetItemText(item)
-                        }
+                            class="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+                            aria-label="Close"
+                            @onclick="() => CloseFromUserAsync()">
+                        <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
                     </button>
-                }
+                </div>
             }
-            else
+
+            @if (HeaderTemplate is not null)
             {
-                <div class="px-3 py-4 text-center text-sm text-muted-foreground">@NoResultsText</div>
+                <div class="border-b px-3 py-2 text-sm">@HeaderTemplate</div>
+            }
+
+            <div id="@ListId" role="listbox" aria-label="@(AriaLabel ?? Placeholder ?? "Suggestions")" class="@ListCls" style="@ListStyle">
+                @if (_view.Count == 0)
+                {
+                    <div class="py-6 text-center text-sm text-muted-foreground">
+                        @if (NoDataTemplate is not null) { @NoDataTemplate } else { @(NoResultsText ?? "No data found.") }
+                    </div>
+                }
+                else if (IsVirtual)
+                {
+                    <Virtualize TItem="Row" Items="_rows" ItemSize="ItemHeight" OverscanCount="@Math.Max(3, PageSize / 2)" Context="row">
+                        @RenderOption(row.Item, row.Index)
+                    </Virtualize>
+                }
+                else
+                {
+                    string? previousGroup = null;
+                    @for (var i = 0; i < _view.Count; i++)
+                    {
+                        var item = _view[i];
+                        if (_groupAccessor is not null)
+                        {
+                            var group = GroupOf(item);
+                            if (i == 0 || group != previousGroup)
+                            {
+                                <div role="presentation" class="px-2 pb-0.5 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                    @if (GroupHeaderTemplate is not null) { @GroupHeaderTemplate(group) } else { @group }
+                                </div>
+                            }
+                            previousGroup = group;
+                        }
+                        @RenderOption(item, i)
+                    }
+                }
+            </div>
+
+            @if (FooterTemplate is not null)
+            {
+                <div class="border-t px-3 py-2 text-sm">@FooterTemplate</div>
             }
         </div>
     }
 </div>
 
 @code {
-    [Parameter] public string? Id { get; set; }
+    // ── Data & value ─────────────────────────────────────────────────────────
+    /// <summary>The suggestions. Ignored when <see cref="OnRead"/>, <see cref="Search"/> or <see cref="SearchAsync"/> is set.</summary>
+    [Parameter] public IEnumerable<TItem>? Data { get; set; }
+
+    /// <summary>Property of <typeparamref name="TItem"/> whose text becomes the value. Supports nested paths.</summary>
+    [Parameter] public string ValueField { get; set; } = "Value";
+    [Parameter] public string? GroupField { get; set; }
+
+    /// <summary>The text in the input. Supports <c>@bind-Value</c>.</summary>
     [Parameter] public string? Value { get; set; }
     [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public Expression<Func<string?>>? ValueExpression { get; set; }
+
+    [Parameter] public string? Placeholder { get; set; } = "Search...";
+
+    // ── Filtering ────────────────────────────────────────────────────────────
+    /// <summary>Filter the suggestions by the typed text. When false (Telerik default) all items are suggested.</summary>
+    [Parameter] public bool Filterable { get; set; }
+    [Parameter] public StringFilterOperator FilterOperator { get; set; } = StringFilterOperator.StartsWith;
+    /// <summary>Characters to type before suggestions appear (default 1).</summary>
+    [Parameter] public int MinLength { get; set; } = 1;
+    /// <summary>Milliseconds between the last keystroke and ValueChanged / filtering (default 150).</summary>
+    [Parameter] public int DebounceDelay { get; set; } = 150;
+
+    // ── State ────────────────────────────────────────────────────────────────
+    [Parameter] public bool Enabled { get; set; } = true;
+    [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public bool ShowClearButton { get; set; } = true;
+
+    // ── Virtualization ───────────────────────────────────────────────────────
+    [Parameter] public DropDownScrollMode ScrollMode { get; set; } = DropDownScrollMode.Scrollable;
+    [Parameter] public float ItemHeight { get; set; }
+    [Parameter] public int PageSize { get; set; } = 20;
+
+    // ── Appearance ───────────────────────────────────────────────────────────
+    /// <summary>One of <see cref="DropDownListTheme.Size"/>.</summary>
+    [Parameter] public string Size { get; set; } = DropDownListTheme.Size.Medium;
+    /// <summary>One of <see cref="DropDownListTheme.Rounded"/>.</summary>
+    [Parameter] public string Rounded { get; set; } = DropDownListTheme.Rounded.Medium;
+    /// <summary>One of <see cref="DropDownListTheme.FillMode"/>.</summary>
+    [Parameter] public string FillMode { get; set; } = DropDownListTheme.FillMode.Solid;
+    [Parameter] public string? Width { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public AdaptiveMode AdaptiveMode { get; set; } = AdaptiveMode.None;
+    /// <summary>Header text of the popup action sheet. Applies only when <see cref="AdaptiveMode"/> is Auto.</summary>
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? PopupHeight { get; set; }
+    [Parameter] public string? PopupWidth { get; set; }
+    [Parameter] public string? PopupClass { get; set; }
+    /// <summary>Holds a <see cref="StackAutoCompletePopupSettings"/> child.</summary>
+    [Parameter] public RenderFragment? AutoCompleteSettings { get; set; }
+
+    // ── Accessibility ────────────────────────────────────────────────────────
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public int? TabIndex { get; set; }
+    [Parameter] public string? InputMode { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter] public string? AriaLabelledBy { get; set; }
+    [Parameter] public string? AriaDescribedBy { get; set; }
+
+    // ── Templates ────────────────────────────────────────────────────────────
+    [Parameter] public RenderFragment<TItem>? ItemTemplate { get; set; }
+    [Parameter] public RenderFragment? HeaderTemplate { get; set; }
+    [Parameter] public RenderFragment? FooterTemplate { get; set; }
+    [Parameter] public RenderFragment? NoDataTemplate { get; set; }
+    [Parameter] public RenderFragment<string>? GroupHeaderTemplate { get; set; }
+
+    // ── Events ───────────────────────────────────────────────────────────────
+    /// <summary>Fires when the user confirms a value: picks a suggestion, presses Enter or leaves the input.</summary>
+    [Parameter] public EventCallback<object?> OnChange { get; set; }
+    [Parameter] public EventCallback OnBlur { get; set; }
+    [Parameter] public EventCallback<AutoCompleteOpenEventArgs> OnOpen { get; set; }
+    [Parameter] public EventCallback<AutoCompleteCloseEventArgs> OnClose { get; set; }
+    /// <summary>Loads suggestions on demand; <c>args.Request.FilterText</c> is the typed text.</summary>
+    [Parameter] public EventCallback<AutoCompleteReadEventArgs<TItem>> OnRead { get; set; }
+    [Parameter] public Action<AutoCompleteItemRenderEventArgs<TItem>>? OnItemRender { get; set; }
+
+    // ── Earlier API (still supported) ────────────────────────────────────────
+    /// <summary>Returns suggestions for the typed text (earlier API; prefer Data or OnRead).</summary>
+    [Parameter] public Func<string, IEnumerable<TItem>>? Search { get; set; }
+    /// <summary>Async version of <see cref="Search"/>.</summary>
+    [Parameter] public Func<string, Task<IEnumerable<TItem>>>? SearchAsync { get; set; }
+    /// <summary>Text of an item; overrides <see cref="ValueField"/>.</summary>
+    [Parameter] public Func<TItem, string>? ItemText { get; set; }
     [Parameter] public TItem? SelectedItem { get; set; }
     [Parameter] public EventCallback<TItem?> SelectedItemChanged { get; set; }
-    [Parameter] public Func<string, Task<IEnumerable<TItem>>>? SearchAsync { get; set; }
-    [Parameter] public Func<string, IEnumerable<TItem>>? Search { get; set; }
-    [Parameter] public Func<TItem, string>? ItemText { get; set; }
-    [Parameter] public RenderFragment<TItem>? ItemTemplate { get; set; }
-    [Parameter] public string Placeholder { get; set; } = "Search...";
-    [Parameter] public int DebounceMs { get; set; } = 300;
-    [Parameter] public int MinChars { get; set; } = 1;
-    [Parameter] public string NoResultsText { get; set; } = "No results found.";
+    /// <summary>Alias for <see cref="DebounceDelay"/>.</summary>
+    [Parameter] public int? DebounceMs { get; set; }
+    /// <summary>Alias for <see cref="MinLength"/>.</summary>
+    [Parameter] public int? MinChars { get; set; }
+    /// <summary>Text shown when there are no suggestions (when no <see cref="NoDataTemplate"/> is set).</summary>
+    [Parameter] public string? NoResultsText { get; set; }
+    /// <summary>Alias for <c>Enabled="false"</c>.</summary>
     [Parameter] public bool Disabled { get; set; }
-    [Parameter] public string? Class { get; set; }
+
+    [CascadingParameter] private EditContext? EditContext { get; set; }
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
 
-    private string _inputText = "";
-    private List<TItem> _suggestions = [];
-    private bool _isOpen;
-    private bool _isLoading;
-    private bool _hasSearched;
-    private int _focusedIndex = -1;
-    private CancellationTokenSource? _cts;
+    // ── State ────────────────────────────────────────────────────────────────
+    private readonly record struct Row(TItem Item, int Index);
 
+    private readonly string _uid = $"ac-{Guid.NewGuid():N}"[..11];
+    private ElementReference _inputRef;
+    private string _text = "";
+    private string? _lastValueParam;
+    private bool _valueSynced;
+    private bool _open;
+    private int? _focused;
+    private bool _scrollPending;
+    private bool _loading;
+    private bool _pendingChange;
+    private List<TItem> _view = [];
+    private List<Row> _rows = [];
+    private CancellationTokenSource? _debounceCts, _readCts;
+
+    private StackDropDownListPopupSettings? _popupSettings;
+    private string? _valueFieldBuilt, _groupFieldBuilt;
+    private Func<TItem, object?>? _valueAccessor, _groupAccessor;
+    private EditContext? _subscribedContext;
+    private FieldIdentifier? _fieldIdentifier;
+
+    private bool IsDisabled => !Enabled || Disabled;
+    private bool IsVirtual => ScrollMode == DropDownScrollMode.Virtual && ItemHeight > 0;
+    private int EffectiveMinLength => MinChars ?? MinLength;
+    private int EffectiveDebounce => DebounceMs ?? DebounceDelay;
+    private bool UsesSearchCallback => Search is not null || SearchAsync is not null;
+    private string ListId => $"{Id ?? _uid}-listbox";
+    private string OptionId(int index) => $"{ListId}-{index}";
+
+    private bool IsInvalid =>
+        EditContext is not null && _fieldIdentifier is { } f && EditContext.GetValidationMessages(f).Any();
+
+    public void SetPopupSettings(StackDropDownListPopupSettings settings) => _popupSettings = settings;
+
+    // ── Lifecycle ────────────────────────────────────────────────────────────
     protected override void OnParametersSet()
     {
-        if (Value is not null && _inputText != Value)
-            _inputText = Value;
+        if (!_valueSynced || Value != _lastValueParam)
+        {
+            _valueSynced = true;
+            _lastValueParam = Value;
+            _text = Value ?? "";
+        }
+
+        if (_valueFieldBuilt != ValueField) { _valueAccessor = BuildAccessor(ValueField); _valueFieldBuilt = ValueField; }
+        if (_groupFieldBuilt != GroupField) { _groupAccessor = BuildAccessor(GroupField); _groupFieldBuilt = GroupField; }
+
+        if (ValueExpression is not null && _fieldIdentifier is null) _fieldIdentifier = FieldIdentifier.Create(ValueExpression);
+        if (!ReferenceEquals(_subscribedContext, EditContext))
+        {
+            if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged -= OnValidationStateChanged;
+            _subscribedContext = EditContext;
+            if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged += OnValidationStateChanged;
+        }
+
+        // Local data: keep the open list in sync with new Data.
+        if (_open && !UsesSearchCallback && !OnRead.HasDelegate) BuildLocalView();
     }
 
-    private string GetItemText(TItem item) => ItemText?.Invoke(item) ?? item?.ToString() ?? "";
-
-    private async Task OnInput(ChangeEventArgs e)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        _inputText    = e.Value?.ToString() ?? "";
-        _focusedIndex = -1;
-
-        if (_inputText.Length < MinChars)
+        if (firstRender) await TryJsAsync("MyStackBlazor.autoCompletePreventKeys", _inputRef);
+        if (_open && _scrollPending && _focused is int index)
         {
-            _isOpen = false;
-            _suggestions.Clear();
+            _scrollPending = false;
+            await TryJsAsync("MyStackBlazor.dropDownScrollIntoView", ListId, index);
+        }
+    }
+
+    // ── Public API (mirrors Telerik) ─────────────────────────────────────────
+    public void Open()
+    {
+        if (IsDisabled || _open) return;
+        _open = true;
+        _ = InvokeAsync(async () => { await LoadSuggestionsAsync(); StateHasChanged(); });
+    }
+
+    public void Close()
+    {
+        if (!_open) return;
+        _open = false;
+        _focused = null;
+        StateHasChanged();
+    }
+
+    public void Refresh() => _ = InvokeAsync(StateHasChanged);
+
+    /// <summary>Reloads the suggestions for the current text.</summary>
+    public async Task Rebind()
+    {
+        await LoadSuggestionsAsync();
+        StateHasChanged();
+    }
+
+    public ValueTask FocusAsync() => _inputRef.FocusAsync();
+
+    // ── Item text ────────────────────────────────────────────────────────────
+    private static Func<TItem, object?>? BuildAccessor(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        var props = new List<PropertyInfo>();
+        var type = typeof(TItem);
+        foreach (var part in path.Split('.'))
+        {
+            var prop = type.GetProperty(part, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+            if (prop is null) return null;
+            props.Add(prop);
+            type = prop.PropertyType;
+        }
+        return item =>
+        {
+            object? current = item;
+            foreach (var prop in props)
+            {
+                if (current is null) return null;
+                current = prop.GetValue(current);
+            }
+            return current;
+        };
+    }
+
+    private string TextOf(TItem item) =>
+        ItemText?.Invoke(item) ?? (_valueAccessor is not null ? _valueAccessor(item)?.ToString() : item?.ToString()) ?? "";
+
+    private string GroupOf(TItem item) => _groupAccessor?.Invoke(item)?.ToString() ?? "";
+
+    private static bool Matches(string text, string filter, StringFilterOperator op) => op switch
+    {
+        StringFilterOperator.Contains       => text.Contains(filter, StringComparison.CurrentCultureIgnoreCase),
+        StringFilterOperator.DoesNotContain => !text.Contains(filter, StringComparison.CurrentCultureIgnoreCase),
+        StringFilterOperator.EndsWith       => text.EndsWith(filter, StringComparison.CurrentCultureIgnoreCase),
+        StringFilterOperator.IsEqualTo      => text.Equals(filter, StringComparison.CurrentCultureIgnoreCase),
+        StringFilterOperator.IsNotEqualTo   => !text.Equals(filter, StringComparison.CurrentCultureIgnoreCase),
+        _                                   => text.StartsWith(filter, StringComparison.CurrentCultureIgnoreCase),
+    };
+
+    // ── Suggestions ──────────────────────────────────────────────────────────
+    private void BuildLocalView()
+    {
+        IEnumerable<TItem> items = Data ?? [];
+        if (Filterable && _text.Length >= EffectiveMinLength && _text.Length > 0)
+            items = items.Where(i => Matches(TextOf(i), _text, FilterOperator));
+        SetView(items);
+    }
+
+    private void SetView(IEnumerable<TItem> items)
+    {
+        if (_groupAccessor is not null && !IsVirtual) items = items.OrderBy(GroupOf, StringComparer.CurrentCulture);
+        _view = items.ToList();
+        _rows = IsVirtual ? _view.Select((item, index) => new Row(item, index)).ToList() : [];
+        if (_focused is int f && f >= _view.Count) _focused = null;
+    }
+
+    private async Task LoadSuggestionsAsync()
+    {
+        if (!UsesSearchCallback && !OnRead.HasDelegate)
+        {
+            BuildLocalView();
             return;
         }
 
-        _cts?.Cancel();
-        _cts?.Dispose();
-        _cts = new CancellationTokenSource();
-        var token = _cts.Token;
-        var text  = _inputText;
-
-        _isLoading   = true;
-        _hasSearched = false;
-
+        _readCts?.Cancel();
+        var cts = _readCts = new CancellationTokenSource();
+        var text = _text;
+        _loading = true;
+        StateHasChanged();
         try
         {
-            await Task.Delay(DebounceMs, token);
-
-            IEnumerable<TItem> results = Search is not null
-                ? Search(text)
-                : SearchAsync is not null
-                    ? await SearchAsync(text)
-                    : [];
-
-            _suggestions = results.ToList();
-            _isOpen      = true;
-            _isLoading   = false;
-            _hasSearched = true;
+            IEnumerable<TItem> results;
+            if (Search is not null) results = Search(text);
+            else if (SearchAsync is not null) results = await SearchAsync(text);
+            else
+            {
+                var args = new AutoCompleteReadEventArgs<TItem>
+                {
+                    Request = new DropDownListReadRequest { FilterText = text, FilterOperator = FilterOperator, Take = 0 },
+                    CancellationToken = cts.Token,
+                };
+                await OnRead.InvokeAsync(args);
+                results = args.Data ?? [];
+            }
+            if (cts.IsCancellationRequested) return;
+            SetView(results);
         }
-        catch (TaskCanceledException) { }
-        catch { _isLoading = false; }
+        catch (Exception) when (!cts.IsCancellationRequested)
+        {
+            SetView([]);
+        }
+        finally
+        {
+            if (!cts.IsCancellationRequested) _loading = false;
+        }
     }
 
-    private void OnFocus()
+    // ── Input ────────────────────────────────────────────────────────────────
+    private async Task OnInputAsync(ChangeEventArgs e)
     {
-        if (_suggestions.Count > 0) _isOpen = true;
+        _text = e.Value?.ToString() ?? "";
+        _focused = null;
+
+        _debounceCts?.Cancel();
+        var cts = _debounceCts = new CancellationTokenSource();
+        try { if (EffectiveDebounce > 0) await Task.Delay(EffectiveDebounce, cts.Token); }
+        catch (TaskCanceledException) { return; }
+
+        await SetValueAsync(_text);
+
+        if (_text.Length < EffectiveMinLength || _text.Length == 0)
+        {
+            await CloseFromUserAsync();
+            return;
+        }
+
+        await LoadSuggestionsAsync();
+        if (cts.IsCancellationRequested) return;
+        await OpenFromUserAsync();
     }
 
-    private async Task OnBlur()
+    private async Task SetValueAsync(string? value)
     {
-        await Task.Delay(200);
-        _isOpen = false;
+        if (value == _lastValueParam) return;
+        _lastValueParam = value;
+        Value = value;
+        _pendingChange = true;
+        await ValueChanged.InvokeAsync(value);
+        if (EditContext is not null && _fieldIdentifier is { } field) EditContext.NotifyFieldChanged(field);
     }
 
-    private async Task OnKeyDown(KeyboardEventArgs e)
+    private async Task CommitAsync()
     {
+        if (!_pendingChange) return;
+        _pendingChange = false;
+        await OnChange.InvokeAsync(Value);
+    }
+
+    private async Task SelectAsync(TItem item)
+    {
+        _debounceCts?.Cancel();
+        _text = TextOf(item);
+        await SetValueAsync(_text);
+        SelectedItem = item;
+        await SelectedItemChanged.InvokeAsync(item);
+        await CloseFromUserAsync();
+        await CommitAsync();
+    }
+
+    private async Task ClearAsync()
+    {
+        _debounceCts?.Cancel();
+        _text = "";
+        await SetValueAsync(null);
+        SelectedItem = default;
+        await SelectedItemChanged.InvokeAsync(default);
+        await CloseFromUserAsync();
+        await CommitAsync();
+        try { await _inputRef.FocusAsync(); } catch { }
+    }
+
+    private async Task OnBlurAsync()
+    {
+        _debounceCts?.Cancel();
+        // Typed text that was still debouncing becomes the value now.
+        await SetValueAsync(_text.Length == 0 && Value is null ? null : _text);
+        await CloseFromUserAsync();
+        await CommitAsync();
+        await OnBlur.InvokeAsync();
+    }
+
+    // ── Open / close ─────────────────────────────────────────────────────────
+    private async Task OpenFromUserAsync()
+    {
+        if (IsDisabled || ReadOnly || _open) return;
+        var args = new AutoCompleteOpenEventArgs();
+        await OnOpen.InvokeAsync(args);
+        if (args.IsCancelled) return;
+        _open = true;
+    }
+
+    private async Task CloseFromUserAsync()
+    {
+        if (!_open) return;
+        var args = new AutoCompleteCloseEventArgs();
+        await OnClose.InvokeAsync(args);
+        if (args.IsCancelled) return;
+        _open = false;
+        _focused = null;
+    }
+
+    // ── Keyboard ─────────────────────────────────────────────────────────────
+    private async Task OnKeyDownAsync(KeyboardEventArgs e)
+    {
+        if (IsDisabled || ReadOnly) return;
         switch (e.Key)
         {
-            case "ArrowDown":
-                _focusedIndex = Math.Min(_focusedIndex + 1, _suggestions.Count - 1);
-                _isOpen = true;
+            case "ArrowDown" when !_open:
+                await LoadSuggestionsAsync();
+                await OpenFromUserAsync();
+                if (!e.AltKey && _view.Count > 0) SetFocus(0);
                 break;
-            case "ArrowUp":
-                _focusedIndex = Math.Max(_focusedIndex - 1, -1);
-                break;
-            case "Enter":
-                if (_focusedIndex >= 0 && _focusedIndex < _suggestions.Count)
-                    await SelectItem(_suggestions[_focusedIndex]);
-                break;
+            case "ArrowUp" when e.AltKey:
             case "Escape":
-                _isOpen = false;
+                await CloseFromUserAsync();
+                break;
+            case "ArrowDown": SetFocus((_focused ?? -1) + 1); break;
+            case "ArrowUp":   SetFocus((_focused ?? 0) - 1); break;
+            case "PageDown" when _open: SetFocus((_focused ?? -1) + 10); break;
+            case "PageUp" when _open:   SetFocus((_focused ?? 0) - 10); break;
+            case "Enter":
+                if (_open && _focused is int index && index < _view.Count)
+                {
+                    await SelectAsync(_view[index]);
+                }
+                else
+                {
+                    _debounceCts?.Cancel();
+                    await SetValueAsync(_text);
+                    await CloseFromUserAsync();
+                    await CommitAsync();
+                }
+                break;
+            case "Tab":
+                await CloseFromUserAsync();
                 break;
         }
     }
 
-    private async Task SelectItem(TItem item)
+    private void SetFocus(int index)
     {
-        _inputText    = GetItemText(item);
-        SelectedItem  = item;
-        Value         = _inputText;
-        _isOpen       = false;
-        _focusedIndex = -1;
-        await SelectedItemChanged.InvokeAsync(item);
-        await ValueChanged.InvokeAsync(Value);
+        if (_view.Count == 0) { _focused = null; return; }
+        _focused = index < 0 ? null : Math.Min(index, _view.Count - 1);
+        _scrollPending = _focused is not null;
     }
 
-    private async Task Clear()
+    private void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs e) => _ = InvokeAsync(StateHasChanged);
+
+    // ── Rendering ────────────────────────────────────────────────────────────
+    private RenderFragment RenderOption(TItem item, int index)
     {
-        _inputText   = "";
-        _suggestions.Clear();
-        _isOpen      = false;
-        SelectedItem = default;
-        Value        = null;
-        await SelectedItemChanged.InvokeAsync(default);
-        await ValueChanged.InvokeAsync(null);
+        string? extra = null;
+        if (OnItemRender is not null)
+        {
+            var args = new AutoCompleteItemRenderEventArgs<TItem> { Item = item };
+            OnItemRender(args);
+            extra = args.Class;
+        }
+        var focused = _focused == index;
+        var padding = Size switch
+        {
+            DropDownListTheme.Size.Small => "px-2 py-1 text-xs",
+            DropDownListTheme.Size.Large => "px-3 py-2 text-base",
+            _                            => "px-2 py-1.5 text-sm",
+        };
+        var cls = $"relative flex w-full cursor-pointer select-none items-center gap-2 rounded-sm outline-none transition-colors {padding} " +
+                  (focused ? "bg-accent text-accent-foreground " : "hover:bg-accent hover:text-accent-foreground ") + extra;
+        var style = IsVirtual ? $"height:{ItemHeight.ToString(CultureInfo.InvariantCulture)}px" : null;
+
+        return @<div id="@OptionId(index)" role="option" data-index="@index" aria-selected="@(focused ? "true" : "false")"
+                     class="@cls" style="@style" @onclick="() => SelectAsync(item)">
+            @if (ItemTemplate is not null) { @ItemTemplate(item) } else { <span class="truncate">@TextOf(item)</span> }
+        </div>;
+    }
+
+    private async Task TryJsAsync(string identifier, params object[] args)
+    {
+        try { await JS.InvokeVoidAsync(identifier, args); }
+        catch { /* JS not loaded or prerendering. */ }
+    }
+
+    // ── CSS ──────────────────────────────────────────────────────────────────
+    private string WrapperCls => $"relative inline-flex w-full flex-col {Class}".TrimEnd();
+    private string? WrapperStyle => Width is null ? null : $"width:{Width}";
+
+    private string InputBoxCls
+    {
+        get
+        {
+            var size = Size switch
+            {
+                DropDownListTheme.Size.Small => "h-8 px-2 text-xs",
+                DropDownListTheme.Size.Large => "h-12 px-4 text-base",
+                _                            => "h-10 px-3 text-sm",
+            };
+            var rounded = FillMode == DropDownListTheme.FillMode.Flat ? "rounded-none" : Rounded switch
+            {
+                DropDownListTheme.Rounded.None  => "rounded-none",
+                DropDownListTheme.Rounded.Small => "rounded-sm",
+                DropDownListTheme.Rounded.Large => "rounded-lg",
+                DropDownListTheme.Rounded.Full  => "rounded-full",
+                _                               => "rounded-md",
+            };
+            var fill = FillMode switch
+            {
+                DropDownListTheme.FillMode.Flat    => "border-0 border-b-2 border-input bg-transparent",
+                DropDownListTheme.FillMode.Outline => "border-2 border-input bg-transparent",
+                _                                  => "border border-input bg-background shadow-sm",
+            };
+            return $"flex w-full items-center gap-2 transition-colors {size} {rounded} {fill} " +
+                   "ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 " +
+                   (IsDisabled ? "cursor-not-allowed opacity-50 " : "") +
+                   (IsInvalid ? "border-destructive" : "");
+        }
+    }
+
+    private string PopupCls =>
+        "absolute left-0 top-full z-50 mt-1 min-w-full overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg animate-fade-in " +
+        (AdaptiveMode == AdaptiveMode.Auto
+            ? "max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:mt-0 max-sm:w-full! max-sm:max-w-none! max-sm:rounded-b-none max-sm:rounded-t-xl "
+            : "") +
+        (_popupSettings?.Class ?? PopupClass);
+
+    private string? PopupStyle => JoinStyles(
+        ("width", _popupSettings?.Width ?? PopupWidth),
+        ("min-width", _popupSettings?.MinWidth),
+        ("max-width", _popupSettings?.MaxWidth));
+
+    private string ListCls =>
+        "overflow-y-auto overscroll-contain p-1" + (AdaptiveMode == AdaptiveMode.Auto ? " max-sm:max-h-[60vh]!" : "");
+
+    private string? ListStyle
+    {
+        get
+        {
+            var height = _popupSettings?.Height ?? PopupHeight;
+            var maxHeight = _popupSettings?.MaxHeight;
+            if (IsVirtual) height ??= "200px";
+            else if (height is null) maxHeight ??= "15rem";
+            return JoinStyles(("height", height), ("min-height", _popupSettings?.MinHeight), ("max-height", maxHeight));
+        }
+    }
+
+    private static string? JoinStyles(params (string Name, string? Value)[] styles)
+    {
+        var css = string.Join(";", styles.Where(s => !string.IsNullOrEmpty(s.Value)).Select(s => $"{s.Name}:{s.Value}"));
+        return css.Length == 0 ? null : css;
+    }
+
+    public void Dispose()
+    {
+        _debounceCts?.Cancel();
+        _readCts?.Cancel();
+        if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged -= OnValidationStateChanged;
     }
 }

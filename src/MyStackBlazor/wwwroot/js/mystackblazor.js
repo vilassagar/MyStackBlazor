@@ -376,6 +376,16 @@ window.MyStackBlazor = {
         document.getElementById(id)?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
     },
 
+    // AutoComplete: arrows never move the caret; Enter only selects (instead of submitting) while the list is open.
+    autoCompletePreventKeys(el) {
+        if (!el || el._msAcKeys) return;
+        el._msAcKeys = (e) => {
+            if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'].includes(e.key)) e.preventDefault();
+            else if (e.key === 'Enter' && el.getAttribute('aria-expanded') === 'true' && el.hasAttribute('aria-activedescendant')) e.preventDefault();
+        };
+        el.addEventListener('keydown', el._msAcKeys);
+    },
+
     dropDownScrollIntoView(listId, index) {
         const list = document.getElementById(listId);
         const item = list?.querySelector(`[data-index="${index}"]`);
