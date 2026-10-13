@@ -1,133 +1,120 @@
 @namespace MyStackBlazor.Components.Form
+@typeparam T
+@inherits DatePickerBase<T>
 
-<div class="relative @Class" @attributes="AdditionalAttributes">
-    <div role="button"
-         tabindex="0"
-         aria-expanded="@_open.ToString().ToLower()"
-         aria-haspopup="true"
-         class="flex h-10 w-full items-center rounded-md border-2 border-input bg-background px-3 py-2 text-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-         @onclick="TogglePanel"
-         @onkeydown='e => { if (e.Key is "Enter" or " ") TogglePanel(); if (e.Key == "Escape") ClosePanel(); }'>
-        <svg class="mr-2 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-            <line x1="16" y1="2" x2="16" y2="6"></line>
-            <line x1="8" y1="2" x2="8" y2="6"></line>
-            <line x1="3" y1="10" x2="21" y2="10"></line>
-        </svg>
-        <span class="@(Value is null ? "text-muted-foreground" : "")">
-            @(Value?.ToString(Format) ?? Placeholder ?? "Pick date & time")
-        </span>
-    </div>
+@*
+    Date-time picker modelled on the Telerik DateTimePicker API: a segmented input plus a
+    popup with a Date tab (calendar) and a Time tab (time lists), confirmed with Set.
 
-    @if (_open)
+    <StackDateTimePicker @bind-Value="meeting" Format="dd MMM yyyy HH:mm" Steps="@(new TimePickerSteps { Minute = 5 })" />
+*@
+
+<div class="@($"relative inline-flex w-full flex-col {Class}".TrimEnd())"
+     style="@(Width is null ? null : $"width:{Width}")"
+     @onkeydown="OnWrapperKeyDownAsync"
+     @attributes="AdditionalAttributes">
+
+    <StackDateInput T="T" @ref="Input"
+                    Value="Value" ValueChanged="OnInputValueChangedAsync" ValueExpression="ValueExpression"
+                    Format="@EffectiveFormat" Min="Min" Max="Max"
+                    Placeholder="@Placeholder" FormatPlaceholder="FormatPlaceholder"
+                    AutoSwitchParts="AutoSwitchParts" AutoSwitchKeys="AutoSwitchKeys" AutoCorrectParts="AutoCorrectParts"
+                    TwoDigitYearMax="TwoDigitYearMax" ShowClearButton="ShowClearButton"
+                    Enabled="!IsDisabled" ReadOnly="ReadOnly"
+                    Size="@Size" Rounded="@Rounded" FillMode="@FillMode"
+                    Id="@Id" TabIndex="TabIndex" AriaLabel="@(AriaLabel ?? "Date and time")"
+                    OnChange="OnChange" OnBlur="OnInputBlurAsync">
+        <SuffixTemplate>
+            <button type="button" tabindex="-1" class="@ToggleButtonCls"
+                    aria-label="Open date and time picker" aria-haspopup="dialog"
+                    aria-expanded="@(IsOpen ? "true" : "false")" aria-controls="@(IsOpen ? PopupId : null)"
+                    disabled="@(IsDisabled || ReadOnly)"
+                    @onclick="ToggleAsync" @onclick:stopPropagation="true">
+                <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+            </button>
+        </SuffixTemplate>
+    </StackDateInput>
+
+    @if (IsOpen)
     {
-        <div class="fixed inset-0 z-40" aria-hidden="true" @onclick="ClosePanel"></div>
-        <div class="absolute z-50 mt-1 rounded-md border bg-popover shadow-md animate-fade-in">
-            <div class="p-3">
-                <div class="flex items-center justify-between mb-3">
-                    <button type="button" class="p-1 hover:bg-accent rounded" @onclick="PrevMonth">‹</button>
-                    <span class="text-sm font-medium">@_view.ToString("MMMM yyyy")</span>
-                    <button type="button" class="p-1 hover:bg-accent rounded" @onclick="NextMonth">›</button>
+        <div class="@OverlayCls" @onclick="OnOverlayClickAsync" aria-hidden="true"></div>
+        <div id="@PopupId" class="@PopupCls" role="dialog" aria-label="@(Title ?? "Choose a date and time")">
+            @if (AdaptiveMode == AdaptiveMode.Auto)
+            {
+                <div class="hidden items-center justify-between border-b px-4 py-3 max-sm:flex">
+                    <span class="text-sm font-semibold">@(Title ?? "Select date and time")</span>
+                    <button type="button" class="@ToggleButtonCls" aria-label="Close" @onclick="() => CloseFromUserAsync(refocus: true)">✕</button>
                 </div>
-                <div class="grid grid-cols-7 mb-1">
-                    @foreach (var d in new[] { "Su","Mo","Tu","We","Th","Fr","Sa" })
-                    {
-                        <div class="flex h-8 w-8 items-center justify-center text-xs text-muted-foreground">@d</div>
-                    }
-                </div>
-                <div class="grid grid-cols-7">
-                    @foreach (var cell in CalendarCells)
-                    {
-                        @if (cell is null)
-                        {
-                            <div class="h-8 w-8"></div>
-                        }
-                        else
-                        {
-                            <button type="button" class="@DayClass(cell.Value)" @onclick="() => SelectDay(cell.Value)">
-                                @cell.Value.Day
-                            </button>
-                        }
-                    }
-                </div>
+            }
+
+            <div role="tablist" aria-label="Date or time" class="flex gap-1 border-b p-2">
+                <button type="button" role="tab" aria-selected="@(!_timeTab ? "true" : "false")" class="@TabCls(!_timeTab)" @onclick="() => _timeTab = false">Date</button>
+                <button type="button" role="tab" aria-selected="@(_timeTab ? "true" : "false")" class="@TabCls(_timeTab)" @onclick="() => _timeTab = true">Time</button>
             </div>
 
-            <div class="border-t p-3">
-                <p class="mb-2 text-xs font-medium text-muted-foreground">Time</p>
-                <div class="flex items-center gap-2">
-                    <input type="number" min="0" max="23"
-                           class="w-16 rounded-md border-2 border-input bg-background px-2 py-1 text-center text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                           value="@_hours"
-                           @oninput="e => { if (int.TryParse(e.Value?.ToString(), out var h)) _hours = Math.Clamp(h, 0, 23); }" />
-                    <span class="font-bold">:</span>
-                    <input type="number" min="0" max="59"
-                           class="w-16 rounded-md border-2 border-input bg-background px-2 py-1 text-center text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                           value="@_minutes"
-                           @oninput="e => { if (int.TryParse(e.Value?.ToString(), out var m)) _minutes = Math.Clamp(m, 0, 59); }" />
-                </div>
+            <div role="tabpanel" class="min-h-[18rem]">
+                @if (!_timeTab)
+                {
+                    <StackDateCalendar Value="_temp?.Date" ValueChanged="OnCalendarValue"
+                                       Date="_temp?.Date ?? DateTime.Today"
+                                       View="View" BottomView="BottomView" TopView="TopView"
+                                       Min="Min" Max="Max" DisabledDates="DisabledDates"
+                                       ShowWeekNumbers="ShowWeekNumbers" ShowOtherMonthDays="ShowOtherMonthDays"
+                                       OnCellRender="OnCalendarCellRender" Class="border-0" />
+                }
+                else
+                {
+                    <div class="flex justify-center">
+                        <StackTimeSelector @bind-Value="_temp" Format="@EffectiveFormat" Steps="Steps" OnEnter="SetAsync" />
+                    </div>
+                }
             </div>
 
-            <div class="flex justify-end gap-2 border-t p-2">
-                <button type="button" class="rounded-md border-2 border-input px-3 py-1.5 text-sm hover:bg-accent" @onclick="ClosePanel">Cancel</button>
-                <button type="button" class="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90" @onclick="Confirm">Apply</button>
+            <div class="flex items-center justify-between gap-2 border-t px-2 py-2">
+                <button type="button" class="text-xs font-medium text-primary hover:underline" @onclick="() => _temp = DateTime.Now">Now</button>
+                <div class="flex gap-2">
+                    <button type="button" class="@FooterButtonCls" @onclick="() => CloseFromUserAsync(refocus: true)">Cancel</button>
+                    <button type="button" class="@PrimaryFooterButtonCls" @onclick="SetAsync">Set</button>
+                </div>
             </div>
         </div>
     }
 </div>
 
 @code {
-    [Parameter] public DateTime? Value { get; set; }
-    [Parameter] public EventCallback<DateTime?> ValueChanged { get; set; }
-    [Parameter] public string? Placeholder { get; set; }
-    [Parameter] public string Format { get; set; } = "MMM dd, yyyy HH:mm";
-    [Parameter] public string? Class { get; set; }
-    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+    [Parameter] public CalendarView View { get; set; } = CalendarView.Month;
+    [Parameter] public CalendarView BottomView { get; set; } = CalendarView.Month;
+    [Parameter] public CalendarView TopView { get; set; } = CalendarView.Century;
+    [Parameter] public List<DateTime>? DisabledDates { get; set; }
+    [Parameter] public bool ShowWeekNumbers { get; set; }
+    [Parameter] public bool ShowOtherMonthDays { get; set; } = true;
+    [Parameter] public Action<CalendarCellRenderEventArgs>? OnCalendarCellRender { get; set; }
+    /// <summary>Step sizes of the hour / minute / second lists.</summary>
+    [Parameter] public TimePickerSteps? Steps { get; set; }
 
-    private bool _open;
-    private DateTime _view    = DateTime.Today;
-    private DateTime? _selectedDay;
-    private int _hours   = DateTime.Now.Hour;
-    private int _minutes = DateTime.Now.Minute;
+    private DateTime? _temp;
+    private bool _timeTab;
 
-    private IEnumerable<DateTime?> CalendarCells
+    protected override string DefaultFormat => "G";
+
+    protected override void OnPopupOpening()
     {
-        get
-        {
-            var first  = new DateTime(_view.Year, _view.Month, 1);
-            var blanks = (int)first.DayOfWeek;
-            for (var i = 0; i < blanks; i++) yield return null;
-            var days = DateTime.DaysInMonth(_view.Year, _view.Month);
-            for (var d = 1; d <= days; d++) yield return new DateTime(_view.Year, _view.Month, d);
-        }
+        _temp = CurrentDate ?? DateTime.Today;
+        _timeTab = false;
     }
 
-    private string DayClass(DateTime d) =>
-        "h-8 w-8 text-sm flex items-center justify-center rounded-md " +
-        (_selectedDay?.Date == d.Date ? "bg-primary text-primary-foreground " : "hover:bg-accent ") +
-        (d.Date == DateTime.Today && _selectedDay?.Date != d.Date ? "font-bold text-primary" : "");
-
-    private void TogglePanel()
+    private void OnCalendarValue(DateTime? date)
     {
-        _open = !_open;
-        if (_open && Value.HasValue)
-        {
-            _view        = Value.Value;
-            _selectedDay = Value.Value.Date;
-            _hours       = Value.Value.Hour;
-            _minutes     = Value.Value.Minute;
-        }
+        if (date is not DateTime d) return;
+        _temp = d.Date + (_temp?.TimeOfDay ?? TimeSpan.Zero);
+        _timeTab = true; // like Telerik: picking a date moves on to the time
     }
 
-    private void ClosePanel()   => _open = false;
-    private void PrevMonth()    => _view = _view.AddMonths(-1);
-    private void NextMonth()    => _view = _view.AddMonths(1);
-    private void SelectDay(DateTime d) => _selectedDay = d.Date;
+    private Task SetAsync() => SetFromPopupAsync(_temp, close: true);
 
-    private async Task Confirm()
-    {
-        var day = _selectedDay ?? DateTime.Today;
-        Value   = new DateTime(day.Year, day.Month, day.Day, _hours, _minutes, 0);
-        _open   = false;
-        await ValueChanged.InvokeAsync(Value);
-    }
+    private static string TabCls(bool active) =>
+        "flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors " +
+        (active ? "bg-primary text-primary-foreground" : "hover:bg-accent");
 }

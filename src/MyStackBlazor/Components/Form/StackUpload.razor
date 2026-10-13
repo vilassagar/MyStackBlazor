@@ -1,0 +1,349 @@
+@namespace MyStackBlazor.Components.Form
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@*
+    Uploads files to server endpoints, modelled on the Telerik Upload API.
+    SaveUrl receives a multipart POST with the file in SaveField; RemoveUrl receives the file names in RemoveField.
+
+    <StackUpload SaveUrl="api/upload/save" RemoveUrl="api/upload/remove"
+                 AllowedExtensions="@(new List<string> { ".jpg", ".png" })" MaxFileSize="2_000_000"
+                 OnUpload="AddAntiforgeryHeader" OnSuccess="Uploaded" />
+*@
+
+<div id="@Id" class="@($"space-y-3 {Class}".TrimEnd())" style="@(Width is null ? null : $"width:{Width}")" @attributes="AdditionalAttributes">
+    <div id="@_dropzoneId" class="@DropzoneCls">
+        <input @ref="_input" type="file" class="sr-only" tabindex="-1" aria-hidden="true"
+               multiple="@Multiple" accept="@EffectiveAccept" capture="@Capture" disabled="@(!Enabled)" />
+        <div class="flex flex-wrap items-center gap-3 p-3">
+            <button type="button" class="@ButtonCls" disabled="@(!Enabled)" @onclick="OpenSelectFilesDialog">
+                @if (SelectFilesButtonTemplate is not null) { @SelectFilesButtonTemplate } else { <text>Select files…</text> }
+            </button>
+            <span class="text-sm text-muted-foreground">or drop files here to upload</span>
+        </div>
+    </div>
+
+    @if (_files.Count > 0)
+    {
+        <ul class="space-y-2" aria-label="Files">
+            @foreach (var file in _files)
+            {
+                var f = file;
+                <li class="@($"rounded-md border px-3 py-2 {(f.Status == UploadFileStatus.Failed || !f.IsValid ? "border-destructive/50 bg-destructive/5" : "bg-background")}")" data-file="@f.Name" data-status="@f.Status">
+                    <div class="flex items-center gap-3">
+                        @if (FileTemplate is not null)
+                        {
+                            @FileTemplate(f)
+                        }
+                        else
+                        {
+                            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-muted text-[10px] font-semibold uppercase text-muted-foreground">@f.Extension.TrimStart('.')</span>
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-sm font-medium">@f.Name</p>
+                                @if (FileInfoTemplate is not null)
+                                {
+                                    @FileInfoTemplate(f)
+                                }
+                                else
+                                {
+                                    <p class="@($"text-xs {(f.Status == UploadFileStatus.Failed || !f.IsValid ? "font-medium text-destructive" : "text-muted-foreground")}")">@StatusText(f)</p>
+                                }
+                            </div>
+                        }
+                        <div class="flex shrink-0 items-center gap-1">
+                            @if (f.Status == UploadFileStatus.Failed)
+                            {
+                                <button type="button" class="@IconButtonCls" aria-label="@($"Retry {f.Name}")" @onclick="() => RetryFileAsync(f.Id)">↻</button>
+                            }
+                            @if (f.Status == UploadFileStatus.Uploading)
+                            {
+                                <button type="button" class="@IconButtonCls" aria-label="@($"Cancel {f.Name}")" @onclick="() => CancelFileAsync(f.Id)">✕</button>
+                            }
+                            else
+                            {
+                                <button type="button" class="@IconButtonCls" aria-label="@($"Remove {f.Name}")" disabled="@(!Enabled)" @onclick="() => RemoveFileAsync(f.Id)">
+                                    <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /></svg>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                    @if (f.Status == UploadFileStatus.Uploading)
+                    {
+                        <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow="@f.Progress" aria-valuemin="0" aria-valuemax="100" aria-label="@($"Uploading {f.Name}")">
+                            <div class="h-full rounded-full bg-primary transition-all" style="@($"width:{f.Progress}%")"></div>
+                        </div>
+                    }
+                </li>
+            }
+        </ul>
+
+        @if (!AutoUpload && _files.Any(f => f.Status is UploadFileStatus.Selected && f.IsValid))
+        {
+            <div class="flex justify-end gap-2">
+                <button type="button" class="@ButtonCls" @onclick="ClearFiles">Clear</button>
+                <button type="button" class="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90" @onclick="UploadFiles">Upload</button>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    /// <summary>Endpoint that receives each file (multipart POST).</summary>
+    [Parameter] public string? SaveUrl { get; set; }
+    /// <summary>Form field name of the file (default "files").</summary>
+    [Parameter] public string SaveField { get; set; } = "files";
+    /// <summary>Endpoint called when an uploaded file is removed (receives the names in RemoveField).</summary>
+    [Parameter] public string? RemoveUrl { get; set; }
+    [Parameter] public string RemoveField { get; set; } = "files";
+    /// <summary>Upload as soon as files are selected (default); otherwise an Upload button appears.</summary>
+    [Parameter] public bool AutoUpload { get; set; } = true;
+    [Parameter] public bool WithCredentials { get; set; }
+
+    [Parameter] public List<string>? AllowedExtensions { get; set; }
+    [Parameter] public string? Accept { get; set; }
+    [Parameter] public long? MinFileSize { get; set; }
+    [Parameter] public long? MaxFileSize { get; set; }
+    [Parameter] public bool Multiple { get; set; } = true;
+    [Parameter] public string? Capture { get; set; }
+    [Parameter] public bool Enabled { get; set; } = true;
+    /// <summary>Id of another element that also accepts dropped files.</summary>
+    [Parameter] public string? DropZoneId { get; set; }
+    /// <summary>Files shown as already uploaded when the component starts.</summary>
+    [Parameter] public List<UploadFileInfo>? Files { get; set; }
+
+    [Parameter] public RenderFragment? SelectFilesButtonTemplate { get; set; }
+    [Parameter] public RenderFragment<UploadFileInfo>? FileTemplate { get; set; }
+    [Parameter] public RenderFragment<UploadFileInfo>? FileInfoTemplate { get; set; }
+
+    [Parameter] public EventCallback<UploadSelectEventArgs> OnSelect { get; set; }
+    [Parameter] public EventCallback<UploadEventArgs> OnUpload { get; set; }
+    [Parameter] public EventCallback<UploadProgressEventArgs> OnProgress { get; set; }
+    [Parameter] public EventCallback<UploadSuccessEventArgs> OnSuccess { get; set; }
+    [Parameter] public EventCallback<UploadErrorEventArgs> OnError { get; set; }
+    /// <summary>Before an uploaded file is removed; headers/data apply to the RemoveUrl request.</summary>
+    [Parameter] public EventCallback<UploadEventArgs> OnRemove { get; set; }
+    [Parameter] public EventCallback<UploadSelectEventArgs> OnCancel { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Width { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    /// <summary>One file as reported by JS.</summary>
+    public sealed record JsFile(string Id, string Name, long Size, string Type);
+
+    private readonly string _uid = $"up-{Guid.NewGuid():N}"[..11];
+    private readonly string _dropzoneId = $"updz-{Guid.NewGuid():N}";
+    private readonly List<UploadFileInfo> _files = [];
+    private ElementReference _input;
+    private DotNetObjectReference<StackUpload>? _dotnet;
+    private bool _initialLoaded;
+
+    /// <summary>The files currently listed.</summary>
+    public IReadOnlyList<UploadFileInfo> CurrentFiles => _files;
+
+    private string? EffectiveAccept => Accept ?? (AllowedExtensions is { Count: > 0 } ext ? string.Join(",", ext.Select(e => e.StartsWith('.') ? e : "." + e)) : null);
+
+    protected override void OnParametersSet()
+    {
+        if (_initialLoaded || Files is null) return;
+        _initialLoaded = true;
+        foreach (var f in Files)
+        {
+            f.Status = UploadFileStatus.Uploaded;
+            f.Progress = 100;
+            _files.Add(f);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _dotnet = DotNetObjectReference.Create(this);
+        var zones = DropZoneId is null ? new[] { _dropzoneId } : [_dropzoneId, DropZoneId];
+        try { await JS.InvokeVoidAsync("MyStackBlazor.uploadInit", _uid, _input, zones, _dotnet); } catch { }
+    }
+
+    // ── Public API (mirrors Telerik) ─────────────────────────────────────────
+    public async Task OpenSelectFilesDialog()
+    {
+        try { await JS.InvokeVoidAsync("MyStackBlazor.uploadOpenDialog", _uid); } catch { }
+    }
+
+    /// <summary>Uploads all selected (valid, not yet uploaded) files.</summary>
+    public async Task UploadFiles()
+    {
+        foreach (var file in _files.Where(f => f.Status == UploadFileStatus.Selected && f.IsValid).ToList())
+            await SendAsync(file);
+        StateHasChanged();
+    }
+
+    public void ClearFiles()
+    {
+        foreach (var file in _files.Where(f => f.Status == UploadFileStatus.Uploading))
+            _ = JS.InvokeVoidAsync("MyStackBlazor.uploadCancel", _uid, file.Id).AsTask();
+        _files.Clear();
+        StateHasChanged();
+    }
+
+    public async Task RetryFileAsync(string id)
+    {
+        if (_files.FirstOrDefault(f => f.Id == id) is { Status: UploadFileStatus.Failed } file) await SendAsync(file);
+    }
+
+    public async Task CancelFileAsync(string id)
+    {
+        if (_files.FirstOrDefault(f => f.Id == id) is not { Status: UploadFileStatus.Uploading } file) return;
+        var args = new UploadSelectEventArgs { Files = [file] };
+        await OnCancel.InvokeAsync(args);
+        if (args.IsCancelled) return;
+        try { await JS.InvokeVoidAsync("MyStackBlazor.uploadCancel", _uid, file.Id); } catch { }
+        _files.Remove(file);
+        await ForgetAsync(file);
+        StateHasChanged();
+    }
+
+    public async Task RemoveFileAsync(string id)
+    {
+        if (_files.FirstOrDefault(f => f.Id == id) is not { } file) return;
+
+        var args = new UploadEventArgs { Files = [file] };
+        await OnRemove.InvokeAsync(args);
+        if (args.IsCancelled) return;
+
+        if (file.Status == UploadFileStatus.Uploaded && !string.IsNullOrEmpty(RemoveUrl))
+        {
+            var result = await RemoveOnServerAsync(file, args) ?? new RemoveResult(false, 0, "No response", "");
+            var request = new UploadHttpRequest { Status = result.Status, StatusText = result.StatusText, ResponseText = result.ResponseText };
+            if (!result.Ok)
+            {
+                await OnError.InvokeAsync(new UploadErrorEventArgs { Files = [file], Operation = UploadOperationType.Remove, Request = request });
+                return;
+            }
+            await OnSuccess.InvokeAsync(new UploadSuccessEventArgs { Files = [file], Operation = UploadOperationType.Remove, Request = request });
+        }
+        _files.Remove(file);
+        await ForgetAsync(file);
+        StateHasChanged();
+    }
+
+    // ── JS callbacks ─────────────────────────────────────────────────────────
+    [JSInvokable]
+    public async Task OnJsFilesSelected(List<JsFile> files)
+    {
+        var picked = files.Select(f =>
+        {
+            var (ext, min, max) = FileRules.Check(f.Name, f.Size, AllowedExtensions, MinFileSize, MaxFileSize);
+            return new UploadFileInfo { Id = f.Id, Name = f.Name, Size = f.Size, ContentType = f.Type, InvalidExtension = ext, InvalidMinFileSize = min, InvalidMaxFileSize = max };
+        }).ToList();
+
+        var args = new UploadSelectEventArgs { Files = picked };
+        await OnSelect.InvokeAsync(args);
+        if (args.IsCancelled)
+        {
+            foreach (var f in picked) await ForgetAsync(f);
+            return;
+        }
+
+        if (!Multiple)
+        {
+            foreach (var old in _files.Where(f => f.Status != UploadFileStatus.Uploaded).ToList()) _files.Remove(old);
+        }
+        _files.AddRange(picked);
+        StateHasChanged();
+
+        if (AutoUpload)
+            foreach (var file in picked.Where(f => f.IsValid)) await SendAsync(file);
+    }
+
+    [JSInvokable]
+    public async Task OnJsProgress(string fileId, int percent)
+    {
+        if (_files.FirstOrDefault(f => f.Id == fileId) is not { } file) return;
+        file.Progress = percent;
+        await OnProgress.InvokeAsync(new UploadProgressEventArgs { Files = [file], Progress = percent });
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task OnJsCompleted(string fileId, bool ok, int status, string statusText, string responseText)
+    {
+        if (_files.FirstOrDefault(f => f.Id == fileId) is not { } file) return;
+        var request = new UploadHttpRequest { Status = status, StatusText = statusText, ResponseText = responseText };
+        if (ok)
+        {
+            file.Status = UploadFileStatus.Uploaded;
+            file.Progress = 100;
+            await OnSuccess.InvokeAsync(new UploadSuccessEventArgs { Files = [file], Operation = UploadOperationType.Upload, Request = request });
+        }
+        else
+        {
+            file.Status = UploadFileStatus.Failed;
+            await OnError.InvokeAsync(new UploadErrorEventArgs { Files = [file], Operation = UploadOperationType.Upload, Request = request });
+        }
+        StateHasChanged();
+    }
+
+    // ── Requests ─────────────────────────────────────────────────────────────
+    private async Task SendAsync(UploadFileInfo file)
+    {
+        if (string.IsNullOrEmpty(SaveUrl)) return;
+        var args = new UploadEventArgs { Files = [file] };
+        await OnUpload.InvokeAsync(args);
+        if (args.IsCancelled) return;
+
+        file.Status = UploadFileStatus.Uploading;
+        file.Progress = 0;
+        StateHasChanged();
+        try
+        {
+            await JS.InvokeVoidAsync("MyStackBlazor.uploadSend", _uid, file.Id, SaveUrl, SaveField, args.RequestHeaders, args.RequestData, WithCredentials);
+        }
+        catch
+        {
+            file.Status = UploadFileStatus.Failed;
+        }
+    }
+
+    internal sealed record RemoveResult(bool Ok, int Status, string StatusText, string ResponseText);
+
+    private async Task<RemoveResult?> RemoveOnServerAsync(UploadFileInfo file, UploadEventArgs args)
+    {
+        try
+        {
+            return await JS.InvokeAsync<RemoveResult>("MyStackBlazor.uploadRemove", RemoveUrl, RemoveField, new[] { file.Name }, args.RequestHeaders, args.RequestData, WithCredentials);
+        }
+        catch
+        {
+            return new RemoveResult(false, 0, "Request failed", "");
+        }
+    }
+
+    private async Task ForgetAsync(UploadFileInfo file)
+    {
+        try { await JS.InvokeVoidAsync("MyStackBlazor.uploadForget", _uid, file.Id); } catch { }
+    }
+
+    private static string StatusText(UploadFileInfo f) =>
+        !f.IsValid ? FileRules.Message(f.InvalidExtension, f.InvalidMinFileSize, f.InvalidMaxFileSize)
+        : f.Status switch
+        {
+            UploadFileStatus.Uploading => $"Uploading… {f.Progress}%",
+            UploadFileStatus.Uploaded  => $"{FileRules.FormatSize(f.Size)} · Uploaded",
+            UploadFileStatus.Failed    => "Upload failed.",
+            _                          => FileRules.FormatSize(f.Size),
+        };
+
+    private string DropzoneCls => "rounded-lg border-2 border-dashed border-border transition-colors " + (Enabled ? "" : "pointer-events-none opacity-50");
+
+    private const string ButtonCls =
+        "inline-flex items-center rounded-md border bg-background px-3 py-1.5 text-sm font-medium shadow-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
+    private const string IconButtonCls =
+        "flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50";
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("MyStackBlazor.uploadDispose", _uid); } catch { }
+        _dotnet?.Dispose();
+    }
+}

@@ -1,0 +1,17 @@
+@namespace MyStackBlazor.Components.Form
+
+@*
+    Markup for a custom toolbar tool of StackEditor (Telerik EditorCustomTool).
+    Place it in <EditorCustomTools> and add new CustomTool("Name") to Tools.
+*@
+
+@code {
+    [CascadingParameter] private StackEditor? Editor { get; set; }
+
+    [Parameter, EditorRequired] public string Name { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    // Registered once with a fragment that always renders the latest ChildContent: re-registering on every
+    // parameter set would re-render the editor, which re-renders this component, in an endless loop.
+    protected override void OnInitialized() => Editor?.RegisterCustomTool(Name, builder => ChildContent?.Invoke(builder));
+}

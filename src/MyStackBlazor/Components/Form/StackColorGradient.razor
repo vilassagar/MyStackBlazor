@@ -1,0 +1,234 @@
+@namespace MyStackBlazor.Components.Form
+@inject IJSRuntime JS
+@using System.Globalization
+
+@*
+    HSV colour editor modelled on the Telerik ColorGradient API: saturation/brightness area, hue and opacity sliders,
+    and hex or RGB inputs.
+
+    <StackColorGradient @bind-Value="color" Format="ColorFormat.Rgb" ShowOpacityEditor />
+*@
+
+<div id="@Id" class="@($"inline-flex w-64 flex-col gap-3 {(Enabled ? "" : "pointer-events-none opacity-50")} {Class}".TrimEnd())" @attributes="AdditionalAttributes">
+
+    <!-- Saturation (x) / value (y) area -->
+    <div @ref="_area"
+         role="slider"
+         tabindex="@(Enabled ? 0 : -1)"
+         aria-label="Saturation and brightness"
+         aria-valuetext="@($"saturation {Math.Round(_s * 100)}%, brightness {Math.Round(_v * 100)}%")"
+         class="relative cursor-crosshair touch-none select-none rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+         style="@FormattableString.Invariant($"width:{AreaWidth}px;height:{AreaHeight}px;background-color:{RgbaColor.FromHsv(_h, 1, 1).ToHex()}")"
+         @onpointerdown="OnAreaPointerDownAsync"
+         @onpointermove="OnAreaPointerMoveAsync"
+         @onpointerup="() => _dragging = false"
+         @onkeydown="OnAreaKeyDownAsync">
+        <div class="pointer-events-none absolute inset-0 rounded-md" style="background:linear-gradient(to right,#fff,rgba(255,255,255,0))"></div>
+        <div class="pointer-events-none absolute inset-0 rounded-md" style="background:linear-gradient(to top,#000,rgba(0,0,0,0))"></div>
+        <div class="pointer-events-none absolute h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow ring-1 ring-black/30"
+             style="@FormattableString.Invariant($"left:{_s * 100:0.##}%;top:{(1 - _v) * 100:0.##}%;background-color:{Current.ToHex()}")"></div>
+    </div>
+
+    <!-- Hue / opacity -->
+    <div class="flex items-center gap-3">
+        <span class="h-8 w-8 shrink-0 rounded-md border shadow-inner" style="@Checkerboard"><span class="block h-full w-full rounded-md" style="@($"background-color:{Current.ToRgb()}")"></span></span>
+        <div class="flex flex-1 flex-col gap-2">
+            <input type="range" min="0" max="360" step="1" aria-label="Hue" disabled="@(!Enabled)"
+                   value="@Math.Round(_h).ToString(CultureInfo.InvariantCulture)"
+                   class="h-2.5 w-full cursor-pointer appearance-none rounded-full [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-transparent [&::-webkit-slider-thumb]:shadow"
+                   style="background:linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)"
+                   @oninput="OnHueInputAsync" />
+            @if (ShowOpacityEditor)
+            {
+                <input type="range" min="0" max="100" step="1" aria-label="Opacity" disabled="@(!Enabled)"
+                       value="@Math.Round(_a * 100).ToString(CultureInfo.InvariantCulture)"
+                       class="h-2.5 w-full cursor-pointer appearance-none rounded-full [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-transparent [&::-webkit-slider-thumb]:shadow"
+                       style="@($"background:linear-gradient(to right,rgba({Current.R},{Current.G},{Current.B},0),rgb({Current.R},{Current.G},{Current.B})),{CheckerImage}")"
+                       @oninput="OnAlphaInputAsync" />
+            }
+        </div>
+    </div>
+
+    <!-- Inputs -->
+    <div class="flex items-end gap-2">
+        @if (_format == ColorFormat.Hex)
+        {
+            <label class="flex-1 text-xs text-muted-foreground">
+                HEX
+                <input type="text" aria-label="Hex" disabled="@(!Enabled)" value="@Current.ToHex()" maxlength="9"
+                       class="mt-0.5 h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                       @onchange="OnHexChangedAsync" />
+            </label>
+        }
+        else
+        {
+            @foreach (var (label, channel) in new[] { ("R", 0), ("G", 1), ("B", 2) })
+            {
+                var ch = channel;
+                <label class="w-12 text-xs text-muted-foreground">
+                    @label
+                    <input type="number" min="0" max="255" aria-label="@label" disabled="@(!Enabled)"
+                           value="@(ch == 0 ? Current.R : ch == 1 ? Current.G : Current.B)"
+                           class="mt-0.5 h-8 w-full rounded-md border border-input bg-background px-1.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                           @onchange="e => OnChannelChangedAsync(ch, e)" />
+                </label>
+            }
+            @if (ShowOpacityEditor)
+            {
+                <label class="w-12 text-xs text-muted-foreground">
+                    A
+                    <input type="number" min="0" max="1" step="0.01" aria-label="Alpha" disabled="@(!Enabled)"
+                           value="@_a.ToString("0.##", CultureInfo.InvariantCulture)"
+                           class="mt-0.5 h-8 w-full rounded-md border border-input bg-background px-1.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                           @onchange="OnAlphaChangedAsync" />
+                </label>
+            }
+        }
+        @if (Formats.Count > 1)
+        {
+            <button type="button" aria-label="Switch input format"
+                    class="flex h-8 items-center rounded-md border px-2 text-xs font-medium hover:bg-accent"
+                    @onclick="ToggleFormat">@(_format == ColorFormat.Hex ? "HEX" : "RGB") ⇅</button>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>The colour ("#rrggbb", "#rrggbbaa", "rgb(…)" or "rgba(…)"). Supports <c>@bind-Value</c>.</summary>
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    /// <summary>Format of the value and of the inputs shown first.</summary>
+    [Parameter] public ColorFormat Format { get; set; } = ColorFormat.Hex;
+    /// <summary>Input formats the user can switch between (default Hex and Rgb).</summary>
+    [Parameter] public List<ColorFormat> Formats { get; set; } = [ColorFormat.Hex, ColorFormat.Rgb];
+    [Parameter] public bool ShowOpacityEditor { get; set; } = true;
+    [Parameter] public bool Enabled { get; set; } = true;
+    [Parameter] public EventCallback<object?> OnChange { get; set; }
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private const double AreaWidth = 256, AreaHeight = 160;
+    private const string CheckerImage = "repeating-conic-gradient(#ddd 0% 25%, #fff 0% 50%) 50% / 10px 10px";
+    private static string Checkerboard => $"background:{CheckerImage}";
+
+    private ElementReference _area;
+    private double _h, _s, _v, _a = 1;
+    private ColorFormat _format;
+    private ColorFormat? _lastFormatParam;
+    private string? _lastParam;
+    private bool _synced;
+    private bool _dragging;
+
+    private RgbaColor Current => RgbaColor.FromHsv(_h, _s, _v, _a);
+
+    protected override void OnParametersSet()
+    {
+        if (Format != _lastFormatParam) { _lastFormatParam = Format; _format = Format; }
+        if (_synced && Value == _lastParam) return;
+        _synced = true;
+        _lastParam = Value;
+        if (RgbaColor.Parse(Value) is { } color)
+        {
+            var (h, s, v) = color.ToHsv();
+            // Keep the hue for greys so dragging back into colour does not jump to red.
+            if (s > 0 && v > 0) _h = h;
+            _s = s;
+            _v = v;
+            _a = color.A;
+        }
+    }
+
+    private async Task PublishAsync()
+    {
+        var text = Current.Format(Format);
+        if (text == _lastParam) return;
+        _lastParam = text;
+        Value = text;
+        await ValueChanged.InvokeAsync(text);
+        await OnChange.InvokeAsync(text);
+    }
+
+    // ── Area ─────────────────────────────────────────────────────────────────
+    private async Task SetAreaAsync(double x, double y)
+    {
+        _s = Math.Clamp(x / AreaWidth, 0, 1);
+        _v = 1 - Math.Clamp(y / AreaHeight, 0, 1);
+        await PublishAsync();
+    }
+
+    private async Task OnAreaPointerDownAsync(PointerEventArgs e)
+    {
+        _dragging = true;
+        try { await JS.InvokeVoidAsync("MyStackBlazor.capturePointer", _area, e.PointerId); } catch { }
+        await SetAreaAsync(e.OffsetX, e.OffsetY);
+    }
+
+    private async Task OnAreaPointerMoveAsync(PointerEventArgs e)
+    {
+        if (_dragging) await SetAreaAsync(e.OffsetX, e.OffsetY);
+    }
+
+    private async Task OnAreaKeyDownAsync(KeyboardEventArgs e)
+    {
+        var step = e.ShiftKey ? 0.1 : 0.01;
+        switch (e.Key)
+        {
+            case "ArrowLeft": _s = Math.Max(0, _s - step); break;
+            case "ArrowRight": _s = Math.Min(1, _s + step); break;
+            case "ArrowUp": _v = Math.Min(1, _v + step); break;
+            case "ArrowDown": _v = Math.Max(0, _v - step); break;
+            default: return;
+        }
+        await PublishAsync();
+    }
+
+    // ── Sliders & inputs ─────────────────────────────────────────────────────
+    private async Task OnHueInputAsync(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var h)) { _h = h; await PublishAsync(); }
+    }
+
+    private async Task OnAlphaInputAsync(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var a)) { _a = Math.Clamp(a / 100, 0, 1); await PublishAsync(); }
+    }
+
+    private async Task OnAlphaChangedAsync(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var a)) { _a = Math.Clamp(a, 0, 1); await PublishAsync(); }
+    }
+
+    private async Task OnHexChangedAsync(ChangeEventArgs e)
+    {
+        var text = e.Value?.ToString() ?? "";
+        if (!text.StartsWith('#')) text = "#" + text;
+        if (RgbaColor.Parse(text) is not { } color) { StateHasChanged(); return; }
+        SetFrom(color);
+        await PublishAsync();
+    }
+
+    private async Task OnChannelChangedAsync(int channel, ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out var v)) return;
+        var c = Current;
+        var b = (byte)Math.Clamp(v, 0, 255);
+        SetFrom(channel switch { 0 => c with { R = b }, 1 => c with { G = b }, _ => c with { B = b } });
+        await PublishAsync();
+    }
+
+    private void SetFrom(RgbaColor color)
+    {
+        var (h, s, v) = color.ToHsv();
+        if (s > 0 && v > 0) _h = h;
+        _s = s;
+        _v = v;
+        _a = color.A;
+    }
+
+    private void ToggleFormat()
+    {
+        var index = Formats.IndexOf(_format);
+        _format = Formats[(index + 1) % Formats.Count];
+    }
+}

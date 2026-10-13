@@ -1,0 +1,573 @@
+@namespace MyStackBlazor.Components.Form
+@inject IJSRuntime JS
+@using System.Globalization
+
+@*
+    Standalone date calendar modelled on the Telerik Calendar API
+    (named StackDateCalendar because MyStackBlazor.Calendar already has an event calendar called StackCalendar).
+
+    <StackDateCalendar @bind-Value="date" Min="@DateTime.Today" ShowWeekNumbers />
+    <StackDateCalendar SelectionMode="CalendarSelectionMode.Range" Views="2"
+                       @bind-RangeStart="from" @bind-RangeEnd="to" />
+*@
+
+<div id="@Id" class="@($"inline-flex flex-col rounded-md border bg-background text-foreground {Class}".TrimEnd())" @attributes="AdditionalAttributes">
+
+    <!-- ── Header ────────────────────────────────────────────────── -->
+    <div class="flex items-center gap-1 px-3 pt-3">
+        <button type="button" class="@NavButtonCls" aria-label="Previous" disabled="@(!CanNavigate(-1))" @onclick="() => NavigateBy(-1)">
+            <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><polyline points="15 18 9 12 15 6" /></svg>
+        </button>
+        <div class="@($"flex flex-1 justify-around gap-4 {(Orientation == CalendarOrientation.Vertical ? "flex-col items-center gap-0" : "")}")">
+            @if (HeaderTemplate is not null)
+            {
+                @HeaderTemplate
+            }
+            else
+            {
+                @* With several views the title spans them all; each title still goes up a level. *@
+                <button type="button"
+                        class="rounded-md px-2 py-1 text-sm font-semibold transition-colors hover:bg-accent disabled:pointer-events-none"
+                        disabled="@(_view >= TopView)"
+                        aria-label="@($"{RangeTitle}, switch to a wider view")"
+                        @onclick="GoUpAsync">
+                    @RangeTitle
+                </button>
+            }
+        </div>
+        <button type="button" class="@NavButtonCls" aria-label="Next" disabled="@(!CanNavigate(1))" @onclick="() => NavigateBy(1)">
+            <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><polyline points="9 18 15 12 9 6" /></svg>
+        </button>
+        <button type="button" class="ml-1 rounded-md px-2 py-1 text-xs font-medium text-primary hover:underline disabled:opacity-40"
+                disabled="@IsDateDisabled(DateTime.Today)" @onclick="GoToTodayAsync">Today</button>
+    </div>
+
+    <!-- ── Grids ─────────────────────────────────────────────────── -->
+    <div @ref="_gridRef"
+         tabindex="@(Enabled ? 0 : -1)"
+         role="application"
+         aria-label="@(AriaLabel ?? "Calendar. Use the arrow keys to move and Enter to select.")"
+         aria-disabled="@(Enabled ? null : "true")"
+         class="@($"flex gap-6 p-3 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring {(Orientation == CalendarOrientation.Vertical ? "flex-col" : "flex-wrap justify-center")} {(Enabled ? "" : "pointer-events-none opacity-50")}")"
+         @onkeydown="OnKeyDownAsync"
+         @onfocus="() => _gridFocused = true"
+         @onblur="() => _gridFocused = false"
+         @onmouseleave="OnGridLeave">
+        @foreach (var panel in Panels)
+        {
+            @RenderPanel(panel)
+        }
+    </div>
+</div>
+
+@code {
+    // ── Selection ────────────────────────────────────────────────────────────
+    [Parameter] public CalendarSelectionMode SelectionMode { get; set; } = CalendarSelectionMode.Single;
+
+    /// <summary>The selected date in Single mode (also the last clicked date in Multiple mode). Supports <c>@bind-Value</c>.</summary>
+    [Parameter] public DateTime? Value { get; set; }
+    [Parameter] public EventCallback<DateTime?> ValueChanged { get; set; }
+
+    /// <summary>Selected dates in Multiple mode. Supports <c>@bind-SelectedDates</c>.</summary>
+    [Parameter] public List<DateTime>? SelectedDates { get; set; }
+    [Parameter] public EventCallback<List<DateTime>> SelectedDatesChanged { get; set; }
+
+    /// <summary>Range mode start. Supports <c>@bind-RangeStart</c>.</summary>
+    [Parameter] public DateTime? RangeStart { get; set; }
+    [Parameter] public EventCallback<DateTime?> RangeStartChanged { get; set; }
+    [Parameter] public DateTime? RangeEnd { get; set; }
+    [Parameter] public EventCallback<DateTime?> RangeEndChanged { get; set; }
+    /// <summary>Range mode: picking an end before the start swaps them instead of restarting.</summary>
+    [Parameter] public bool AllowReverse { get; set; }
+
+    // ── Navigation ───────────────────────────────────────────────────────────
+    /// <summary>The date the calendar shows. Supports <c>@bind-Date</c>.</summary>
+    [Parameter] public DateTime? Date { get; set; }
+    [Parameter] public EventCallback<DateTime> DateChanged { get; set; }
+    [Parameter] public CalendarView View { get; set; } = CalendarView.Month;
+    [Parameter] public EventCallback<CalendarView> ViewChanged { get; set; }
+    /// <summary>The level at which clicks select instead of drilling down.</summary>
+    [Parameter] public CalendarView BottomView { get; set; } = CalendarView.Month;
+    /// <summary>The widest level the user can go up to.</summary>
+    [Parameter] public CalendarView TopView { get; set; } = CalendarView.Century;
+
+    // ── Limits & display ─────────────────────────────────────────────────────
+    [Parameter] public DateTime Min { get; set; } = new(1900, 1, 1);
+    [Parameter] public DateTime Max { get; set; } = new(2099, 12, 31);
+    [Parameter] public List<DateTime>? DisabledDates { get; set; }
+    /// <summary>Number of side-by-side months (or years, …) shown (default 1).</summary>
+    [Parameter] public int Views { get; set; } = 1;
+    [Parameter] public CalendarOrientation Orientation { get; set; } = CalendarOrientation.Horizontal;
+    [Parameter] public bool ShowWeekNumbers { get; set; }
+    [Parameter] public bool ShowOtherMonthDays { get; set; } = true;
+    [Parameter] public bool Enabled { get; set; } = true;
+
+    // ── Templates & events ───────────────────────────────────────────────────
+    [Parameter] public RenderFragment<DateTime>? MonthCellTemplate { get; set; }
+    [Parameter] public RenderFragment<DateTime>? YearCellTemplate { get; set; }
+    [Parameter] public RenderFragment<DateTime>? DecadeCellTemplate { get; set; }
+    [Parameter] public RenderFragment<DateTime>? CenturyCellTemplate { get; set; }
+    /// <summary>Replaces the title between the navigation arrows.</summary>
+    [Parameter] public RenderFragment? HeaderTemplate { get; set; }
+    /// <summary>Called for every cell; set <c>args.Class</c> to style it.</summary>
+    [Parameter] public Action<CalendarCellRenderEventArgs>? OnCellRender { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    // ── State ────────────────────────────────────────────────────────────────
+    private static readonly string[] GridNavKeys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End", "PageUp", "PageDown", " ", "Enter"];
+
+    private ElementReference _gridRef;
+    private CalendarView _view = CalendarView.Month;
+    private DateTime _viewDate = CalendarMath.PeriodStart(DateTime.Today, CalendarView.Month);
+    private DateTime _focused = DateTime.Today;
+    private DateTime? _hover;
+    private bool _gridFocused;
+    private bool _skipRender;
+
+    private DateTime? _value, _rangeStart, _rangeEnd;
+    private HashSet<DateTime> _selected = [];
+    private bool _pickingEnd;
+    private DateTime? _anchor;
+
+    private bool _synced;
+    private DateTime? _lastValue, _lastStart, _lastEnd, _lastDate;
+    private List<DateTime>? _lastSelected;
+    private CalendarView? _lastView;
+    private HashSet<DateTime> _disabled = [];
+
+    private CultureInfo Culture => CultureInfo.CurrentCulture;
+
+    // ── Lifecycle ────────────────────────────────────────────────────────────
+    protected override void OnParametersSet()
+    {
+        if (!_synced || Value != _lastValue) { _lastValue = Value; _value = Value?.Date; }
+        if (!_synced || RangeStart != _lastStart) { _lastStart = RangeStart; _rangeStart = RangeStart?.Date; }
+        if (!_synced || RangeEnd != _lastEnd) { _lastEnd = RangeEnd; _rangeEnd = RangeEnd?.Date; }
+        if (!_synced || !ReferenceEquals(SelectedDates, _lastSelected))
+        {
+            _lastSelected = SelectedDates;
+            _selected = SelectedDates?.Select(d => d.Date).ToHashSet() ?? [];
+        }
+        if (View != _lastView) { _lastView = View; _view = ClampView(View); }
+
+        if (!_synced || Date != _lastDate)
+        {
+            _lastDate = Date;
+            var anchor = Date ?? SelectionMode switch
+            {
+                CalendarSelectionMode.Range    => _rangeStart,
+                CalendarSelectionMode.Multiple => _selected.Count > 0 ? _selected.Min() : null,
+                _                              => _value,
+            } ?? DateTime.Today;
+            _focused = CalendarMath.Clamp(anchor.Date, Min, Max);
+            _viewDate = CalendarMath.PeriodStart(_focused, _view);
+        }
+
+        _disabled = DisabledDates?.Select(d => d.Date).ToHashSet() ?? [];
+        _synced = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try { await JS.InvokeVoidAsync("MyStackBlazor.dropDownPreventKeys", _gridRef, GridNavKeys); }
+        catch { /* JS not loaded or prerendering. */ }
+    }
+
+    // ── Public API (mirrors Telerik) ─────────────────────────────────────────
+    /// <summary>Shows <paramref name="date"/> at the given level.</summary>
+    public void NavigateTo(DateTime date, CalendarView view)
+    {
+        _view = ClampView(view);
+        _focused = CalendarMath.Clamp(date.Date, Min, Max);
+        _viewDate = CalendarMath.PeriodStart(_focused, _view);
+        StateHasChanged();
+    }
+
+    public void Refresh() => _ = InvokeAsync(StateHasChanged);
+
+    public ValueTask FocusAsync() => _gridRef.FocusAsync();
+
+    // ── Navigation ───────────────────────────────────────────────────────────
+    private CalendarView ClampView(CalendarView view) => view < BottomView ? BottomView : view > TopView ? TopView : view;
+
+    private int PanelCount => Math.Clamp(Views, 1, 12);
+
+    private IEnumerable<DateTime> Panels => Enumerable.Range(0, PanelCount).Select(i => CalendarMath.Step(_viewDate, _view, i));
+
+    private string PanelTitle(DateTime panel) => _view switch
+    {
+        CalendarView.Year    => panel.Year.ToString(Culture),
+        CalendarView.Decade  => $"{panel.Year}–{panel.Year + 9}",
+        CalendarView.Century => $"{panel.Year}–{panel.Year + 99}",
+        _                    => panel.ToString("MMMM yyyy", Culture),
+    };
+
+    private string RangeTitle
+    {
+        get
+        {
+            var first = PanelTitle(_viewDate);
+            return PanelCount == 1 ? first : $"{first} – {PanelTitle(CalendarMath.Step(_viewDate, _view, PanelCount - 1))}";
+        }
+    }
+
+    private bool CanNavigate(int direction) => direction < 0
+        ? _viewDate > CalendarMath.PeriodStart(Min, _view)
+        : CalendarMath.Step(_viewDate, _view, PanelCount - 1) < CalendarMath.PeriodStart(Max, _view);
+
+    private async Task NavigateBy(int direction)
+    {
+        if (!CanNavigate(direction)) return;
+        _viewDate = CalendarMath.Step(_viewDate, _view, direction);
+        _focused = CalendarMath.Clamp(CalendarMath.Step(_focused, _view, direction), Min, Max);
+        await DateChanged.InvokeAsync(_focused);
+    }
+
+    private async Task GoUpAsync()
+    {
+        if (_view >= TopView) return;
+        _view++;
+        _viewDate = CalendarMath.PeriodStart(_focused, _view);
+        await ViewChanged.InvokeAsync(_view);
+    }
+
+    private async Task GoToTodayAsync()
+    {
+        NavigateTo(DateTime.Today, _view);
+        await DateChanged.InvokeAsync(_focused);
+    }
+
+    private void EnsureFocusedVisible()
+    {
+        if (_focused < _viewDate)
+            _viewDate = CalendarMath.PeriodStart(_focused, _view);
+        else if (_focused >= CalendarMath.Step(_viewDate, _view, PanelCount))
+            _viewDate = CalendarMath.Step(CalendarMath.PeriodStart(_focused, _view), _view, -(PanelCount - 1));
+    }
+
+    private bool IsDateDisabled(DateTime date) => date < Min.Date || date > Max.Date || _disabled.Contains(date.Date);
+
+    private bool IsCellDisabled(DateTime cellStart) =>
+        _view == CalendarView.Month ? IsDateDisabled(cellStart) : CalendarMath.CellEnd(cellStart, _view) < Min.Date || cellStart > Max.Date;
+
+    // ── Selection ────────────────────────────────────────────────────────────
+    private async Task OnCellClickAsync(DateTime cellStart, MouseEventArgs e) =>
+        await ActivateAsync(cellStart, e.CtrlKey || e.MetaKey, e.ShiftKey);
+
+    /// <summary>Selects at the bottom view, otherwise drills down one level.</summary>
+    private async Task ActivateAsync(DateTime cellStart, bool toggle, bool extend)
+    {
+        if (!Enabled || IsCellDisabled(cellStart)) return;
+        _focused = CalendarMath.Clamp(cellStart, Min, Max);
+
+        if (_view > BottomView)
+        {
+            _view--;
+            _viewDate = CalendarMath.PeriodStart(_focused, _view);
+            await ViewChanged.InvokeAsync(_view);
+            return;
+        }
+
+        var date = cellStart;
+        switch (SelectionMode)
+        {
+            case CalendarSelectionMode.Multiple:
+                await SelectMultipleAsync(date, toggle, extend);
+                break;
+            case CalendarSelectionMode.Range:
+                await SelectRangeAsync(date);
+                break;
+            default:
+                _value = date;
+                _lastValue = date;
+                await ValueChanged.InvokeAsync(date);
+                break;
+        }
+    }
+
+    private async Task SelectMultipleAsync(DateTime date, bool toggle, bool extend)
+    {
+        if (extend && _anchor is DateTime anchor)
+        {
+            var (from, to) = anchor <= date ? (anchor, date) : (date, anchor);
+            _selected = [];
+            for (var d = from; d <= to; d = d.AddDays(1))
+                if (!IsDateDisabled(d)) _selected.Add(d);
+        }
+        else if (toggle)
+        {
+            if (!_selected.Remove(date)) _selected.Add(date);
+            _anchor = date;
+        }
+        else
+        {
+            _selected = [date];
+            _anchor = date;
+        }
+
+        var list = _selected.Order().ToList();
+        _lastSelected = list;
+        _value = date;
+        _lastValue = date;
+        await SelectedDatesChanged.InvokeAsync(list);
+        await ValueChanged.InvokeAsync(date);
+    }
+
+    private async Task SelectRangeAsync(DateTime date)
+    {
+        _hover = null;
+        if (!_pickingEnd || _rangeStart is null)
+        {
+            await SetRangeAsync(date, null);
+            _pickingEnd = true;
+            return;
+        }
+
+        if (date < _rangeStart)
+        {
+            if (AllowReverse) { await SetRangeAsync(date, _rangeStart); _pickingEnd = false; }
+            else await SetRangeAsync(date, null); // restart from the earlier date
+            return;
+        }
+
+        await SetRangeAsync(_rangeStart, date);
+        _pickingEnd = false;
+    }
+
+    private async Task SetRangeAsync(DateTime? start, DateTime? end)
+    {
+        if (start != _rangeStart)
+        {
+            _rangeStart = start;
+            _lastStart = start;
+            await RangeStartChanged.InvokeAsync(start);
+        }
+        if (end != _rangeEnd)
+        {
+            _rangeEnd = end;
+            _lastEnd = end;
+            await RangeEndChanged.InvokeAsync(end);
+        }
+    }
+
+    // ── Keyboard ─────────────────────────────────────────────────────────────
+    private async Task OnKeyDownAsync(KeyboardEventArgs e)
+    {
+        if (!Enabled) return;
+        var d = _focused;
+        DateTime? next = (e.Key, _view) switch
+        {
+            ("ArrowUp" or "ArrowDown", _) when e.CtrlKey || e.MetaKey => null,
+            ("ArrowLeft", CalendarView.Month)    => d.AddDays(-1),
+            ("ArrowRight", CalendarView.Month)   => d.AddDays(1),
+            ("ArrowUp", CalendarView.Month)      => d.AddDays(-7),
+            ("ArrowDown", CalendarView.Month)    => d.AddDays(7),
+            ("Home", CalendarView.Month)         => new DateTime(d.Year, d.Month, 1),
+            ("End", CalendarView.Month)          => new DateTime(d.Year, d.Month, DateTime.DaysInMonth(d.Year, d.Month)),
+            ("ArrowLeft", CalendarView.Year)     => d.AddMonths(-1),
+            ("ArrowRight", CalendarView.Year)    => d.AddMonths(1),
+            ("ArrowUp", CalendarView.Year)       => d.AddMonths(-4),
+            ("ArrowDown", CalendarView.Year)     => d.AddMonths(4),
+            ("ArrowLeft", CalendarView.Decade)   => d.AddYears(-1),
+            ("ArrowRight", CalendarView.Decade)  => d.AddYears(1),
+            ("ArrowUp", CalendarView.Decade)     => d.AddYears(-4),
+            ("ArrowDown", CalendarView.Decade)   => d.AddYears(4),
+            ("ArrowLeft", CalendarView.Century)  => d.AddYears(-10),
+            ("ArrowRight", CalendarView.Century) => d.AddYears(10),
+            ("ArrowUp", CalendarView.Century)    => d.AddYears(-40),
+            ("ArrowDown", CalendarView.Century)  => d.AddYears(40),
+            ("PageUp", _)                        => CalendarMath.Step(d, _view, -1),
+            ("PageDown", _)                      => CalendarMath.Step(d, _view, 1),
+            _                                    => null,
+        };
+
+        if (next is DateTime target)
+        {
+            _focused = CalendarMath.Clamp(target, Min, Max);
+            if (SelectionMode == CalendarSelectionMode.Range && _pickingEnd) _hover = _focused;
+            EnsureFocusedVisible();
+            return;
+        }
+
+        switch (e.Key)
+        {
+            case "ArrowUp" when e.CtrlKey || e.MetaKey:
+                await GoUpAsync();
+                break;
+            case "ArrowDown" when e.CtrlKey || e.MetaKey:
+            case "Enter":
+            case " ":
+                var cell = _view == CalendarView.Month ? _focused : CalendarMath.PeriodStart(_focused, _view - 1);
+                await ActivateAsync(cell, toggle: e.CtrlKey || e.MetaKey, extend: e.ShiftKey);
+                break;
+        }
+    }
+
+    // ── Hover preview (range mode only; other hovers skip the re-render) ─────
+    private void OnCellHover(DateTime cellStart)
+    {
+        if (SelectionMode != CalendarSelectionMode.Range || !_pickingEnd || _hover == cellStart) { _skipRender = true; return; }
+        _hover = cellStart;
+    }
+
+    private void OnGridLeave()
+    {
+        if (_hover is null) { _skipRender = true; return; }
+        _hover = null;
+    }
+
+    protected override bool ShouldRender()
+    {
+        if (!_skipRender) return true;
+        _skipRender = false;
+        return false;
+    }
+
+    // ── Rendering ────────────────────────────────────────────────────────────
+    private (DateTime? Start, DateTime? End) DisplayRange
+    {
+        get
+        {
+            if (SelectionMode != CalendarSelectionMode.Range) return (null, null);
+            if (_pickingEnd && _hover is DateTime hover && _rangeStart is DateTime s && _rangeEnd is null)
+                return hover < s ? (hover, s) : (s, hover);
+            return (_rangeStart, _rangeEnd);
+        }
+    }
+
+    private bool IsSelectedCell(DateTime cellStart, DateTime cellEnd) => SelectionMode switch
+    {
+        CalendarSelectionMode.Multiple => _view == CalendarView.Month ? _selected.Contains(cellStart) : _selected.Any(d => d >= cellStart && d <= cellEnd),
+        CalendarSelectionMode.Single   => _value is DateTime v && v >= cellStart && v <= cellEnd,
+        _                              => false,
+    };
+
+    private RenderFragment RenderPanel(DateTime panel) => _view == CalendarView.Month ? RenderMonth(panel) : RenderUpper(panel);
+
+    private RenderFragment RenderMonth(DateTime month)
+    {
+        var dtf = Culture.DateTimeFormat;
+        var firstDay = dtf.FirstDayOfWeek;
+        var gridStart = month.AddDays(-(((int)month.DayOfWeek - (int)firstDay + 7) % 7));
+        var dayNames = Enumerable.Range(0, 7).Select(i => dtf.ShortestDayNames[((int)firstDay + i) % 7]).ToArray();
+        var cols = ShowWeekNumbers ? "grid-cols-8" : "grid-cols-7";
+
+        return @<div class="w-64" role="grid" aria-label="@month.ToString("MMMM yyyy", Culture)">
+            @if (PanelCount > 1)
+            {
+                <div class="pb-1 text-center text-xs font-medium text-muted-foreground">@month.ToString("MMMM yyyy", Culture)</div>
+            }
+            <div class="@($"grid {cols}")" role="row">
+                @if (ShowWeekNumbers) { <div role="columnheader" class="flex h-8 items-center justify-center text-[11px] text-muted-foreground/70">#</div> }
+                @foreach (var name in dayNames)
+                {
+                    <div role="columnheader" class="flex h-8 items-center justify-center text-xs font-medium text-muted-foreground">@name</div>
+                }
+            </div>
+            @for (var week = 0; week < 6; week++)
+            {
+                var weekStart = gridStart.AddDays(week * 7);
+                <div class="@($"grid {cols}")" role="row">
+                    @if (ShowWeekNumbers)
+                    {
+                        <div role="rowheader" class="flex h-8 items-center justify-center text-[11px] text-muted-foreground/70">
+                            @Culture.Calendar.GetWeekOfYear(weekStart, dtf.CalendarWeekRule, firstDay)
+                        </div>
+                    }
+                    @for (var i = 0; i < 7; i++)
+                    {
+                        var date = weekStart.AddDays(i);
+                        var other = date.Month != month.Month;
+                        if (other && !ShowOtherMonthDays) { <div role="gridcell" class="h-8"></div>; continue; }
+                        @RenderCell(date, MonthCellTemplate, date.Day.ToString(Culture), other)
+                    }
+                </div>
+            }
+        </div>;
+    }
+
+    private RenderFragment RenderUpper(DateTime panel)
+    {
+        var cells = _view switch
+        {
+            CalendarView.Year   => Enumerable.Range(0, 12).Select(i => (panel.AddMonths(i), Culture.DateTimeFormat.AbbreviatedMonthNames[i], false)),
+            CalendarView.Decade => Enumerable.Range(-1, 12).Select(i => (panel.AddYears(i), panel.AddYears(i).Year.ToString(Culture), i is < 0 or > 9)),
+            _                   => Enumerable.Range(-1, 12).Select(i => (panel.AddYears(i * 10), $"{panel.Year + i * 10}", i is < 0 or > 9)),
+        };
+        var template = _view switch
+        {
+            CalendarView.Year   => YearCellTemplate,
+            CalendarView.Decade => DecadeCellTemplate,
+            _                   => CenturyCellTemplate,
+        };
+
+        return @<div class="w-64" role="grid" aria-label="@PanelTitle(panel)">
+            @if (PanelCount > 1)
+            {
+                <div class="pb-1 text-center text-xs font-medium text-muted-foreground">@PanelTitle(panel)</div>
+            }
+            <div class="grid grid-cols-4 gap-y-2">
+                @foreach (var (start, label, outside) in cells)
+                {
+                    @RenderCell(start, template, label, outside)
+                }
+            </div>
+        </div>;
+    }
+
+    private RenderFragment RenderCell(DateTime cellStart, RenderFragment<DateTime>? template, string label, bool muted)
+    {
+        var cellEnd = CalendarMath.CellEnd(cellStart, _view);
+        var (rangeStart, rangeEnd) = DisplayRange;
+        var isStart = rangeStart is DateTime s && s >= cellStart && s <= cellEnd;
+        var isEnd = rangeEnd is DateTime e && e >= cellStart && e <= cellEnd;
+        var inRange = rangeStart is DateTime rs && rangeEnd is DateTime re && cellStart > rs && cellEnd < re;
+        var selected = isStart || isEnd || IsSelectedCell(cellStart, cellEnd);
+        var disabled = IsCellDisabled(cellStart);
+        var today = DateTime.Today >= cellStart && DateTime.Today <= cellEnd;
+        var focused = _gridFocused && _focused >= cellStart && _focused <= cellEnd;
+        var height = _view == CalendarView.Month ? "h-8" : "h-12";
+
+        string? extra = null;
+        if (OnCellRender is not null)
+        {
+            var args = new CalendarCellRenderEventArgs { Date = cellStart, View = _view };
+            OnCellRender(args);
+            extra = args.Class;
+        }
+
+        var cellCls = $"flex {height} items-center justify-center " +
+                      (inRange ? "bg-primary/15 " : "") +
+                      (isStart && rangeEnd is not null && !isEnd ? "rounded-l-md bg-primary/15 " : "") +
+                      (isEnd && rangeStart is not null && !isStart ? "rounded-r-md bg-primary/15 " : "") +
+                      (disabled ? "pointer-events-none opacity-40 " : "cursor-pointer ") +
+                      extra;
+        var innerCls = $"flex {height} w-full max-w-12 items-center justify-center rounded-md text-sm transition-colors " +
+                       (selected
+                           ? "bg-primary font-semibold text-primary-foreground "
+                           : (muted ? "text-muted-foreground/60 " : "") + (today ? "font-semibold text-primary underline underline-offset-4 " : "") + "hover:bg-accent ") +
+                       (focused ? "ring-2 ring-ring " : "") +
+                       (disabled ? "line-through " : "");
+
+        return @<div role="gridcell"
+                     data-date="@cellStart.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+                     aria-selected="@(selected ? "true" : "false")"
+                     aria-disabled="@(disabled ? "true" : null)"
+                     title="@(_view == CalendarView.Month ? cellStart.ToString("D", Culture) : null)"
+                     class="@cellCls"
+                     @onclick="e => OnCellClickAsync(cellStart, e)"
+                     @onmouseenter="() => OnCellHover(cellStart)">
+            <span class="@innerCls">
+                @if (template is not null) { @template(cellStart) } else { @label }
+            </span>
+        </div>;
+    }
+
+    private const string NavButtonCls =
+        "flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-30";
+}

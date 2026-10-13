@@ -1,31 +1,228 @@
 @namespace MyStackBlazor.Components.Form
+@implements IDisposable
+@using System.Linq.Expressions
 
-<input id="@Id"
-       type="@Type"
-       placeholder="@Placeholder"
-       value="@Value"
-       disabled="@Disabled"
-       readonly="@ReadOnly"
-       class="@($"flex h-10 w-full rounded-md border-2 border-input bg-background px-4 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 {Class}".Trim())"
-       @oninput="OnInputChanged"
-       @onchange="OnChange"
-       @attributes="AdditionalAttributes" />
+@*
+    Text input modelled on the Telerik TextBox API (also available as StackTextBox).
+
+    <StackInput @bind-Value="name" Placeholder="Name" ShowClearButton MaxLength="50">
+        <TextBoxPrefixTemplate>@@</TextBoxPrefixTemplate>
+    </StackInput>
+
+    The earlier API (Type, Disabled) still works.
+*@
+
+<span class="@BoxCls" style="@(Width is null ? null : $"width:{Width}")" title="@Title">
+    @if (TextBoxPrefixTemplate is not null)
+    {
+        <span class="@($"flex shrink-0 items-center text-muted-foreground {(ShowPrefixSeparator ? "border-r border-input pr-2" : "")}")">@TextBoxPrefixTemplate</span>
+    }
+
+    <input @ref="_input"
+           id="@Id"
+           name="@Name"
+           type="@(Password ? "password" : Type)"
+           placeholder="@Placeholder"
+           value="@_text"
+           disabled="@IsDisabled"
+           readonly="@ReadOnly"
+           maxlength="@MaxLength"
+           inputmode="@InputMode"
+           autocomplete="@AutoComplete"
+           autocapitalize="@AutoCapitalize"
+           spellcheck="@(SpellCheck is null ? null : SpellCheck.Value ? "true" : "false")"
+           tabindex="@TabIndex"
+           aria-label="@AriaLabel"
+           aria-labelledby="@AriaLabelledBy"
+           aria-describedby="@AriaDescribedBy"
+           aria-invalid="@(IsInvalid ? "true" : null)"
+           class="h-full min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:cursor-not-allowed"
+           @oninput="OnInputAsync"
+           @onchange="OnChangeAsync"
+           @onblur="OnBlur"
+           @attributes="AdditionalAttributes" />
+
+    @if (ShowClearButton && !IsDisabled && !ReadOnly && !string.IsNullOrEmpty(_text))
+    {
+        <button type="button"
+                tabindex="-1"
+                class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                aria-label="Clear"
+                @onmousedown:preventDefault="true"
+                @onclick="ClearAsync">
+            <svg class="h-3.5 w-3.5" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+        </button>
+    }
+
+    @if (TextBoxSuffixTemplate is not null)
+    {
+        <span class="@($"flex shrink-0 items-center text-muted-foreground {(ShowSuffixSeparator ? "border-l border-input pl-2" : "")}")">@TextBoxSuffixTemplate</span>
+    }
+</span>
 
 @code {
-    [Parameter] public string? Id { get; set; }
-    [Parameter] public string Type { get; set; } = "text";
-    [Parameter] public string? Placeholder { get; set; }
+    // ── Value ────────────────────────────────────────────────────────────────
     [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public Expression<Func<string?>>? ValueExpression { get; set; }
+    /// <summary>Milliseconds between the last keystroke and ValueChanged (Telerik default 150; 0 = immediate).</summary>
+    [Parameter] public int DebounceDelay { get; set; } = 150;
+
+    // ── Input attributes ─────────────────────────────────────────────────────
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Name { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public int? TabIndex { get; set; }
+    [Parameter] public int? MaxLength { get; set; }
+    [Parameter] public string? InputMode { get; set; }
+    [Parameter] public string? AutoComplete { get; set; }
+    [Parameter] public string? AutoCapitalize { get; set; }
+    [Parameter] public bool? SpellCheck { get; set; }
+    /// <summary>Masks the text (renders type="password").</summary>
+    [Parameter] public bool Password { get; set; }
+    /// <summary>HTML input type (earlier API; e.g. "email", "search").</summary>
+    [Parameter] public string Type { get; set; } = "text";
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter] public string? AriaLabelledBy { get; set; }
+    [Parameter] public string? AriaDescribedBy { get; set; }
+
+    // ── State ────────────────────────────────────────────────────────────────
+    [Parameter] public bool Enabled { get; set; } = true;
+    /// <summary>Alias for <c>Enabled="false"</c> (earlier API).</summary>
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public bool ShowClearButton { get; set; }
+
+    // ── Appearance ───────────────────────────────────────────────────────────
+    [Parameter] public string Size { get; set; } = DropDownListTheme.Size.Medium;
+    [Parameter] public string Rounded { get; set; } = DropDownListTheme.Rounded.Medium;
+    [Parameter] public string FillMode { get; set; } = DropDownListTheme.FillMode.Solid;
+    [Parameter] public string? Width { get; set; }
     [Parameter] public string? Class { get; set; }
-    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
-    [Parameter] public EventCallback<ChangeEventArgs> OnChange { get; set; }
+    [Parameter] public RenderFragment? TextBoxPrefixTemplate { get; set; }
+    [Parameter] public RenderFragment? TextBoxSuffixTemplate { get; set; }
+    [Parameter] public bool ShowPrefixSeparator { get; set; }
+    [Parameter] public bool ShowSuffixSeparator { get; set; }
+
+    // ── Events ───────────────────────────────────────────────────────────────
+    /// <summary>Fires when the user confirms a change (Enter or leaving the input) with the new value.</summary>
+    [Parameter] public EventCallback<object?> OnChange { get; set; }
+    [Parameter] public EventCallback OnBlur { get; set; }
+
+    [CascadingParameter] private EditContext? EditContext { get; set; }
+    /// <summary>Extra attributes go on the &lt;input&gt; element.</summary>
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
 
-    private async Task OnInputChanged(ChangeEventArgs e)
+    private ElementReference _input;
+    private string? _text;
+    private string? _lastParam;
+    private bool _synced;
+    private CancellationTokenSource? _debounce;
+    private FieldIdentifier? _field;
+    private EditContext? _subscribedContext;
+
+    private bool IsDisabled => !Enabled || Disabled;
+    private bool IsInvalid => EditContext is not null && _field is { } f && EditContext.GetValidationMessages(f).Any();
+
+    protected override void OnParametersSet()
     {
-        Value = e.Value?.ToString();
-        await ValueChanged.InvokeAsync(Value);
+        if (!_synced || Value != _lastParam)
+        {
+            _synced = true;
+            _lastParam = Value;
+            _text = Value;
+        }
+        if (ValueExpression is not null && _field is null) _field = FieldIdentifier.Create(ValueExpression);
+        if (!ReferenceEquals(_subscribedContext, EditContext))
+        {
+            if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged -= OnValidationStateChanged;
+            _subscribedContext = EditContext;
+            if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged += OnValidationStateChanged;
+        }
+    }
+
+    public ValueTask FocusAsync() => _input.FocusAsync();
+
+    private async Task OnInputAsync(ChangeEventArgs e)
+    {
+        _text = e.Value?.ToString();
+        _debounce?.Cancel();
+        if (DebounceDelay > 0)
+        {
+            var cts = _debounce = new CancellationTokenSource();
+            try { await Task.Delay(DebounceDelay, cts.Token); }
+            catch (TaskCanceledException) { return; }
+        }
+        await PublishAsync(_text);
+    }
+
+    private async Task PublishAsync(string? text)
+    {
+        if (text == _lastParam) return;
+        _lastParam = text;
+        Value = text;
+        await ValueChanged.InvokeAsync(text);
+        if (EditContext is not null && _field is { } field) EditContext.NotifyFieldChanged(field);
+    }
+
+    private async Task OnChangeAsync(ChangeEventArgs e)
+    {
+        // The browser change event (Enter / blur) flushes any pending debounce first.
+        _debounce?.Cancel();
+        _text = e.Value?.ToString();
+        await PublishAsync(_text);
+        await OnChange.InvokeAsync(_text);
+    }
+
+    private async Task ClearAsync()
+    {
+        _debounce?.Cancel();
+        _text = "";
+        await PublishAsync("");
+        await OnChange.InvokeAsync("");
+        try { await _input.FocusAsync(); } catch { }
+    }
+
+    private void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs e) => _ = InvokeAsync(StateHasChanged);
+
+    private string BoxCls
+    {
+        get
+        {
+            var size = Size switch
+            {
+                DropDownListTheme.Size.Small => "h-8 px-2 text-xs",
+                DropDownListTheme.Size.Large => "h-12 px-4 text-base",
+                _                            => "h-10 px-3 text-sm",
+            };
+            var rounded = FillMode == DropDownListTheme.FillMode.Flat ? "rounded-none" : Rounded switch
+            {
+                DropDownListTheme.Rounded.None  => "rounded-none",
+                DropDownListTheme.Rounded.Small => "rounded-sm",
+                DropDownListTheme.Rounded.Large => "rounded-lg",
+                DropDownListTheme.Rounded.Full  => "rounded-full",
+                _                               => "rounded-md",
+            };
+            var fill = FillMode switch
+            {
+                DropDownListTheme.FillMode.Flat    => "border-0 border-b-2 border-input bg-transparent",
+                DropDownListTheme.FillMode.Outline => "border-2 border-input bg-transparent",
+                _                                  => "border-2 border-input bg-background",
+            };
+            return $"flex w-full items-center gap-2 transition-colors {size} {rounded} {fill} " +
+                   "ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 " +
+                   (IsDisabled ? "cursor-not-allowed opacity-50 " : "") +
+                   (IsInvalid ? "border-destructive focus-within:ring-destructive " : "") +
+                   Class;
+        }
+    }
+
+    public void Dispose()
+    {
+        _debounce?.Cancel();
+        if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged -= OnValidationStateChanged;
     }
 }

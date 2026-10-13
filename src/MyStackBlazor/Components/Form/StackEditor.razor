@@ -1,0 +1,379 @@
+@namespace MyStackBlazor.Components.Form
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@using System.Linq.Expressions
+@using MyStackBlazor.Components.Form.EditorTools
+
+@*
+    HTML (WYSIWYG) editor modelled on the Telerik Editor API. Value is the HTML.
+    Incoming and pasted HTML is sanitized (scripts, inline handlers and javascript: URLs removed);
+    still sanitize on the server before showing user HTML elsewhere.
+
+    @@using MyStackBlazor.Components.Form.EditorTools
+    <StackEditor @bind-Value="html" Tools="@EditorToolSets.All" Height="320px" Placeholder="Write something…" />
+*@
+
+<CascadingValue Value="this" IsFixed="true">
+    @EditorCustomTools
+</CascadingValue>
+
+<div id="@Id" class="@($"flex flex-col overflow-hidden rounded-md border border-input bg-background {(IsInvalid ? "border-destructive" : "")} {(Enabled ? "" : "opacity-50")} {Class}".TrimEnd())"
+     style="@($"height:{Height};{(Width is null ? "" : $"width:{Width}")}")"
+     @attributes="AdditionalAttributes">
+
+    <!-- ── Toolbar ───────────────────────────────────────────────── -->
+    @if (Tools.Count > 0)
+    {
+        <div role="toolbar" aria-label="Formatting" aria-controls="@ContentId"
+             class="@($"flex shrink-0 items-center gap-1 border-b bg-muted/40 p-1 {(AdaptiveToolBar ? "overflow-x-auto [scrollbar-width:thin]" : "flex-wrap")}")">
+            @foreach (var tool in Tools)
+            {
+                @RenderTool(tool)
+            }
+        </div>
+    }
+
+    <!-- ── Content ───────────────────────────────────────────────── -->
+    <div class="relative min-h-0 flex-1 overflow-auto">
+        <div @ref="_content"
+             id="@ContentId"
+             role="textbox"
+             aria-multiline="true"
+             aria-label="@(AriaLabel ?? "Rich text editor")"
+             aria-labelledby="@AriaLabelledBy"
+             aria-describedby="@AriaDescribedBy"
+             aria-readonly="@(ReadOnly ? "true" : null)"
+             aria-invalid="@(IsInvalid ? "true" : null)"
+             contenteditable="@(Enabled && !ReadOnly ? "true" : "false")"
+             data-placeholder="@Placeholder"
+             class="@ContentCls"
+             hidden="@_htmlView"></div>
+        @if (_htmlView)
+        {
+            <textarea aria-label="HTML source" class="h-full w-full resize-none bg-background p-3 font-mono text-xs outline-none"
+                      @bind="_source" @bind:event="oninput"></textarea>
+        }
+    </div>
+</div>
+
+@if (_dialog is not null)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @onclick="() => _dialog = null">
+        <div role="dialog" aria-modal="true" aria-label="@_dialog" class="w-full max-w-sm space-y-3 rounded-lg border bg-background p-5 shadow-xl" @onclick:stopPropagation="true">
+            <h2 class="text-base font-semibold">@_dialog</h2>
+            @switch (_dialog)
+            {
+                case "Insert link":
+                    <label class="block text-sm">URL<input class="@InputCls" @bind="_url" placeholder="https://" /></label>
+                    <label class="block text-sm">Text<input class="@InputCls" @bind="_text" /></label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" @bind="_newWindow" /> Open in a new window</label>
+                    break;
+                case "Insert image":
+                    <label class="block text-sm">URL<input class="@InputCls" @bind="_url" placeholder="https://" /></label>
+                    <label class="block text-sm">Alternate text<input class="@InputCls" @bind="_text" /></label>
+                    break;
+                default:
+                    <div class="flex gap-3">
+                        <label class="block flex-1 text-sm">Rows<input type="number" min="1" max="50" class="@InputCls" @bind="_rows" /></label>
+                        <label class="block flex-1 text-sm">Columns<input type="number" min="1" max="20" class="@InputCls" @bind="_cols" /></label>
+                    </div>
+                    break;
+            }
+            <div class="flex justify-end gap-2 pt-1">
+                <button type="button" class="rounded-md border px-3 py-1.5 text-sm hover:bg-accent" @onclick="() => _dialog = null">Cancel</button>
+                <button type="button" class="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90" @onclick="ConfirmDialogAsync">Insert</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public Expression<Func<string?>>? ValueExpression { get; set; }
+
+    /// <summary>Toolbar tools (default <see cref="EditorToolSets.Default"/>).</summary>
+    [Parameter] public List<IEditorTool> Tools { get; set; } = EditorToolSets.Default;
+    /// <summary>StackEditorCustomTool definitions referenced by <see cref="CustomTool"/> entries in Tools.</summary>
+    [Parameter] public RenderFragment? EditorCustomTools { get; set; }
+    /// <summary>Scroll the toolbar horizontally instead of wrapping it.</summary>
+    [Parameter] public bool AdaptiveToolBar { get; set; }
+
+    [Parameter] public string Height { get; set; } = "250px";
+    [Parameter] public string? Width { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public bool Enabled { get; set; } = true;
+    [Parameter] public bool ReadOnly { get; set; }
+    /// <summary>Milliseconds between the last change and ValueChanged (default 100).</summary>
+    [Parameter] public int DebounceDelay { get; set; } = 100;
+
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter] public string? AriaLabelledBy { get; set; }
+    [Parameter] public string? AriaDescribedBy { get; set; }
+
+    [CascadingParameter] private EditContext? EditContext { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private readonly string _uid = $"ed-{Guid.NewGuid():N}"[..11];
+    private readonly Dictionary<string, RenderFragment> _customTools = [];
+    private ElementReference _content;
+    private DotNetObjectReference<StackEditor>? _dotnet;
+    private bool _initialized;
+    private string? _lastValue;
+    private bool _pushPending;
+    private Dictionary<string, object?> _state = [];
+    private bool _htmlView;
+    private string? _source;
+    private string? _dialog;
+    private string? _url, _text;
+    private bool _newWindow;
+    private int _rows = 2, _cols = 2;
+    private FieldIdentifier? _field;
+
+    private string ContentId => $"{Id ?? _uid}-content";
+    private bool IsInvalid => EditContext is not null && _field is { } f && EditContext.GetValidationMessages(f).Any();
+    private bool IsActive(string? key) => key is not null && _state.TryGetValue(key, out var v) && v is true or System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.True };
+    private string CurrentBlock => _state.TryGetValue("formatBlock", out var v) ? v?.ToString() ?? "p" : "p";
+
+    internal void RegisterCustomTool(string name, RenderFragment content)
+    {
+        _customTools[name] = content;
+        StateHasChanged();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (ValueExpression is not null && _field is null) _field = FieldIdentifier.Create(ValueExpression);
+        if (Value != _lastValue)
+        {
+            _lastValue = Value;
+            _pushPending = _initialized;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                _dotnet = DotNetObjectReference.Create(this);
+                await JS.InvokeVoidAsync("MyStackBlazor.editorInit", _content, _dotnet, Value, DebounceDelay);
+                _initialized = true;
+            }
+            else if (_pushPending)
+            {
+                _pushPending = false;
+                await JS.InvokeVoidAsync("MyStackBlazor.editorSetHtml", _content, Value);
+            }
+        }
+        catch { /* JS not loaded or prerendering. */ }
+    }
+
+    // ── JS callbacks ─────────────────────────────────────────────────────────
+    [JSInvokable]
+    public async Task OnEditorInput(string html)
+    {
+        if (html == _lastValue) return;
+        _lastValue = html;
+        Value = html;
+        await ValueChanged.InvokeAsync(html);
+        if (EditContext is not null && _field is { } field) EditContext.NotifyFieldChanged(field);
+    }
+
+    [JSInvokable]
+    public void OnEditorState(Dictionary<string, object?> state)
+    {
+        _state = state;
+        StateHasChanged();
+    }
+
+    // ── Public API ───────────────────────────────────────────────────────────
+    /// <summary>Runs a browser editing command (e.g. "bold", "formatBlock" with "&lt;h2&gt;", "insertHTML").</summary>
+    public async Task ExecuteAsync(string command, string? value = null)
+    {
+        if (!Enabled || ReadOnly) return;
+        try { await JS.InvokeVoidAsync("MyStackBlazor.editorExec", _content, command, value); } catch { }
+    }
+
+    public ValueTask FocusAsync() => _content.FocusAsync();
+
+    // ── Tools ────────────────────────────────────────────────────────────────
+    private async Task OpenDialogAsync(string title)
+    {
+        var selected = "";
+        try { selected = await JS.InvokeAsync<string>("MyStackBlazor.editorSaveSelection", _content); } catch { }
+        _url = null;
+        _text = selected;
+        _dialog = title;
+    }
+
+    private async Task ConfirmDialogAsync()
+    {
+        var dialog = _dialog;
+        _dialog = null;
+        var url = _url?.Trim();
+        switch (dialog)
+        {
+            case "Insert link" when !string.IsNullOrEmpty(url):
+                var text = string.IsNullOrWhiteSpace(_text) ? url : _text;
+                var target = _newWindow ? " target=\"_blank\" rel=\"noopener noreferrer\"" : "";
+                await ExecuteAsync("insertHTML", $"<a href=\"{Encode(url)}\"{target}>{Encode(text)}</a>");
+                break;
+            case "Insert image" when !string.IsNullOrEmpty(url):
+                await ExecuteAsync("insertHTML", $"<img src=\"{Encode(url)}\" alt=\"{Encode(_text ?? "")}\" style=\"max-width:100%\">");
+                break;
+            case "Insert table":
+                var rows = Math.Clamp(_rows, 1, 50);
+                var cols = Math.Clamp(_cols, 1, 20);
+                var cells = string.Concat(Enumerable.Repeat("<td>&nbsp;</td>", cols));
+                await ExecuteAsync("insertHTML", $"<table><tbody>{string.Concat(Enumerable.Repeat($"<tr>{cells}</tr>", rows))}</tbody></table><p><br></p>");
+                break;
+        }
+    }
+
+    private static string Encode(string text) => System.Net.WebUtility.HtmlEncode(text);
+
+    private async Task ToggleHtmlViewAsync()
+    {
+        if (!_htmlView)
+        {
+            _source = Value;
+            _htmlView = true;
+            return;
+        }
+        _htmlView = false;
+        await OnEditorInput(_source ?? "");
+        _pushPending = true;
+    }
+
+    private RenderFragment RenderTool(IEditorTool tool)
+    {
+        var disabled = !Enabled || ReadOnly || _htmlView;
+
+        if (tool is EditorButtonGroup group)
+        {
+            return @<div class="flex items-center gap-0.5 rounded-md border bg-background p-0.5" role="group">
+                @foreach (var inner in group.Tools)
+                {
+                    @RenderTool(inner)
+                }
+            </div>;
+        }
+
+        if (tool is EditorCommandTool command)
+        {
+            var active = IsActive(command.StateKey);
+            return @<button type="button" class="@ToolCls(active)" title="@command.Title" aria-label="@command.Title"
+                            aria-pressed="@(command.StateKey is null ? null : active ? "true" : "false")"
+                            disabled="@disabled"
+                            @onmousedown:preventDefault="true"
+                            @onclick="() => ExecuteAsync(command.Command, command.Argument)">@ToolFace(command)</button>;
+        }
+
+        if (tool is CreateLink) return DialogButton("Insert link", "M10 14a4 4 0 005.66 0l3-3a4 4 0 00-5.66-5.66l-1 1M14 10a4 4 0 00-5.66 0l-3 3a4 4 0 005.66 5.66l1-1");
+        if (tool is InsertImage) return DialogButton("Insert image", "M4 5h16v14H4zM8.5 10a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM20 15l-5-5L5 19");
+        if (tool is InsertTable) return DialogButton("Insert table", "M4 5h16v14H4zM4 10h16M4 15h16M10 5v14");
+        if (tool is ForeColor) return ColorTool("Text color", "foreColor");
+        if (tool is BackgroundColor) return ColorTool("Highlight color", "hiliteColor");
+
+        if (tool is ViewHtml)
+        {
+            return @<button type="button" class="@ToolCls(_htmlView)" title="View HTML" aria-label="View HTML" aria-pressed="@(_htmlView ? "true" : "false")"
+                            disabled="@(!Enabled || ReadOnly)" @onclick="ToggleHtmlViewAsync"><span class="font-mono text-[11px]">&lt;/&gt;</span></button>;
+        }
+
+        if (tool is Format)
+        {
+            return @<select aria-label="Format" class="@SelectCls" disabled="@disabled" value="@CurrentBlock" @onchange="OnFormatChangedAsync">
+                <option value="p">Paragraph</option>
+                @for (var level = 1; level <= 6; level++)
+                {
+                    <option value="@($"h{level}")">Heading @level</option>
+                }
+                <option value="blockquote">Quotation</option>
+                <option value="pre">Code</option>
+            </select>;
+        }
+
+        if (tool is FontFamily fonts)
+        {
+            return @<select aria-label="Font" class="@SelectCls" disabled="@disabled" @onchange="OnFontChangedAsync">
+                <option value="">Font</option>
+                @foreach (var font in fonts.Fonts)
+                {
+                    <option value="@font" style="@($"font-family:{font}")">@font</option>
+                }
+            </select>;
+        }
+
+        if (tool is FontSize)
+        {
+            return @<select aria-label="Font size" class="@SelectCls" disabled="@disabled" @onchange="OnFontSizeChangedAsync">
+                <option value="">Size</option>
+                @foreach (var (value, label) in FontSizes)
+                {
+                    <option value="@value">@label</option>
+                }
+            </select>;
+        }
+
+        if (tool is CustomTool custom && _customTools.TryGetValue(custom.Name, out var content)) return content;
+        return _ => { };
+    }
+
+    private static readonly (string Value, string Label)[] FontSizes =
+        [("1", "8pt"), ("2", "10pt"), ("3", "12pt"), ("4", "14pt"), ("5", "18pt"), ("6", "24pt"), ("7", "36pt")];
+
+    private Task OnFormatChangedAsync(ChangeEventArgs e) => ExecuteAsync("formatBlock", $"<{e.Value}>");
+    private Task OnFontChangedAsync(ChangeEventArgs e) => ExecuteAsync("fontName", e.Value?.ToString());
+    private Task OnFontSizeChangedAsync(ChangeEventArgs e) => ExecuteAsync("fontSize", e.Value?.ToString());
+
+    private RenderFragment DialogButton(string title, string icon) =>
+        @<button type="button" class="@ToolCls(false)" title="@title" aria-label="@title" aria-haspopup="dialog"
+                 disabled="@(!Enabled || ReadOnly || _htmlView)" @onmousedown:preventDefault="true" @onclick="() => OpenDialogAsync(title)">
+            <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="@icon" /></svg>
+        </button>;
+
+    private RenderFragment ColorTool(string title, string command) =>
+        @<label class="@($"{ToolCls(false)} relative cursor-pointer")" title="@title">
+            <span class="sr-only">@title</span>
+            <span class="text-sm font-semibold" style="@(command == "foreColor" ? "text-decoration:underline 3px" : "background:#fde047;padding:0 2px")" aria-hidden="true">A</span>
+            <input type="color" class="absolute inset-0 cursor-pointer opacity-0" aria-label="@title" disabled="@(!Enabled || ReadOnly || _htmlView)"
+                   @onchange="e => ExecuteAsync(command, e.Value?.ToString())" />
+        </label>;
+
+    private static RenderFragment ToolFace(EditorCommandTool tool) => tool.Icon is { } icon
+        ? @<svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="@icon" /></svg>
+        : @<span class="@($"text-sm {(tool is Bold ? "font-bold" : tool is Italic ? "italic font-serif" : tool is Underline ? "underline" : tool is Strikethrough ? "line-through" : "")}")" aria-hidden="true">@tool.Text</span>;
+
+    private static string ToolCls(bool active) =>
+        "flex h-7 min-w-7 items-center justify-center rounded px-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40 " +
+        (active ? "bg-accent text-foreground" : "");
+
+    private const string SelectCls = "h-7 rounded border border-input bg-background px-1.5 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40";
+    private const string InputCls = "mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+    // Content typography (Tailwind preflight removes default list/heading styles).
+    private const string ContentCls =
+        "min-h-full p-3 text-sm leading-relaxed outline-none " +
+        "[&.ms-empty]:before:pointer-events-none [&.ms-empty]:before:text-muted-foreground [&.ms-empty]:before:content-[attr(data-placeholder)] " +
+        "[&_h1]:my-2 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:my-2 [&_h2]:text-xl [&_h2]:font-bold [&_h3]:my-2 [&_h3]:text-lg [&_h3]:font-semibold " +
+        "[&_h4]:font-semibold [&_h5]:font-semibold [&_h6]:font-semibold [&_p]:my-1 " +
+        "[&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-6 " +
+        "[&_blockquote]:my-2 [&_blockquote]:border-l-4 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground " +
+        "[&_pre]:my-2 [&_pre]:rounded [&_pre]:bg-muted [&_pre]:p-2 [&_pre]:font-mono [&_pre]:text-xs " +
+        "[&_a]:text-primary [&_a]:underline [&_hr]:my-3 [&_hr]:border-border [&_img]:inline-block " +
+        "[&_table]:my-2 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-border [&_td]:p-1.5 [&_th]:border [&_th]:border-border [&_th]:p-1.5";
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_initialized)
+        {
+            try { await JS.InvokeVoidAsync("MyStackBlazor.editorDispose", _content); } catch { }
+        }
+        _dotnet?.Dispose();
+    }
+}

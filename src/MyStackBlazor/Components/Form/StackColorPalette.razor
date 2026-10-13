@@ -1,20 +1,46 @@
 @namespace MyStackBlazor.Components.Form
+@inject IJSRuntime JS
+
+@*
+    Grid of colour tiles modelled on the Telerik ColorPalette API.
+
+    <StackColorPalette @bind-Value="color" Palette="ColorPalettePresets.Office" Columns="10" TileWidth="20px" TileHeight="20px" />
+
+    The earlier API (Colors, Label, ShowHex) still works.
+*@
 
 <div class="@Class" @attributes="AdditionalAttributes">
     @if (!string.IsNullOrEmpty(Label))
     {
-        <p class="mb-2 text-sm font-medium">@Label</p>
+        <p id="@($"{_uid}-label")" class="mb-2 text-sm font-medium">@Label</p>
     }
-    <div class="flex flex-wrap gap-1.5">
-        @foreach (var color in ResolvedColors)
+    <div @ref="_grid"
+         id="@Id"
+         role="grid"
+         tabindex="@(Enabled ? TabIndex ?? 0 : -1)"
+         aria-label="@(AriaLabel ?? Label ?? "Color palette")"
+         aria-labelledby="@(Label is null ? null : $"{_uid}-label")"
+         aria-disabled="@(Enabled ? null : "true")"
+         aria-activedescendant="@(_focused >= 0 ? $"{_uid}-{_focused}" : null)"
+         class="@($"inline-grid gap-1 rounded-md p-0.5 outline-none focus-visible:ring-2 focus-visible:ring-ring {(Enabled ? "" : "pointer-events-none opacity-50")}")"
+         style="@($"grid-template-columns:repeat({EffectiveColumns}, {TileWidth})")"
+         @onkeydown="OnKeyDownAsync"
+         @onfocus="OnFocus"
+         @onblur="OnBlurAsync">
+        @for (var i = 0; i < _colors.Count; i++)
         {
-            var c = color;
-            <button type="button"
-                    class="h-7 w-7 rounded-md border-2 transition-transform hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring @(Value == c ? "border-foreground scale-110" : "border-transparent")"
-                    style="background-color:@c"
-                    title="@c"
-                    @onclick="() => Select(c)">
-            </button>
+            var index = i;
+            var color = _colors[index];
+            var selected = IsSelected(color);
+            <div id="@($"{_uid}-{index}")"
+                 role="gridcell"
+                 aria-selected="@(selected ? "true" : "false")"
+                 aria-label="@color"
+                 title="@color"
+                 data-color="@color"
+                 class="@($"cursor-pointer rounded-sm border transition-transform hover:scale-110 {(selected ? "z-10 scale-110 border-foreground ring-2 ring-ring ring-offset-1" : "border-black/10")} {(_focused == index && _hasFocus ? "outline outline-2 outline-offset-1 outline-ring" : "")}")"
+                 style="@($"background-color:{color};width:{TileWidth};height:{TileHeight}")"
+                 @onclick="() => SelectAsync(index)"></div>
         }
     </div>
     @if (ShowHex)
@@ -26,12 +52,29 @@
 @code {
     [Parameter] public string? Value { get; set; }
     [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    /// <summary>The colours to show. Overrides <see cref="Palette"/>.</summary>
     [Parameter] public IEnumerable<string>? Colors { get; set; }
+    /// <summary>Built-in palette used when <see cref="Colors"/> is not set.</summary>
+    [Parameter] public ColorPalettePresets Palette { get; set; } = ColorPalettePresets.Basic;
+    /// <summary>Tiles per row (default 10).</summary>
+    [Parameter] public int? Columns { get; set; }
+    [Parameter] public string TileWidth { get; set; } = "1.5rem";
+    [Parameter] public string TileHeight { get; set; } = "1.5rem";
+    [Parameter] public bool Enabled { get; set; } = true;
+    [Parameter] public EventCallback<object?> OnChange { get; set; }
+    [Parameter] public EventCallback OnBlur { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public int? TabIndex { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
+    /// <summary>Text above the tiles (earlier API).</summary>
     [Parameter] public string? Label { get; set; }
-    [Parameter] public bool ShowHex { get; set; } = true;
+    /// <summary>Shows "Selected: #xxxxxx" under the tiles (earlier API).</summary>
+    [Parameter] public bool ShowHex { get; set; }
     [Parameter] public string? Class { get; set; }
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
 
+    /// <summary>Colours shown when neither Colors nor Palette is set (the earlier default list).</summary>
     private static readonly string[] DefaultColors =
     [
         "#000000","#ffffff","#ef4444","#f97316","#eab308","#22c55e","#3b82f6","#8b5cf6","#ec4899",
@@ -40,11 +83,83 @@
         "#dc2626","#ea580c","#ca8a04","#16a34a","#2563eb","#7c3aed","#db2777",
     ];
 
-    private IEnumerable<string> ResolvedColors => Colors ?? DefaultColors;
+    private bool _paletteSet;
 
-    private async Task Select(string color)
+    public override Task SetParametersAsync(ParameterView parameters)
     {
-        Value = Value == color ? null : color;
-        await ValueChanged.InvokeAsync(Value);
+        _paletteSet = parameters.TryGetValue<ColorPalettePresets>(nameof(Palette), out _);
+        return base.SetParametersAsync(parameters);
+    }
+
+    private static readonly string[] NavKeys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End", "Enter", " "];
+
+    private readonly string _uid = $"cp-{Guid.NewGuid():N}"[..11];
+    private ElementReference _grid;
+    private List<string> _colors = [];
+    private int _focused = -1;
+    private bool _hasFocus;
+    private bool _keysRegistered;
+
+    private int EffectiveColumns => Math.Max(1, Columns ?? Math.Min(10, Math.Max(1, _colors.Count)));
+
+    private bool IsSelected(string color) =>
+        Value is not null && (string.Equals(color, Value, StringComparison.OrdinalIgnoreCase)
+                              || RgbaColor.Parse(color) is { } a && RgbaColor.Parse(Value) is { } b && a == b);
+
+    protected override void OnParametersSet()
+    {
+        _colors = (Colors ?? (_paletteSet ? ColorPresets.Colors(Palette) : DefaultColors)).ToList();
+        if (_focused >= _colors.Count) _focused = -1;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_keysRegistered) return;
+        _keysRegistered = true;
+        try { await JS.InvokeVoidAsync("MyStackBlazor.dropDownPreventKeys", _grid, NavKeys); } catch { }
+    }
+
+    public ValueTask FocusAsync() => _grid.FocusAsync();
+
+    private void OnFocus()
+    {
+        _hasFocus = true;
+        if (_focused < 0) _focused = Math.Max(0, _colors.FindIndex(IsSelected));
+    }
+
+    private async Task OnBlurAsync()
+    {
+        _hasFocus = false;
+        await OnBlur.InvokeAsync();
+    }
+
+    private async Task SelectAsync(int index)
+    {
+        if (!Enabled || index < 0 || index >= _colors.Count) return;
+        _focused = index;
+        var color = _colors[index];
+        if (IsSelected(color)) return;
+        Value = color;
+        await ValueChanged.InvokeAsync(color);
+        await OnChange.InvokeAsync(color);
+    }
+
+    private async Task OnKeyDownAsync(KeyboardEventArgs e)
+    {
+        if (!Enabled || _colors.Count == 0) return;
+        var columns = EffectiveColumns;
+        var current = Math.Max(_focused, 0);
+        int? next = e.Key switch
+        {
+            "ArrowRight" => Math.Min(current + 1, _colors.Count - 1),
+            "ArrowLeft"  => Math.Max(current - 1, 0),
+            "ArrowDown"  => current + columns < _colors.Count ? current + columns : current,
+            "ArrowUp"    => current - columns >= 0 ? current - columns : current,
+            "Home"       => 0,
+            "End"        => _colors.Count - 1,
+            _            => null,
+        };
+        if (next is int n) { _focused = n; return; }
+        if (e.Key is "Enter" or " ") await SelectAsync(current);
     }
 }

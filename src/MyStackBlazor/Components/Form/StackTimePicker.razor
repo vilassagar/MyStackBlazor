@@ -1,154 +1,107 @@
 @namespace MyStackBlazor.Components.Form
+@typeparam T
+@inherits DatePickerBase<T>
 
-<div class="relative @Class" @attributes="AdditionalAttributes">
-    <button type="button"
-            class="flex h-10 w-full items-center gap-2 rounded-md border-2 border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled="@Disabled"
-            @onclick="ToggleOpen">
-        <svg class="h-4 w-4 flex-shrink-0 text-muted-foreground" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-        </svg>
-        <span class="@(Value is null ? "text-muted-foreground" : "")">
-            @(Value.HasValue ? FormatTime(Value.Value) : Placeholder)
-        </span>
-    </button>
+@*
+    Time picker modelled on the Telerik TimePicker API: a segmented time input plus scrollable time lists.
+    T can be DateTime, TimeOnly or TimeSpan (nullable or not).
 
-    @if (_isOpen)
+    <StackTimePicker @bind-Value="start" Format="HH:mm" Steps="@(new TimePickerSteps { Minute = 15 })" />
+*@
+
+<div class="@($"relative inline-flex w-full flex-col {Class}".TrimEnd())"
+     style="@(Width is null ? null : $"width:{Width}")"
+     @onkeydown="OnWrapperKeyDownAsync"
+     @attributes="AdditionalAttributes">
+
+    <StackDateInput T="T" @ref="Input"
+                    Value="Value" ValueChanged="OnInputValueChangedAsync" ValueExpression="ValueExpression"
+                    Format="@EffectiveFormat" Min="Min" Max="Max"
+                    Placeholder="@Placeholder" FormatPlaceholder="FormatPlaceholder"
+                    AutoSwitchParts="AutoSwitchParts" AutoSwitchKeys="AutoSwitchKeys" AutoCorrectParts="AutoCorrectParts"
+                    TwoDigitYearMax="TwoDigitYearMax" ShowClearButton="ShowClearButton"
+                    Enabled="!IsDisabled" ReadOnly="ReadOnly"
+                    Size="@Size" Rounded="@Rounded" FillMode="@FillMode"
+                    Id="@Id" TabIndex="TabIndex" AriaLabel="@(AriaLabel ?? "Time")"
+                    OnChange="OnChange" OnBlur="OnInputBlurAsync">
+        <SuffixTemplate>
+            <button type="button" tabindex="-1" class="@ToggleButtonCls"
+                    aria-label="Open time list" aria-haspopup="dialog"
+                    aria-expanded="@(IsOpen ? "true" : "false")" aria-controls="@(IsOpen ? PopupId : null)"
+                    disabled="@(IsDisabled || ReadOnly)"
+                    @onclick="ToggleAsync" @onclick:stopPropagation="true">
+                <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" />
+                </svg>
+            </button>
+        </SuffixTemplate>
+    </StackDateInput>
+
+    @if (IsOpen)
     {
-        <div class="absolute z-50 mt-1 w-48 rounded-md border bg-popover p-3 shadow-md">
-            <div class="flex items-center justify-center gap-2">
-                <div class="flex flex-col items-center">
-                    <button type="button" class="rounded p-1 hover:bg-accent" @onclick="IncrementHour">
-                        <svg class="h-3 w-3" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <polyline points="18 15 12 9 6 15"></polyline>
-                        </svg>
-                    </button>
-                    <span class="w-8 select-none text-center font-mono text-lg font-medium">
-                        @DisplayHour
-                    </span>
-                    <button type="button" class="rounded p-1 hover:bg-accent" @onclick="DecrementHour">
-                        <svg class="h-3 w-3" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
-                    </button>
+        <div class="@OverlayCls" @onclick="OnOverlayClickAsync" aria-hidden="true"></div>
+        <div id="@PopupId" class="@PopupCls" role="dialog" aria-label="@(Title ?? "Choose a time")">
+            @if (AdaptiveMode == AdaptiveMode.Auto)
+            {
+                <div class="hidden items-center justify-between border-b px-4 py-3 max-sm:flex">
+                    <span class="text-sm font-semibold">@(Title ?? "Select time")</span>
+                    <button type="button" class="@ToggleButtonCls" aria-label="Close" @onclick="() => CloseFromUserAsync(refocus: true)">✕</button>
                 </div>
-
-                <span class="mb-0.5 text-xl font-bold text-muted-foreground">:</span>
-
-                <div class="flex flex-col items-center">
-                    <button type="button" class="rounded p-1 hover:bg-accent" @onclick="IncrementMinute">
-                        <svg class="h-3 w-3" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <polyline points="18 15 12 9 6 15"></polyline>
-                        </svg>
-                    </button>
-                    <span class="w-8 select-none text-center font-mono text-lg font-medium">
-                        @(_minute.ToString("D2"))
-                    </span>
-                    <button type="button" class="rounded p-1 hover:bg-accent" @onclick="DecrementMinute">
-                        <svg class="h-3 w-3" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
-                    </button>
+            }
+            <StackTimeSelector @ref="_selector" @bind-Value="_temp" Format="@EffectiveFormat" Steps="Steps"
+                               MinTime="MinTime" MaxTime="MaxTime" OnEnter="SetAsync" />
+            <div class="flex items-center justify-between gap-2 border-t px-2 py-2">
+                <button type="button" class="text-xs font-medium text-primary hover:underline" @onclick="() => _temp = DateTime.Now">Now</button>
+                <div class="flex gap-2">
+                    <button type="button" class="@FooterButtonCls" @onclick="() => CloseFromUserAsync(refocus: true)">Cancel</button>
+                    <button type="button" class="@PrimaryFooterButtonCls" @onclick="SetAsync">Set</button>
                 </div>
-
-                @if (!Use24Hour)
-                {
-                    <div class="ml-1 flex flex-col gap-1">
-                        <button type="button"
-                                class="rounded px-2 py-0.5 text-xs @(_isPm ? "bg-primary text-primary-foreground" : "hover:bg-accent")"
-                                @onclick="() => SetAmPm(true)">PM</button>
-                        <button type="button"
-                                class="rounded px-2 py-0.5 text-xs @(!_isPm ? "bg-primary text-primary-foreground" : "hover:bg-accent")"
-                                @onclick="() => SetAmPm(false)">AM</button>
-                    </div>
-                }
-            </div>
-
-            <div class="mt-3 flex gap-2">
-                <button type="button"
-                        class="flex-1 rounded-md border-2 border-input px-2 py-1 text-xs hover:bg-accent"
-                        @onclick="Clear">Clear</button>
-                <button type="button"
-                        class="flex-1 rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground hover:bg-primary/90"
-                        @onclick="Confirm">OK</button>
             </div>
         </div>
     }
 </div>
 
 @code {
-    [Parameter] public TimeSpan? Value { get; set; }
-    [Parameter] public EventCallback<TimeSpan?> ValueChanged { get; set; }
-    [Parameter] public bool Use24Hour { get; set; } = true;
-    [Parameter] public string Placeholder { get; set; } = "Select time";
-    [Parameter] public bool Disabled { get; set; }
-    [Parameter] public string? Class { get; set; }
-    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+    /// <summary>Step sizes of the hour / minute / second lists.</summary>
+    [Parameter] public TimePickerSteps? Steps { get; set; }
 
-    private bool _isOpen;
-    private int _hour;
-    private int _minute;
-    private bool _isPm;
+    /// <summary>Earlier API: picks "HH:mm" (true) or "hh:mm tt" (false) when no Format is set.</summary>
+    [Parameter] public bool? Use24Hour { get; set; }
 
-    private string DisplayHour => Use24Hour
-        ? _hour.ToString("D2")
-        : (_hour % 12 == 0 ? 12 : _hour % 12).ToString("D2");
+    private StackTimeSelector? _selector;
+    private DateTime? _temp;
+    private bool _focusSelector;
 
-    protected override void OnParametersSet()
+    protected override string DefaultFormat => Use24Hour switch
     {
-        if (Value.HasValue)
+        true  => "HH:mm",
+        false => "hh:mm tt",
+        _     => "t",
+    };
+
+    // Min/Max limit the time of day; their defaults (midnight) mean "no limit".
+    private TimeSpan? MinTime => Min.TimeOfDay == TimeSpan.Zero ? null : Min.TimeOfDay;
+    private TimeSpan? MaxTime => Max.TimeOfDay == TimeSpan.Zero ? null : Max.TimeOfDay;
+
+    protected override void OnPopupOpening()
+    {
+        _temp = CurrentDate ?? DateTime.Today.Add(MinTime ?? TimeSpan.Zero);
+        _focusSelector = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusSelector && _selector is not null)
         {
-            _hour   = Value.Value.Hours;
-            _minute = Value.Value.Minutes;
-            _isPm   = _hour >= 12;
+            _focusSelector = false;
+            try { await _selector.FocusAsync(); } catch { }
         }
     }
 
-    private void ToggleOpen()
+    private Task SetAsync()
     {
-        if (Disabled) return;
-        _isOpen = !_isOpen;
-        if (_isOpen && !Value.HasValue)
-        {
-            var now = DateTime.Now;
-            _hour   = now.Hour;
-            _minute = now.Minute;
-            _isPm   = _hour >= 12;
-        }
-    }
-
-    private void IncrementHour()   => _hour = (_hour + 1) % 24;
-    private void DecrementHour()   => _hour = (_hour - 1 + 24) % 24;
-    private void IncrementMinute() => _minute = (_minute + 1) % 60;
-    private void DecrementMinute() => _minute = (_minute - 1 + 60) % 60;
-
-    private void SetAmPm(bool isPm)
-    {
-        _isPm = isPm;
-        if (isPm  && _hour < 12)  _hour += 12;
-        if (!isPm && _hour >= 12) _hour -= 12;
-    }
-
-    private async Task Confirm()
-    {
-        Value = new TimeSpan(_hour, _minute, 0);
-        await ValueChanged.InvokeAsync(Value);
-        _isOpen = false;
-    }
-
-    private async Task Clear()
-    {
-        Value = null;
-        await ValueChanged.InvokeAsync(null);
-        _isOpen = false;
-    }
-
-    private string FormatTime(TimeSpan t)
-    {
-        if (Use24Hour) return t.ToString(@"hh\:mm");
-        var h    = t.Hours % 12 == 0 ? 12 : t.Hours % 12;
-        var ampm = t.Hours >= 12 ? "PM" : "AM";
-        return $"{h:D2}:{t.Minutes:D2} {ampm}";
+        // Keep the date of an existing DateTime value; time-only types ignore it.
+        var date = (CurrentDate ?? DateTime.Today).Date;
+        return SetFromPopupAsync(_temp is DateTime t ? date + t.TimeOfDay : null, close: true);
     }
 }

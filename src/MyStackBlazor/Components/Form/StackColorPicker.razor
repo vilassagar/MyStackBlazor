@@ -1,147 +1,195 @@
 @namespace MyStackBlazor.Components.Form
 
-<div class="@($"space-y-3 {Class}".Trim())" @attributes="AdditionalAttributes">
-    <div class="flex items-center gap-3">
-        <button type="button"
-                class="h-10 w-10 flex-shrink-0 overflow-hidden rounded-md border-2 border-input focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                style="background-color: @Value"
-                aria-label="Color preview"
-                title="@Value">
-        </button>
+@*
+    Colour picker button with a popup, modelled on the Telerik ColorPicker API.
 
-        <input type="text"
-               value="@Value"
-               maxlength="7"
-               placeholder="#000000"
-               class="flex h-10 w-32 rounded-md border-2 border-input bg-background px-3 py-2 font-mono text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-               @oninput="OnHexInput"
-               @onblur="NormalizeHex" />
+    <StackColorPicker @bind-Value="color" Views="@(new List<ColorPickerView> { ColorPickerView.Palette })" />
 
-        @if (ShowAlpha)
+    The earlier API (ShowAlpha, ShowSliders, Swatches) still works.
+*@
+
+<div class="@($"relative inline-flex flex-col {Class}".TrimEnd())" @onkeydown="OnKeyDownAsync" @attributes="AdditionalAttributes">
+    <button @ref="_button"
+            type="button"
+            id="@Id"
+            class="@ButtonCls"
+            disabled="@(!IsEnabled)"
+            title="@Title"
+            aria-label="@(AriaLabel ?? $"Choose color, current {Value ?? "none"}")"
+            aria-haspopup="dialog"
+            aria-expanded="@(_open ? "true" : "false")"
+            @onclick="ToggleAsync">
+        @if (Icon is not null)
         {
-            <div class="flex flex-1 items-center gap-2">
-                <input type="range" min="0" max="100" value="@_alpha"
-                       class="flex-1 accent-primary"
-                       @oninput="OnAlphaChange" />
-                <span class="w-10 text-right text-xs text-muted-foreground">@_alpha%</span>
-            </div>
+            <span class="flex flex-col items-center leading-none">
+                @Icon
+                <span class="mt-0.5 h-1 w-5 rounded-sm" style="@($"background:{Value ?? "transparent"}")"></span>
+            </span>
         }
-    </div>
+        else
+        {
+            <span class="h-5 w-6 rounded-sm border border-black/15" style="@SwatchStyle"></span>
+        }
+        <svg class="@($"h-3.5 w-3.5 text-muted-foreground transition-transform {(_open ? "rotate-180" : "")}")" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><polyline points="6 9 12 15 18 9" /></svg>
+    </button>
 
-    @if (ShowSliders)
+    @if (_open)
     {
-        <div class="space-y-2">
-            <div class="flex items-center gap-2">
-                <span class="w-4 shrink-0 text-center text-xs font-medium text-muted-foreground">R</span>
-                <input type="range" min="0" max="255" value="@_r"
-                       class="flex-1 accent-red-500"
-                       @oninput="e => UpdateRgb(ParseInt(e, 0), _g, _b)" />
-                <span class="w-8 text-right text-xs tabular-nums text-muted-foreground">@_r</span>
-            </div>
-            <div class="flex items-center gap-2">
-                <span class="w-4 shrink-0 text-center text-xs font-medium text-muted-foreground">G</span>
-                <input type="range" min="0" max="255" value="@_g"
-                       class="flex-1 accent-green-500"
-                       @oninput="e => UpdateRgb(_r, ParseInt(e, 0), _b)" />
-                <span class="w-8 text-right text-xs tabular-nums text-muted-foreground">@_g</span>
-            </div>
-            <div class="flex items-center gap-2">
-                <span class="w-4 shrink-0 text-center text-xs font-medium text-muted-foreground">B</span>
-                <input type="range" min="0" max="255" value="@_b"
-                       class="flex-1 accent-blue-500"
-                       @oninput="e => UpdateRgb(_r, _g, ParseInt(e, 0))" />
-                <span class="w-8 text-right text-xs tabular-nums text-muted-foreground">@_b</span>
-            </div>
-        </div>
-    }
-
-    @if (Swatches.Count > 0)
-    {
-        <div class="flex flex-wrap gap-1.5">
-            @foreach (var swatch in Swatches)
-            {
-                var color = swatch;
-                <button type="button"
-                        class="h-6 w-6 rounded border-2 border-input transition-transform hover:scale-110 @(Value?.Equals(swatch, StringComparison.OrdinalIgnoreCase) == true ? "ring-2 ring-ring ring-offset-1" : "")"
-                        style="background-color: @color"
-                        title="@swatch"
-                        @onclick="() => SelectSwatch(swatch)">
-                </button>
-            }
+        <div class="fixed inset-0 z-40" @onclick="() => CloseFromUserAsync(refocus: false)" aria-hidden="true"></div>
+        <div role="dialog" aria-label="@(Title ?? "Color picker")"
+             class="@($"absolute left-0 top-full z-50 mt-1 shadow-lg {(AdaptiveMode == AdaptiveMode.Auto ? "max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:mt-0" : "")} {PopupClass}".TrimEnd())">
+            <StackFlatColorPicker Value="@Value" ValueChanged="OnPickedAsync" OnCancel="() => CloseFromUserAsync(refocus: true)"
+                                  Views="EffectiveViews" View="View" ViewChanged="ViewChanged" ValueFormat="ValueFormat"
+                                  ShowPreview="ShowPreview" ShowButtons="ShowButtons" ShowClearButton="ShowClearButton"
+                                  ShowOpacityEditor="EffectiveShowOpacity" Colors="EffectiveColors" Palette="Palette"
+                                  Columns="Columns" TileWidth="@TileWidth" TileHeight="@TileHeight" />
         </div>
     }
 </div>
 
 @code {
-    [Parameter] public string Value { get; set; } = "#000000";
-    [Parameter] public EventCallback<string> ValueChanged { get; set; }
-    [Parameter] public bool ShowSliders { get; set; } = true;
-    [Parameter] public bool ShowAlpha { get; set; }
-    [Parameter] public List<string> Swatches { get; set; } = DefaultSwatches;
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    [Parameter] public List<ColorPickerView>? Views { get; set; }
+    [Parameter] public ColorPickerView View { get; set; } = ColorPickerView.Gradient;
+    [Parameter] public EventCallback<ColorPickerView> ViewChanged { get; set; }
+    [Parameter] public ColorFormat ValueFormat { get; set; } = ColorFormat.Hex;
+    [Parameter] public bool ShowPreview { get; set; } = true;
+    /// <summary>Show Apply / Cancel in the popup; without them a pick applies and closes immediately.</summary>
+    [Parameter] public bool ShowButtons { get; set; } = true;
+    [Parameter] public bool ShowClearButton { get; set; } = true;
+    [Parameter] public bool ShowOpacityEditor { get; set; } = true;
+    [Parameter] public IEnumerable<string>? Colors { get; set; }
+    [Parameter] public ColorPalettePresets Palette { get; set; } = ColorPalettePresets.Office;
+    [Parameter] public int? Columns { get; set; }
+    [Parameter] public string TileWidth { get; set; } = "1.5rem";
+    [Parameter] public string TileHeight { get; set; } = "1.5rem";
+
+    /// <summary>Content shown on the button instead of the colour swatch (the colour shows as a bar under it).</summary>
+    [Parameter] public RenderFragment? Icon { get; set; }
+    [Parameter] public bool Enabled { get; set; } = true;
+    [Parameter] public string Size { get; set; } = DropDownListTheme.Size.Medium;
+    [Parameter] public string Rounded { get; set; } = DropDownListTheme.Rounded.Medium;
+    [Parameter] public string FillMode { get; set; } = DropDownListTheme.FillMode.Solid;
+    [Parameter] public AdaptiveMode AdaptiveMode { get; set; } = AdaptiveMode.None;
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? PopupClass { get; set; }
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
     [Parameter] public string? Class { get; set; }
+
+    [Parameter] public EventCallback<object?> OnChange { get; set; }
+    [Parameter] public EventCallback<ColorPickerOpenCloseEventArgs> OnOpen { get; set; }
+    [Parameter] public EventCallback<ColorPickerOpenCloseEventArgs> OnClose { get; set; }
+
+    // ── Earlier API ──────────────────────────────────────────────────────────
+    /// <summary>Earlier API: shows the gradient (slider) view.</summary>
+    [Parameter] public bool ShowSliders { get; set; } = true;
+    /// <summary>Earlier API: alias for <see cref="ShowOpacityEditor"/>.</summary>
+    [Parameter] public bool? ShowAlpha { get; set; }
+    /// <summary>Earlier API: palette colours.</summary>
+    [Parameter] public List<string>? Swatches { get; set; }
+
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
 
+    /// <summary>Earlier API: the default swatches.</summary>
     public static readonly List<string> DefaultSwatches =
     [
         "#000000", "#ffffff", "#ef4444", "#f97316", "#eab308",
         "#22c55e", "#3b82f6", "#8b5cf6", "#ec4899", "#64748b",
     ];
 
-    private int _r, _g, _b, _alpha = 100;
+    private ElementReference _button;
+    private bool _open;
 
-    protected override void OnParametersSet() => ParseHex(Value);
+    private bool IsEnabled => Enabled;
+    private bool EffectiveShowOpacity => ShowAlpha ?? ShowOpacityEditor;
+    private IEnumerable<string>? EffectiveColors => Colors ?? Swatches;
 
-    private void ParseHex(string? hex)
+    private List<ColorPickerView> EffectiveViews =>
+        Views ?? (ShowSliders ? [ColorPickerView.Gradient, ColorPickerView.Palette] : [ColorPickerView.Palette]);
+
+    private string SwatchStyle => Value is null
+        ? "background:repeating-linear-gradient(45deg,#fff 0 4px,#e5e7eb 4px 8px)"
+        : $"background:{Value}";
+
+    public void Open()
     {
-        if (string.IsNullOrEmpty(hex) || !hex.StartsWith('#') || hex.Length != 7) return;
-        try
+        if (!IsEnabled || _open) return;
+        _open = true;
+        StateHasChanged();
+    }
+
+    public void Close()
+    {
+        if (!_open) return;
+        _open = false;
+        StateHasChanged();
+    }
+
+    public ValueTask FocusAsync() => _button.FocusAsync();
+
+    private async Task ToggleAsync()
+    {
+        if (_open) { await CloseFromUserAsync(refocus: false); return; }
+        var args = new ColorPickerOpenCloseEventArgs();
+        await OnOpen.InvokeAsync(args);
+        if (!args.IsCancelled) _open = true;
+    }
+
+    private async Task CloseFromUserAsync(bool refocus)
+    {
+        if (!_open) return;
+        var args = new ColorPickerOpenCloseEventArgs();
+        await OnClose.InvokeAsync(args);
+        if (args.IsCancelled) return;
+        _open = false;
+        if (refocus)
         {
-            _r = Convert.ToInt32(hex[1..3], 16);
-            _g = Convert.ToInt32(hex[3..5], 16);
-            _b = Convert.ToInt32(hex[5..7], 16);
+            try { await _button.FocusAsync(); } catch { }
         }
-        catch { }
     }
 
-    private async Task OnHexInput(ChangeEventArgs e)
+    private async Task OnPickedAsync(string? color)
     {
-        var raw = e.Value?.ToString() ?? "";
-        if (!raw.StartsWith('#')) raw = "#" + raw;
-        Value = raw.ToLowerInvariant();
-        ParseHex(Value);
-        if (Value.Length == 7)
-            await ValueChanged.InvokeAsync(Value);
+        Value = color;
+        await ValueChanged.InvokeAsync(color);
+        await OnChange.InvokeAsync(color);
+        await CloseFromUserAsync(refocus: true);
     }
 
-    private async Task NormalizeHex()
+    private async Task OnKeyDownAsync(KeyboardEventArgs e)
     {
-        if (!Value.StartsWith('#')) Value = "#" + Value;
-        if (Value.Length != 7) Value = "#000000";
-        Value = Value.ToLowerInvariant();
-        ParseHex(Value);
-        await ValueChanged.InvokeAsync(Value);
+        if (e.Key == "Escape") await CloseFromUserAsync(refocus: true);
+        else if (e.AltKey && e.Key == "ArrowDown" && !_open) await ToggleAsync();
     }
 
-    private async Task UpdateRgb(int r, int g, int b)
+    private string ButtonCls
     {
-        _r = r; _g = g; _b = b;
-        Value = $"#{_r:x2}{_g:x2}{_b:x2}";
-        await ValueChanged.InvokeAsync(Value);
+        get
+        {
+            var size = Size switch
+            {
+                DropDownListTheme.Size.Small => "h-8 px-1.5",
+                DropDownListTheme.Size.Large => "h-12 px-3",
+                _                            => "h-10 px-2",
+            };
+            var rounded = FillMode == DropDownListTheme.FillMode.Flat ? "rounded-none" : Rounded switch
+            {
+                DropDownListTheme.Rounded.None  => "rounded-none",
+                DropDownListTheme.Rounded.Small => "rounded-sm",
+                DropDownListTheme.Rounded.Large => "rounded-lg",
+                DropDownListTheme.Rounded.Full  => "rounded-full",
+                _                               => "rounded-md",
+            };
+            var fill = FillMode switch
+            {
+                DropDownListTheme.FillMode.Flat    => "border-0 border-b-2 border-input bg-transparent",
+                DropDownListTheme.FillMode.Outline => "border-2 border-input bg-transparent",
+                _                                  => "border border-input bg-background shadow-sm",
+            };
+            return $"inline-flex items-center gap-1.5 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 {size} {rounded} {fill}";
+        }
     }
-
-    private async Task SelectSwatch(string color)
-    {
-        Value = color.ToLowerInvariant();
-        ParseHex(Value);
-        await ValueChanged.InvokeAsync(Value);
-    }
-
-    private async Task OnAlphaChange(ChangeEventArgs e)
-    {
-        _alpha = ParseInt(e, 100);
-        await ValueChanged.InvokeAsync(Value);
-    }
-
-    private static int ParseInt(ChangeEventArgs e, int fallback) =>
-        int.TryParse(e.Value?.ToString(), out var v) ? v : fallback;
 }

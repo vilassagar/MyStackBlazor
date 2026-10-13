@@ -1,0 +1,404 @@
+@namespace MyStackBlazor.Components.Form
+@typeparam T
+@implements IDisposable
+@inject IJSRuntime JS
+@using System.Globalization
+@using System.Linq.Expressions
+
+@*
+    Segmented date/time input modelled on the Telerik DateInput API.
+    T can be DateTime, DateOnly or TimeOnly (nullable or not).
+
+    <StackDateInput @bind-Value="birthday" Format="dd MMM yyyy" Min="@(new DateTime(1900,1,1))" />
+*@
+
+<div id="@Id"
+     role="group"
+     aria-label="@(AriaLabel ?? Title)"
+     aria-invalid="@(IsInvalid ? "true" : null)"
+     aria-disabled="@(Enabled ? null : "true")"
+     title="@Title"
+     class="@BoxCls"
+     style="@(Width is null ? null : $"width:{Width}")"
+     @onclick="FocusAsync"
+     @attributes="AdditionalAttributes">
+
+    @PrefixTemplate
+
+    <span class="relative flex min-w-0 flex-1 items-center whitespace-nowrap">
+        @if (ShowPlaceholder)
+        {
+            <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center text-muted-foreground" aria-hidden="true">@Placeholder</span>
+        }
+        <span class="@($"flex items-center {(ShowPlaceholder ? "opacity-0" : "")}")">
+            @for (var i = 0; i < _format.Tokens.Count; i++)
+            {
+                var index = i;
+                var token = _format.Tokens[index];
+                if (!token.IsEditable)
+                {
+                    <span class="@(token.Kind == DatePartKind.Literal ? "text-muted-foreground" : "")" aria-hidden="@(token.Kind == DatePartKind.Literal ? "true" : null)">@_format.Display(index, FormatPlaceholder, _built)</span>
+                    continue;
+                }
+                var value = _format.Values.GetValueOrDefault(index);
+                var (min, max) = token.Range;
+                <span @ref="_segments[index]"
+                      role="spinbutton"
+                      tabindex="@(Enabled && index == _tabStop ? TabIndex ?? 0 : -1)"
+                      aria-label="@DateInputFormat.PartName(token.Kind)"
+                      aria-valuemin="@min"
+                      aria-valuemax="@max"
+                      aria-valuenow="@value"
+                      aria-valuetext="@(value is null ? "empty" : _format.Display(index, FormatPlaceholder, _built))"
+                      aria-readonly="@(ReadOnly ? "true" : null)"
+                      data-part="@token.Kind"
+                      class="@SegmentCls(value is null)"
+                      @onkeydown="e => OnKeyDownAsync(index, e)"
+                      @onfocus="() => OnSegmentFocus(index)"
+                      @onblur="OnSegmentBlurAsync"
+                      @onclick:stopPropagation="true">@_format.Display(index, FormatPlaceholder, _built)</span>
+            }
+        </span>
+    </span>
+
+    @if (ShowClearButton && Enabled && !ReadOnly && !_format.IsEmpty)
+    {
+        <button type="button"
+                tabindex="-1"
+                class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                aria-label="Clear"
+                @onclick="ClearAsync"
+                @onclick:stopPropagation="true">
+            <svg class="h-3.5 w-3.5" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+        </button>
+    }
+
+    @SuffixTemplate
+</div>
+
+@code {
+    // ── Value ────────────────────────────────────────────────────────────────
+    [Parameter] public T? Value { get; set; }
+    [Parameter] public EventCallback<T?> ValueChanged { get; set; }
+    [Parameter] public Expression<Func<T?>>? ValueExpression { get; set; }
+
+    /// <summary>.NET date format, standard ("d", "g", "t"…) or custom ("dd MMM yyyy HH:mm"). Default "d".</summary>
+    [Parameter] public string Format { get; set; } = "d";
+    [Parameter] public DateTime Min { get; set; } = new(1900, 1, 1);
+    [Parameter] public DateTime Max { get; set; } = new(2099, 12, 31);
+
+    // ── Editing behaviour (Telerik names) ────────────────────────────────────
+    [Parameter] public DateInputFormatPlaceholder FormatPlaceholder { get; set; } = DateInputFormatPlaceholder.Formatted;
+    /// <summary>Move to the next part automatically once a part is complete.</summary>
+    [Parameter] public bool AutoSwitchParts { get; set; } = true;
+    /// <summary>Keys that move to the next part (default: the usual separators).</summary>
+    [Parameter] public List<string> AutoSwitchKeys { get; set; } = [".", "/", "-", " ", ":", ","];
+    /// <summary>Clamp the day to the month length (31 Feb → 28/29 Feb).</summary>
+    [Parameter] public bool AutoCorrectParts { get; set; } = true;
+    /// <summary>Two-digit years up to this value are 20xx, later ones 19xx (default 68).</summary>
+    [Parameter] public int TwoDigitYearMax { get; set; } = 68;
+
+    /// <summary>Text shown when there is no value and the input is not focused.</summary>
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public bool ShowClearButton { get; set; }
+    [Parameter] public bool Enabled { get; set; } = true;
+    [Parameter] public bool ReadOnly { get; set; }
+
+    // ── Appearance ───────────────────────────────────────────────────────────
+    [Parameter] public string Size { get; set; } = DropDownListTheme.Size.Medium;
+    [Parameter] public string Rounded { get; set; } = DropDownListTheme.Rounded.Medium;
+    [Parameter] public string FillMode { get; set; } = DropDownListTheme.FillMode.Solid;
+    [Parameter] public string? Width { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? PrefixTemplate { get; set; }
+    [Parameter] public RenderFragment? SuffixTemplate { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public int? TabIndex { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
+
+    // ── Events ───────────────────────────────────────────────────────────────
+    /// <summary>Fires when the user confirms a changed value (Enter or leaving the input).</summary>
+    [Parameter] public EventCallback<object?> OnChange { get; set; }
+    [Parameter] public EventCallback OnBlur { get; set; }
+
+    /// <summary>Lets a host component (DatePicker…) show its own invalid state.</summary>
+    [Parameter] public bool ForceInvalid { get; set; }
+
+    [CascadingParameter] private EditContext? EditContext { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    // ── State ────────────────────────────────────────────────────────────────
+    private static readonly string[] SegmentKeys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End", "Backspace", " ", "/", "-", ".", ":", ","];
+
+    private DateInputFormat _format = new("d", CultureInfo.CurrentCulture);
+    private string? _formatBuilt;
+    private readonly Dictionary<int, ElementReference> _segments = [];
+    private readonly HashSet<int> _keysRegistered = [];
+    private string _buffer = "";
+    private int _active = -1;
+    private int _tabStop;
+    private int? _pendingFocus;
+    private int _focusSequence;
+    private bool _hasFocus;
+    private bool _outOfRange;
+    private bool _pendingChange;
+    private DateTime? _built;
+    private DateTime? _current;
+    private bool _synced;
+    private DateTime? _lastParam;
+
+    private EditContext? _subscribedContext;
+    private FieldIdentifier? _field;
+
+    private IEnumerable<int> EditableIndexes => Enumerable.Range(0, _format.Tokens.Count).Where(i => _format.Tokens[i].IsEditable);
+    private bool ShowPlaceholder => Placeholder is not null && _format.IsEmpty && !_hasFocus;
+
+    private bool IsInvalid =>
+        ForceInvalid || _outOfRange || (EditContext is not null && _field is { } f && EditContext.GetValidationMessages(f).Any());
+
+    /// <summary>The value as a DateTime (for host components).</summary>
+    internal DateTime? CurrentValue => _current;
+
+    // ── Lifecycle ────────────────────────────────────────────────────────────
+    protected override void OnParametersSet()
+    {
+        var formatChanged = _formatBuilt != Format;
+        if (formatChanged)
+        {
+            _formatBuilt = Format;
+            _format = new DateInputFormat(Format, CultureInfo.CurrentCulture);
+            _tabStop = EditableIndexes.FirstOrDefault();
+        }
+
+        var value = DateValue<T>.ToDateTime(Value);
+        if (formatChanged || !_synced || value != _lastParam)
+        {
+            _synced = true;
+            _lastParam = value;
+            _current = value;
+            _format.Load(value);
+            _built = value;
+            _buffer = "";
+            _outOfRange = false;
+        }
+
+        if (ValueExpression is not null && _field is null) _field = FieldIdentifier.Create(ValueExpression);
+        if (!ReferenceEquals(_subscribedContext, EditContext))
+        {
+            if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged -= OnValidationStateChanged;
+            _subscribedContext = EditContext;
+            if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged += OnValidationStateChanged;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        foreach (var (index, element) in _segments)
+        {
+            if (!_keysRegistered.Add(index)) continue;
+            try { await JS.InvokeVoidAsync("MyStackBlazor.dropDownPreventKeys", element, SegmentKeys); } catch { }
+        }
+
+        if (_pendingFocus is int focus && _segments.TryGetValue(focus, out var segment))
+        {
+            _pendingFocus = null;
+            try { await segment.FocusAsync(); } catch { }
+        }
+    }
+
+    /// <summary>Focuses the first empty part (or the first part).</summary>
+    public async Task FocusAsync()
+    {
+        if (!Enabled) return;
+        var target = EditableIndexes.FirstOrDefault(i => _format.Values.GetValueOrDefault(i) is null, _tabStop);
+        if (_segments.TryGetValue(target, out var segment))
+        {
+            try { await segment.FocusAsync(); } catch { }
+        }
+    }
+
+    // ── Focus ────────────────────────────────────────────────────────────────
+    private void OnSegmentFocus(int index)
+    {
+        _focusSequence++;
+        _hasFocus = true;
+        if (_active != index) _buffer = "";
+        _active = index;
+        _tabStop = index;
+    }
+
+    private async Task OnSegmentBlurAsync()
+    {
+        // Moving between parts blurs one segment and focuses the next; only a real exit counts.
+        var sequence = _focusSequence;
+        await Task.Delay(30);
+        if (sequence != _focusSequence) return;
+        _hasFocus = false;
+        _active = -1;
+        _buffer = "";
+        await CommitAsync();
+        await OnBlur.InvokeAsync();
+    }
+
+    private void MoveTo(int index)
+    {
+        _buffer = "";
+        _pendingFocus = index;
+        _tabStop = index;
+    }
+
+    private int? NextEditable(int from, int direction)
+    {
+        for (var i = from + direction; i >= 0 && i < _format.Tokens.Count; i += direction)
+            if (_format.Tokens[i].IsEditable) return i;
+        return null;
+    }
+
+    // ── Keyboard ─────────────────────────────────────────────────────────────
+    private async Task OnKeyDownAsync(int index, KeyboardEventArgs e)
+    {
+        if (!Enabled || e.CtrlKey || e.MetaKey || e.AltKey) return;
+
+        switch (e.Key)
+        {
+            case "ArrowLeft":
+                if (NextEditable(index, -1) is int prev) MoveTo(prev);
+                return;
+            case "ArrowRight":
+                if (NextEditable(index, 1) is int next) MoveTo(next);
+                return;
+            case "Home":
+                MoveTo(EditableIndexes.First());
+                return;
+            case "End":
+                MoveTo(EditableIndexes.Last());
+                return;
+            case "Enter":
+                await CommitAsync();
+                return;
+            case "Tab":
+                return;
+        }
+
+        if (ReadOnly) return;
+
+        switch (e.Key)
+        {
+            case "ArrowUp":
+            case "ArrowDown":
+                _format.Step(index, e.Key == "ArrowUp" ? 1 : -1, _current ?? DateTime.Now);
+                _buffer = "";
+                break;
+            case "Backspace":
+            case "Delete":
+                _format.Values[index] = null;
+                _buffer = "";
+                break;
+            default:
+                if (AutoSwitchKeys.Contains(e.Key))
+                {
+                    if (NextEditable(index, 1) is int next) MoveTo(next);
+                    return;
+                }
+                if (e.Key.Length != 1) return;
+                var complete = _format.Type(index, e.Key[0], ref _buffer);
+                if (complete && AutoSwitchParts && NextEditable(index, 1) is int following) MoveTo(following);
+                break;
+        }
+
+        if (AutoCorrectParts) _format.CorrectDay(_current ?? DateTime.Today);
+        await UpdateValueAsync();
+    }
+
+    // ── Value ────────────────────────────────────────────────────────────────
+    private async Task UpdateValueAsync()
+    {
+        var fallback = _current ?? (DateValue<T>.IsTimeOnly ? DateTime.MinValue.Date : DateTime.Today);
+        _built = _format.Build(fallback, TwoDigitYearMax, AutoCorrectParts);
+
+        if (_built is null)
+        {
+            _outOfRange = false;
+            // Incomplete input clears a nullable value; a non-nullable value keeps its last good date.
+            if (DateValue<T>.IsNullable && _current is not null) await SetValueAsync(null);
+            return;
+        }
+
+        var outside = !DateValue<T>.IsTimeOnly && (_built < Min || _built > Max);
+        _outOfRange = outside;
+        if (!outside && _built != _current) await SetValueAsync(_built);
+    }
+
+    private async Task SetValueAsync(DateTime? value)
+    {
+        _current = value;
+        _lastParam = value;
+        _pendingChange = true;
+        await ValueChanged.InvokeAsync(DateValue<T>.FromDateTime(value));
+        if (EditContext is not null && _field is { } field) EditContext.NotifyFieldChanged(field);
+    }
+
+    private async Task CommitAsync()
+    {
+        if (!_pendingChange) return;
+        _pendingChange = false;
+        await OnChange.InvokeAsync(DateValue<T>.FromDateTime(_current));
+    }
+
+    private async Task ClearAsync()
+    {
+        _format.Load(null);
+        _built = null;
+        _outOfRange = false;
+        if (_current is not null) await SetValueAsync(DateValue<T>.IsNullable ? null : _current);
+        await CommitAsync();
+    }
+
+    private void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs e) => _ = InvokeAsync(StateHasChanged);
+
+    // ── CSS ──────────────────────────────────────────────────────────────────
+    private string BoxCls
+    {
+        get
+        {
+            var size = Size switch
+            {
+                DropDownListTheme.Size.Small => "h-8 px-2 text-xs",
+                DropDownListTheme.Size.Large => "h-12 px-4 text-base",
+                _                            => "h-10 px-3 text-sm",
+            };
+            var rounded = FillMode == DropDownListTheme.FillMode.Flat ? "rounded-none" : Rounded switch
+            {
+                DropDownListTheme.Rounded.None  => "rounded-none",
+                DropDownListTheme.Rounded.Small => "rounded-sm",
+                DropDownListTheme.Rounded.Large => "rounded-lg",
+                DropDownListTheme.Rounded.Full  => "rounded-full",
+                _                               => "rounded-md",
+            };
+            var fill = FillMode switch
+            {
+                DropDownListTheme.FillMode.Flat    => "border-0 border-b-2 border-input bg-transparent",
+                DropDownListTheme.FillMode.Outline => "border-2 border-input bg-transparent",
+                _                                  => "border border-input bg-background shadow-sm",
+            };
+            return $"relative flex w-full cursor-text items-center gap-2 tabular-nums transition-colors {size} {rounded} {fill} " +
+                   "ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 " +
+                   (Enabled ? "" : "pointer-events-none cursor-not-allowed opacity-50 ") +
+                   (IsInvalid ? "border-destructive focus-within:ring-destructive " : "") +
+                   Class;
+        }
+    }
+
+    private static string SegmentCls(bool empty) =>
+        "rounded-sm px-px outline-none focus:bg-primary focus:text-primary-foreground " +
+        (empty ? "text-muted-foreground" : "");
+
+    public void Dispose()
+    {
+        if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged -= OnValidationStateChanged;
+    }
+}

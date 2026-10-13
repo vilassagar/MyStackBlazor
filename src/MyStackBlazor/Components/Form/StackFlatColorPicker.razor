@@ -1,0 +1,140 @@
+@namespace MyStackBlazor.Components.Form
+
+@*
+    Inline colour picker modelled on the Telerik FlatColorPicker API: Gradient and Palette views,
+    a preview of the current and new colour, and Apply / Cancel buttons.
+
+    <StackFlatColorPicker @bind-Value="color" ValueFormat="ColorFormat.Rgb" Palette="ColorPalettePresets.Office" />
+*@
+
+<div id="@Id" class="@($"inline-flex flex-col gap-3 rounded-md border bg-background p-3 {(Enabled ? "" : "pointer-events-none opacity-50")} {Class}".TrimEnd())" @attributes="AdditionalAttributes">
+
+    <div class="flex items-center gap-2">
+        @if (Views.Count > 1)
+        {
+            <div role="tablist" aria-label="Color picker view" class="inline-flex rounded-md border p-0.5">
+                @foreach (var view in Views)
+                {
+                    var v = view;
+                    <button type="button" role="tab" aria-selected="@(v == _view ? "true" : "false")"
+                            class="@($"rounded px-2.5 py-1 text-xs font-medium transition-colors {(v == _view ? "bg-primary text-primary-foreground" : "hover:bg-accent")}")"
+                            @onclick="() => SetViewAsync(v)">@v</button>
+                }
+            </div>
+        }
+        <div class="flex-1"></div>
+        @if (ShowClearButton)
+        {
+            <button type="button" aria-label="Clear color" title="Clear"
+                    class="flex h-7 w-7 items-center justify-center rounded-md border text-muted-foreground hover:bg-accent hover:text-foreground"
+                    @onclick="ClearAsync">
+                <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="9" /><line x1="5.6" y1="5.6" x2="18.4" y2="18.4" /></svg>
+            </button>
+        }
+        @if (ShowPreview)
+        {
+            <div class="flex h-7 overflow-hidden rounded-md border" title="Current / new color">
+                <span class="w-8" style="@($"background:{(Value ?? "transparent")}")" aria-label="@($"Current color {Value ?? "none"}")" role="img"></span>
+                <span class="w-8" style="@($"background:{(_pending ?? "transparent")}")" aria-label="@($"New color {_pending ?? "none"}")" role="img"></span>
+            </div>
+        }
+    </div>
+
+    @if (_view == ColorPickerView.Gradient)
+    {
+        <StackColorGradient Value="@_pending" ValueChanged="OnPendingChangedAsync" Format="ValueFormat"
+                            ShowOpacityEditor="ShowOpacityEditor" Enabled="Enabled" />
+    }
+    else
+    {
+        <StackColorPalette Value="@_pending" ValueChanged="OnPendingChangedAsync" Colors="Colors" Palette="Palette"
+                           Columns="Columns" TileWidth="@TileWidth" TileHeight="@TileHeight" Enabled="Enabled" />
+    }
+
+    @if (ShowButtons)
+    {
+        <div class="flex justify-end gap-2">
+            <button type="button" class="rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent" @onclick="CancelAsync">Cancel</button>
+            <button type="button" class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90" @onclick="ApplyAsync">Apply</button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    /// <summary>Views offered (default Gradient and Palette).</summary>
+    [Parameter] public List<ColorPickerView> Views { get; set; } = [ColorPickerView.Gradient, ColorPickerView.Palette];
+    [Parameter] public ColorPickerView View { get; set; } = ColorPickerView.Gradient;
+    [Parameter] public EventCallback<ColorPickerView> ViewChanged { get; set; }
+    /// <summary>Format of the value produced by the gradient view.</summary>
+    [Parameter] public ColorFormat ValueFormat { get; set; } = ColorFormat.Hex;
+    [Parameter] public bool ShowPreview { get; set; } = true;
+    /// <summary>Show Apply / Cancel; without them every change applies immediately.</summary>
+    [Parameter] public bool ShowButtons { get; set; } = true;
+    [Parameter] public bool ShowClearButton { get; set; } = true;
+    [Parameter] public bool ShowOpacityEditor { get; set; } = true;
+
+    // Palette view settings
+    [Parameter] public IEnumerable<string>? Colors { get; set; }
+    [Parameter] public ColorPalettePresets Palette { get; set; } = ColorPalettePresets.Office;
+    [Parameter] public int? Columns { get; set; }
+    [Parameter] public string TileWidth { get; set; } = "1.5rem";
+    [Parameter] public string TileHeight { get; set; } = "1.5rem";
+
+    [Parameter] public bool Enabled { get; set; } = true;
+    [Parameter] public EventCallback<object?> OnChange { get; set; }
+    /// <summary>Fires when Cancel is clicked (used by StackColorPicker to close its popup).</summary>
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string? _pending;
+    private string? _lastValue;
+    private bool _synced;
+    private ColorPickerView _view;
+    private ColorPickerView? _lastViewParam;
+
+    protected override void OnParametersSet()
+    {
+        if (!_synced || Value != _lastValue) { _synced = true; _lastValue = Value; _pending = Value; }
+        if (View != _lastViewParam) { _lastViewParam = View; _view = Views.Contains(View) ? View : Views.FirstOrDefault(); }
+    }
+
+    private async Task SetViewAsync(ColorPickerView view)
+    {
+        _view = view;
+        await ViewChanged.InvokeAsync(view);
+    }
+
+    private async Task OnPendingChangedAsync(string? color)
+    {
+        _pending = color;
+        if (!ShowButtons) await CommitAsync();
+    }
+
+    private async Task CommitAsync()
+    {
+        if (_pending == Value) return;
+        Value = _pending;
+        _lastValue = _pending;
+        await ValueChanged.InvokeAsync(_pending);
+        await OnChange.InvokeAsync(_pending);
+    }
+
+    private async Task ApplyAsync() => await CommitAsync();
+
+    private async Task CancelAsync()
+    {
+        _pending = Value;
+        await OnCancel.InvokeAsync();
+    }
+
+    private async Task ClearAsync()
+    {
+        _pending = null;
+        if (!ShowButtons) await CommitAsync();
+    }
+}

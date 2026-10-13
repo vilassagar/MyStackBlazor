@@ -1,0 +1,377 @@
+@namespace MyStackBlazor.Components.Form
+@typeparam T
+@implements IDisposable
+@inject IJSRuntime JS
+@using System.Globalization
+@using System.Linq.Expressions
+
+@*
+    Number input modelled on the Telerik NumericTextBox API. T is any numeric type (int, decimal, double…, nullable or not).
+    Shows Format while not focused and the plain number while editing.
+
+    <StackNumericTextBox @bind-Value="price" Format="C2" Min="0m" Max="1000m" Step="0.5m" Decimals="2" />
+*@
+
+<span class="@BoxCls" style="@(Width is null ? null : $"width:{Width}")" title="@Title">
+    @NumericTextBoxPrefixTemplate
+
+    <input @ref="_input"
+           id="@Id"
+           name="@Name"
+           type="text"
+           role="spinbutton"
+           inputmode="@(InputMode ?? (IsIntegral ? "numeric" : "decimal"))"
+           autocomplete="@(AutoComplete ?? "off")"
+           placeholder="@Placeholder"
+           value="@_text"
+           disabled="@IsDisabled"
+           readonly="@ReadOnly"
+           tabindex="@TabIndex"
+           aria-valuenow="@(_value?.ToString(CultureInfo.InvariantCulture))"
+           aria-valuemin="@(HasMin ? ToDecimal(Min)?.ToString(CultureInfo.InvariantCulture) : null)"
+           aria-valuemax="@(HasMax ? ToDecimal(Max)?.ToString(CultureInfo.InvariantCulture) : null)"
+           aria-label="@AriaLabel"
+           aria-labelledby="@AriaLabelledBy"
+           aria-describedby="@AriaDescribedBy"
+           aria-invalid="@(IsInvalid ? "true" : null)"
+           class="h-full min-w-0 flex-1 bg-transparent tabular-nums outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+           @onfocus="OnFocusAsync"
+           @onblur="OnBlurAsync"
+           @oninput="OnInputAsync"
+           @onkeydown="OnKeyDownAsync"
+           @attributes="AdditionalAttributes" />
+
+    @NumericTextBoxSuffixTemplate
+
+    @if (Arrows)
+    {
+        <span class="-mr-2 flex h-full flex-col border-l border-input">
+            <button type="button" tabindex="-1" aria-label="Increase value"
+                    class="flex flex-1 items-center justify-center px-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+                    disabled="@(IsDisabled || ReadOnly || AtMax)"
+                    @onmousedown:preventDefault="true"
+                    @onclick="() => StepAsync(1)">
+                <svg class="h-3 w-3" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><polyline points="18 15 12 9 6 15" /></svg>
+            </button>
+            <button type="button" tabindex="-1" aria-label="Decrease value"
+                    class="flex flex-1 items-center justify-center border-t border-input px-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+                    disabled="@(IsDisabled || ReadOnly || AtMin)"
+                    @onmousedown:preventDefault="true"
+                    @onclick="() => StepAsync(-1)">
+                <svg class="h-3 w-3" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><polyline points="6 9 12 15 18 9" /></svg>
+            </button>
+        </span>
+    }
+</span>
+
+@code {
+    [Parameter] public T? Value { get; set; }
+    [Parameter] public EventCallback<T?> ValueChanged { get; set; }
+    [Parameter] public Expression<Func<T?>>? ValueExpression { get; set; }
+
+    /// <summary>Smallest allowed value (unbounded when not set).</summary>
+    [Parameter] public T? Min { get; set; }
+    /// <summary>Largest allowed value (unbounded when not set).</summary>
+    [Parameter] public T? Max { get; set; }
+    /// <summary>Amount added by the arrows and Up/Down keys (default 1).</summary>
+    [Parameter] public T? Step { get; set; }
+    /// <summary>Rounds the value to this many decimals.</summary>
+    [Parameter] public int? Decimals { get; set; }
+    /// <summary>.NET numeric format shown while not focused: "N2", "C", "P0", "#,##0.00 kg"…</summary>
+    [Parameter] public string? Format { get; set; }
+    [Parameter] public bool Arrows { get; set; } = true;
+    [Parameter] public bool SelectOnFocus { get; set; }
+    /// <summary>Milliseconds between the last keystroke and ValueChanged (Telerik default 150).</summary>
+    [Parameter] public int DebounceDelay { get; set; } = 150;
+
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public bool Enabled { get; set; } = true;
+    [Parameter] public bool ReadOnly { get; set; }
+
+    [Parameter] public string Size { get; set; } = DropDownListTheme.Size.Medium;
+    [Parameter] public string Rounded { get; set; } = DropDownListTheme.Rounded.Medium;
+    [Parameter] public string FillMode { get; set; } = DropDownListTheme.FillMode.Solid;
+    [Parameter] public string? Width { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? NumericTextBoxPrefixTemplate { get; set; }
+    [Parameter] public RenderFragment? NumericTextBoxSuffixTemplate { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Name { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public int? TabIndex { get; set; }
+    [Parameter] public string? InputMode { get; set; }
+    [Parameter] public string? AutoComplete { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter] public string? AriaLabelledBy { get; set; }
+    [Parameter] public string? AriaDescribedBy { get; set; }
+
+    [Parameter] public EventCallback<object?> OnChange { get; set; }
+    [Parameter] public EventCallback OnBlur { get; set; }
+
+    [CascadingParameter] private EditContext? EditContext { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private static readonly Type Underlying = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+    private static readonly bool IsIntegral = Underlying == typeof(int) || Underlying == typeof(long) || Underlying == typeof(short)
+                                              || Underlying == typeof(byte) || Underlying == typeof(uint) || Underlying == typeof(ulong)
+                                              || Underlying == typeof(ushort) || Underlying == typeof(sbyte);
+    private static readonly string[] SpinKeys = ["ArrowUp", "ArrowDown"];
+
+    private ElementReference _input;
+    private decimal? _value;
+    private string _text = "";
+    private bool _focused;
+    private bool _synced;
+    private decimal? _lastParam;
+    private bool _pendingChange;
+    private bool _keysRegistered;
+    private CancellationTokenSource? _debounce;
+    private FieldIdentifier? _field;
+    private EditContext? _subscribedContext;
+
+    // Min/Max/Step are T, so "not set" is tracked explicitly (0 is a real minimum for int).
+    private bool HasMin, HasMax, HasStep;
+
+    private CultureInfo Culture => CultureInfo.CurrentCulture;
+    private bool IsDisabled => !Enabled;
+    private bool IsInvalid => EditContext is not null && _field is { } f && EditContext.GetValidationMessages(f).Any();
+    private decimal? MinValue => HasMin ? ToDecimal(Min) : null;
+    private decimal? MaxValue => HasMax ? ToDecimal(Max) : null;
+    private decimal StepValue => HasStep && ToDecimal(Step) is decimal s && s != 0 ? s : 1;
+    private bool AtMax => MaxValue is decimal max && _value >= max;
+    private bool AtMin => MinValue is decimal min && _value <= min;
+
+    public override Task SetParametersAsync(ParameterView parameters)
+    {
+        HasMin = parameters.TryGetValue<T?>(nameof(Min), out _);
+        HasMax = parameters.TryGetValue<T?>(nameof(Max), out _);
+        HasStep = parameters.TryGetValue<T?>(nameof(Step), out _);
+        return base.SetParametersAsync(parameters);
+    }
+
+    protected override void OnParametersSet()
+    {
+        var value = ToDecimal(Value);
+        if (!_synced || value != _lastParam)
+        {
+            _synced = true;
+            _lastParam = value;
+            _value = value;
+            if (!_focused) _text = Display();
+        }
+        if (ValueExpression is not null && _field is null) _field = FieldIdentifier.Create(ValueExpression);
+        if (!ReferenceEquals(_subscribedContext, EditContext))
+        {
+            if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged -= OnValidationStateChanged;
+            _subscribedContext = EditContext;
+            if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged += OnValidationStateChanged;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_keysRegistered) return;
+        _keysRegistered = true;
+        try { await JS.InvokeVoidAsync("MyStackBlazor.dropDownPreventKeys", _input, SpinKeys); } catch { }
+    }
+
+    public ValueTask FocusAsync() => _input.FocusAsync();
+
+    // ── Conversion & formatting ──────────────────────────────────────────────
+    private static decimal? ToDecimal(T? value)
+    {
+        if (value is null) return null;
+        try { return Convert.ToDecimal(value, CultureInfo.InvariantCulture); }
+        catch (OverflowException) { return null; }
+    }
+
+    private static T? FromDecimal(decimal? value)
+    {
+        if (value is null) return default;
+        var v = IsIntegral ? Math.Round(value.Value, MidpointRounding.AwayFromZero) : value.Value;
+        return (T)Convert.ChangeType(v, Underlying, CultureInfo.InvariantCulture);
+    }
+
+    private string Display() => _value is decimal v
+        ? (string.IsNullOrEmpty(Format) ? v.ToString("G", Culture) : FormatValue(v, Format))
+        : "";
+
+    private string FormatValue(decimal v, string format) =>
+        Underlying == typeof(double) || Underlying == typeof(float) ? ((double)v).ToString(format, Culture) : v.ToString(format, Culture);
+
+    /// <summary>Plain editable number: no group separators, culture decimal sign.</summary>
+    private string EditText() => _value is decimal v ? v.ToString("0.############################", Culture) : "";
+
+    private decimal Round(decimal value) =>
+        IsIntegral ? Math.Round(value, MidpointRounding.AwayFromZero)
+        : Decimals is int d ? Math.Round(value, Math.Clamp(d, 0, 28), MidpointRounding.AwayFromZero) : value;
+
+    private decimal Clamp(decimal value) =>
+        MinValue is decimal min && value < min ? min : MaxValue is decimal max && value > max ? max : value;
+
+    /// <summary>Text that is not a number yet but may become one ("-", "1.", "").</summary>
+    private bool IsIntermediate(string text)
+    {
+        var nf = Culture.NumberFormat;
+        return text.Length == 0 || text == nf.NegativeSign || text == nf.NumberDecimalSeparator
+               || text == nf.NegativeSign + nf.NumberDecimalSeparator
+               || (!IsIntegral && text.EndsWith(nf.NumberDecimalSeparator, StringComparison.Ordinal)
+                   && decimal.TryParse(text[..^nf.NumberDecimalSeparator.Length], NumberStyles.Number, Culture, out _));
+    }
+
+    // ── Events ───────────────────────────────────────────────────────────────
+    private async Task OnFocusAsync()
+    {
+        _focused = true;
+        _text = EditText();
+        if (SelectOnFocus)
+        {
+            StateHasChanged();
+            try { await JS.InvokeVoidAsync("MyStackBlazor.selectAll", _input); } catch { }
+        }
+    }
+
+    private async Task OnBlurAsync()
+    {
+        _debounce?.Cancel();
+        _focused = false;
+        if (_value is decimal v)
+        {
+            var corrected = Round(Clamp(v));
+            if (corrected != v) await SetValueAsync(corrected);
+            else if (_value != _lastParam) await SetValueAsync(_value);
+        }
+        _text = Display();
+        if (_pendingChange)
+        {
+            _pendingChange = false;
+            await OnChange.InvokeAsync(FromDecimal(_value));
+        }
+        await OnBlur.InvokeAsync();
+    }
+
+    private async Task OnInputAsync(ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString()?.Trim() ?? "";
+        var previous = _text;
+
+        if (IsIntermediate(raw))
+        {
+            _text = raw;
+            if (raw.Length == 0) await PublishDebouncedAsync(null);
+            return;
+        }
+
+        var styles = IsIntegral ? NumberStyles.AllowLeadingSign : NumberStyles.Number;
+        if (!decimal.TryParse(raw, styles, Culture, out var parsed))
+        {
+            // Not a number: show the typed text once, then put the previous text back.
+            _text = raw;
+            StateHasChanged();
+            await Task.Yield();
+            _text = previous;
+            return;
+        }
+
+        _text = raw;
+        _value = Round(parsed);
+        // Out-of-range values are allowed while typing and clamped on blur.
+        if (Clamp(_value.Value) == _value) await PublishDebouncedAsync(_value);
+    }
+
+    private async Task PublishDebouncedAsync(decimal? value)
+    {
+        _value = value;
+        _debounce?.Cancel();
+        if (DebounceDelay > 0)
+        {
+            var cts = _debounce = new CancellationTokenSource();
+            try { await Task.Delay(DebounceDelay, cts.Token); }
+            catch (TaskCanceledException) { return; }
+        }
+        await SetValueAsync(value);
+    }
+
+    private async Task SetValueAsync(decimal? value)
+    {
+        _value = value;
+        if (value == _lastParam) return;
+        _lastParam = value;
+        _pendingChange = true;
+        await ValueChanged.InvokeAsync(FromDecimal(value));
+        if (EditContext is not null && _field is { } field) EditContext.NotifyFieldChanged(field);
+    }
+
+    private async Task StepAsync(int direction)
+    {
+        if (IsDisabled || ReadOnly) return;
+        _debounce?.Cancel();
+        var next = Round(Clamp((_value ?? MinValue ?? 0) + direction * StepValue));
+        await SetValueAsync(next);
+        _text = _focused ? EditText() : Display();
+        if (!_focused && _pendingChange)
+        {
+            _pendingChange = false;
+            await OnChange.InvokeAsync(FromDecimal(_value));
+        }
+    }
+
+    private async Task OnKeyDownAsync(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "ArrowUp": await StepAsync(1); break;
+            case "ArrowDown": await StepAsync(-1); break;
+            case "Enter":
+                if (_value is decimal v) await SetValueAsync(Round(Clamp(v)));
+                _text = EditText();
+                if (_pendingChange)
+                {
+                    _pendingChange = false;
+                    await OnChange.InvokeAsync(FromDecimal(_value));
+                }
+                break;
+        }
+    }
+
+    private void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs e) => _ = InvokeAsync(StateHasChanged);
+
+    private string BoxCls
+    {
+        get
+        {
+            var size = Size switch
+            {
+                DropDownListTheme.Size.Small => "h-8 pl-2 pr-2 text-xs",
+                DropDownListTheme.Size.Large => "h-12 pl-4 pr-2 text-base",
+                _                            => "h-10 pl-3 pr-2 text-sm",
+            };
+            var rounded = FillMode == DropDownListTheme.FillMode.Flat ? "rounded-none" : Rounded switch
+            {
+                DropDownListTheme.Rounded.None  => "rounded-none",
+                DropDownListTheme.Rounded.Small => "rounded-sm",
+                DropDownListTheme.Rounded.Large => "rounded-lg",
+                DropDownListTheme.Rounded.Full  => "rounded-full",
+                _                               => "rounded-md",
+            };
+            var fill = FillMode switch
+            {
+                DropDownListTheme.FillMode.Flat    => "border-0 border-b-2 border-input bg-transparent",
+                DropDownListTheme.FillMode.Outline => "border-2 border-input bg-transparent",
+                _                                  => "border-2 border-input bg-background",
+            };
+            return $"flex w-full items-center gap-2 overflow-hidden transition-colors {size} {rounded} {fill} " +
+                   "ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 " +
+                   (IsDisabled ? "cursor-not-allowed opacity-50 " : "") +
+                   (IsInvalid ? "border-destructive " : "") +
+                   Class;
+        }
+    }
+
+    public void Dispose()
+    {
+        _debounce?.Cancel();
+        if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged -= OnValidationStateChanged;
+    }
+}

@@ -1,0 +1,181 @@
+@namespace MyStackBlazor.Components.Form
+@inject IJSRuntime JS
+
+@*
+    File picker modelled on the Telerik FileSelect API: files are read in .NET (no server upload).
+
+    <StackFileSelect AllowedExtensions="@(new List<string> { ".pdf", ".docx" })" MaxFileSize="5 * 1024 * 1024"
+                     OnSelect="HandleSelect" />
+
+    async Task HandleSelect(FileSelectEventArgs args)
+    {
+        foreach (var file in args.Files.Where(f => f.IsValid))
+        {
+            await using var stream = file.Stream;
+            ...
+        }
+    }
+*@
+
+<div id="@Id" class="@($"space-y-3 {Class}".TrimEnd())" style="@(Width is null ? null : $"width:{Width}")" @attributes="AdditionalAttributes">
+    <div id="@_dropzoneId" class="@DropzoneCls" @ondragenter="() => _dragging = true" @ondragleave="() => _dragging = false" @ondragover:preventDefault="true">
+        <InputFile id="@_inputId" @ref="_input" OnChange="OnFilesChangedAsync" class="sr-only" disabled="@(!Enabled)"
+                   multiple="@Multiple" accept="@EffectiveAccept" capture="@Capture" />
+        <div class="flex flex-wrap items-center gap-3 p-3">
+            <label for="@_inputId" class="@ButtonCls" tabindex="@(Enabled ? 0 : -1)" role="button" @onkeydown="OnButtonKeyDownAsync">
+                @if (SelectFilesButtonTemplate is not null) { @SelectFilesButtonTemplate } else { <text>Select files…</text> }
+            </label>
+            <span class="text-sm text-muted-foreground">@(_dragging ? "Drop the files" : "or drop files here")</span>
+        </div>
+    </div>
+
+    @if (_files.Count > 0)
+    {
+        <ul class="space-y-2" aria-label="Selected files">
+            @foreach (var file in _files)
+            {
+                var f = file;
+                <li class="@($"flex items-center gap-3 rounded-md border px-3 py-2 {(f.IsValid ? "bg-background" : "border-destructive/50 bg-destructive/5")}")" data-file="@f.Name">
+                    @if (FileTemplate is not null)
+                    {
+                        @FileTemplate(f)
+                    }
+                    else
+                    {
+                        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-muted text-[10px] font-semibold uppercase text-muted-foreground">@f.Extension.TrimStart('.')</span>
+                        <div class="min-w-0 flex-1">
+                            <p class="truncate text-sm font-medium">@f.Name</p>
+                            @if (FileInfoTemplate is not null)
+                            {
+                                @FileInfoTemplate(f)
+                            }
+                            else if (f.IsValid)
+                            {
+                                <p class="text-xs text-muted-foreground">@FileRules.FormatSize(f.Size)</p>
+                            }
+                            else
+                            {
+                                <p class="text-xs font-medium text-destructive" role="alert">@FileRules.Message(f.InvalidExtension, f.InvalidMinFileSize, f.InvalidMaxFileSize)</p>
+                            }
+                        </div>
+                    }
+                    <button type="button" aria-label="@($"Remove {f.Name}")" disabled="@(!Enabled)"
+                            class="text-muted-foreground transition-colors hover:text-destructive disabled:opacity-50"
+                            @onclick="() => RemoveFileAsync(f.Id)">
+                        <svg class="h-4 w-4" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    </button>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    /// <summary>Allowed extensions, e.g. ".pdf" or "pdf". Other files are listed as invalid.</summary>
+    [Parameter] public List<string>? AllowedExtensions { get; set; }
+    /// <summary>The input's accept attribute (defaults to AllowedExtensions).</summary>
+    [Parameter] public string? Accept { get; set; }
+    [Parameter] public long? MinFileSize { get; set; }
+    [Parameter] public long? MaxFileSize { get; set; }
+    [Parameter] public bool Multiple { get; set; } = true;
+    /// <summary>The input's capture attribute ("user" / "environment" on mobile).</summary>
+    [Parameter] public string? Capture { get; set; }
+    [Parameter] public bool Enabled { get; set; } = true;
+    /// <summary>Id of another element that also accepts dropped files.</summary>
+    [Parameter] public string? DropZoneId { get; set; }
+
+    [Parameter] public RenderFragment? SelectFilesButtonTemplate { get; set; }
+    [Parameter] public RenderFragment<FileSelectFileInfo>? FileTemplate { get; set; }
+    [Parameter] public RenderFragment<FileSelectFileInfo>? FileInfoTemplate { get; set; }
+
+    [Parameter] public EventCallback<FileSelectEventArgs> OnSelect { get; set; }
+    [Parameter] public EventCallback<FileSelectEventArgs> OnRemove { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Width { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private readonly string _dropzoneId = $"fsdz-{Guid.NewGuid():N}";
+    private readonly string _inputId = $"fsin-{Guid.NewGuid():N}";
+    private readonly List<FileSelectFileInfo> _files = [];
+    private InputFile? _input;
+    private bool _dragging;
+
+    /// <summary>The files currently listed.</summary>
+    public IReadOnlyList<FileSelectFileInfo> Files => _files;
+
+    private string? EffectiveAccept => Accept ?? (AllowedExtensions is { Count: > 0 } ext ? string.Join(",", ext.Select(e => e.StartsWith('.') ? e : "." + e)) : null);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            await JS.InvokeVoidAsync("MyStackBlazor.setupDropzone", _dropzoneId, _inputId);
+            if (DropZoneId is not null) await JS.InvokeVoidAsync("MyStackBlazor.setupDropzone", DropZoneId, _inputId);
+        }
+        catch { /* JS not loaded or prerendering. */ }
+    }
+
+    /// <summary>Opens the browser's file dialog.</summary>
+    public async Task OpenSelectFilesDialog()
+    {
+        try { await JS.InvokeVoidAsync("MyStackBlazor.clickElement", _inputId); } catch { }
+    }
+
+    public void ClearFiles()
+    {
+        _files.Clear();
+        StateHasChanged();
+    }
+
+    private Task OnButtonKeyDownAsync(KeyboardEventArgs e) =>
+        e.Key is "Enter" or " " ? OpenSelectFilesDialog() : Task.CompletedTask;
+
+    private async Task OnFilesChangedAsync(InputFileChangeEventArgs e)
+    {
+        _dragging = false;
+        var picked = e.GetMultipleFiles(Multiple ? int.MaxValue : 1)
+            .Select(file =>
+            {
+                var (ext, min, max) = FileRules.Check(file.Name, file.Size, AllowedExtensions, MinFileSize, MaxFileSize);
+                return new FileSelectFileInfo
+                {
+                    Name = file.Name,
+                    Size = file.Size,
+                    ContentType = file.ContentType,
+                    InvalidExtension = ext,
+                    InvalidMinFileSize = min,
+                    InvalidMaxFileSize = max,
+                    OpenStream = () => file.OpenReadStream(MaxFileSize ?? long.MaxValue),
+                };
+            }).ToList();
+
+        var args = new FileSelectEventArgs { Files = picked };
+        await OnSelect.InvokeAsync(args);
+        if (args.IsCancelled) return;
+
+        if (!Multiple) _files.Clear();
+        _files.AddRange(picked);
+    }
+
+    /// <summary>Removes a file from the list (fires OnRemove, which can cancel).</summary>
+    public async Task RemoveFileAsync(string id)
+    {
+        var file = _files.FirstOrDefault(f => f.Id == id);
+        if (file is null) return;
+        var args = new FileSelectEventArgs { Files = [file] };
+        await OnRemove.InvokeAsync(args);
+        if (args.IsCancelled) return;
+        _files.Remove(file);
+    }
+
+    private string DropzoneCls =>
+        "rounded-lg border-2 border-dashed transition-colors " +
+        (_dragging ? "border-primary bg-primary/5 " : "border-border ") +
+        (Enabled ? "" : "pointer-events-none opacity-50");
+
+    private const string ButtonCls =
+        "inline-flex cursor-pointer items-center rounded-md border bg-background px-3 py-1.5 text-sm font-medium shadow-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+}

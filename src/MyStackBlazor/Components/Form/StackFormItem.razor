@@ -1,0 +1,114 @@
+@namespace MyStackBlazor.Components.Form
+@implements IDisposable
+
+@*
+    One field of a StackForm (Telerik FormItem): label, editor (generated from the property type or your Template),
+    hint and validation message.
+*@
+
+@if (Form is not null)
+{
+    var horizontal = Form.Orientation == FormOrientation.Horizontal;
+    <div class="@($"relative {(horizontal ? "grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] items-start gap-3" : "space-y-1.5")} {Class}".TrimEnd())"
+         style="@(ColSpan is int span ? $"grid-column:span {span}" : null)"
+         data-field="@Field">
+        @if (LabelTemplate is not null)
+        {
+            @LabelTemplate
+        }
+        else if (!HideLabel)
+        {
+            <label for="@EditorId" class="@($"text-sm font-medium leading-snug {(horizontal ? "pt-2" : "")} {(IsEnabled ? "" : "opacity-60")}")">
+                @Label
+                @if (_required) { <span class="ml-0.5 text-destructive" aria-hidden="true">*</span> }
+            </label>
+        }
+        <div class="relative space-y-1">
+            @if (Template is not null)
+            {
+                @Template
+            }
+            else if (_property is not null && _editor is FormEditorType editor)
+            {
+                @FormEditorFactory.Editor(this, Form.EditedModel, _property, editor, EditorId, IsEnabled)
+            }
+            else if (_property is null && Field is not null)
+            {
+                <p class="text-xs text-destructive">Unknown field "@Field".</p>
+            }
+
+            @if (Messages.Count > 0 && Form.ValidationMessageType == FormValidationMessageType.Inline)
+            {
+                <p id="@($"{EditorId}-error")" role="alert" class="text-sm font-medium text-destructive">@string.Join(" ", Messages)</p>
+            }
+            else if (Messages.Count > 0 && Form.ValidationMessageType == FormValidationMessageType.Tooltip)
+            {
+                <div role="alert" class="absolute left-0 top-full z-20 mt-1 rounded-md bg-destructive px-2 py-1 text-xs font-medium text-destructive-foreground shadow-md">
+                    <span class="absolute -top-1 left-3 h-2 w-2 rotate-45 bg-destructive" aria-hidden="true"></span>
+                    @string.Join(" ", Messages)
+                </div>
+            }
+            else if (!string.IsNullOrEmpty(Hint))
+            {
+                <p id="@($"{EditorId}-hint")" class="text-xs text-muted-foreground">@Hint</p>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [CascadingParameter] private StackForm? Form { get; set; }
+
+    /// <summary>Name of the model property this item edits.</summary>
+    [Parameter] public string? Field { get; set; }
+    /// <summary>Label text (default: [Display(Name)] or the property name).</summary>
+    [Parameter] public string? LabelText { get; set; }
+    [Parameter] public bool HideLabel { get; set; }
+    [Parameter] public string? Hint { get; set; }
+    [Parameter] public bool Enabled { get; set; } = true;
+    [Parameter] public int? ColSpan { get; set; }
+    /// <summary>Editor to use instead of the one chosen from the property type.</summary>
+    [Parameter] public FormEditorType? EditorType { get; set; }
+    /// <summary>Your own editor markup (bind it to the model yourself).</summary>
+    [Parameter] public RenderFragment? Template { get; set; }
+    [Parameter] public RenderFragment? LabelTemplate { get; set; }
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private System.Reflection.PropertyInfo? _property;
+    private FormEditorType? _editor;
+    private bool _required;
+    private EditContext? _subscribed;
+
+    private bool IsEnabled => Enabled && (Form?.Enabled ?? true);
+    private string EditorId => Id ?? $"{Form?.Uid}-{Field}";
+    private string Label => LabelText ?? (_property is not null ? FormEditorFactory.Label(_property) : Field ?? "");
+
+    private List<string> Messages =>
+        Form is not null && Field is not null
+            ? Form.CurrentEditContext.GetValidationMessages(new FieldIdentifier(Form.EditedModel, Field)).ToList()
+            : [];
+
+    protected override void OnParametersSet()
+    {
+        if (Form is null || Field is null) return;
+        _property = FormEditorFactory.Property(Form.EditedModel, Field);
+        _editor = EditorType ?? (_property is null ? null : FormEditorFactory.DefaultEditor(_property.PropertyType));
+        _required = _property is not null && FormEditorFactory.IsRequired(_property);
+
+        var context = Form.CurrentEditContext;
+        if (!ReferenceEquals(context, _subscribed))
+        {
+            if (_subscribed is not null) _subscribed.OnValidationStateChanged -= OnValidationStateChanged;
+            _subscribed = context;
+            _subscribed.OnValidationStateChanged += OnValidationStateChanged;
+        }
+    }
+
+    private void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs e) => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        if (_subscribed is not null) _subscribed.OnValidationStateChanged -= OnValidationStateChanged;
+    }
+}

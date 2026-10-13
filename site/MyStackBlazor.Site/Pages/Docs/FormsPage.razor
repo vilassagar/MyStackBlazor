@@ -108,6 +108,121 @@
     </div>
 </CodeSample>
 
+<!-- Date & time (Telerik-style) -->
+<CodeSample Title="DatePicker, DateTimePicker, TimePicker &amp; DateInput"
+             Description="Segmented typing (arrow keys step a part), calendar / time-list popups, Min/Max, DisabledDates, Steps, and DateTime / DateOnly / TimeOnly values."
+             Code="@_dateFamilyCode">
+    <div class="grid w-full max-w-2xl gap-4 sm:grid-cols-2">
+        <label class="space-y-1 text-sm">
+            <span class="font-medium">DatePicker</span>
+            <StackDatePicker @bind-Value="_dpDate" Format="dd MMM yyyy" ShowWeekNumbers ShowClearButton
+                             Min="@DateTime.Today.AddYears(-1)" Max="@DateTime.Today.AddYears(1)" />
+        </label>
+        <label class="space-y-1 text-sm">
+            <span class="font-medium">Month picker (BottomView = Year)</span>
+            <StackDatePicker @bind-Value="_dpMonth" BottomView="CalendarView.Year" Format="MMMM yyyy" />
+        </label>
+        <label class="space-y-1 text-sm">
+            <span class="font-medium">DateTimePicker</span>
+            <StackDateTimePicker @bind-Value="_dtpValue" Format="dd/MM/yyyy HH:mm" Steps="@(new TimePickerSteps { Minute = 5 })" />
+        </label>
+        <label class="space-y-1 text-sm">
+            <span class="font-medium">TimePicker (TimeOnly, 15-min steps)</span>
+            <StackTimePicker @bind-Value="_tpValue" Format="hh:mm tt" Steps="@(new TimePickerSteps { Minute = 15 })" />
+        </label>
+        <label class="space-y-1 text-sm">
+            <span class="font-medium">DateInput (Wide placeholder)</span>
+            <StackDateInput @bind-Value="_diValue" Format="dd/MM/yyyy" FormatPlaceholder="DateInputFormatPlaceholder.Wide" />
+        </label>
+        <div class="space-y-1 text-sm">
+            <span class="font-medium">Calendar (range, 2 views)</span>
+            <StackDateCalendar SelectionMode="CalendarSelectionMode.Range" @bind-RangeStart="_calStart" @bind-RangeEnd="_calEnd" Views="2" />
+        </div>
+        <p class="text-xs text-muted-foreground sm:col-span-2">
+            @_dpDate?.ToString("d") · @_dpMonth?.ToString("MMMM yyyy") · @_dtpValue?.ToString("g") · @_tpValue?.ToString("t") ·
+            @_diValue?.ToString("d") · @_calStart?.ToString("d") – @_calEnd?.ToString("d")
+        </p>
+    </div>
+</CodeSample>
+
+<!-- Text inputs (Telerik-style) -->
+<CodeSample Title="TextBox, TextArea, NumericTextBox &amp; MaskedTextBox"
+             Description="Adornments, clear button, debounce, auto-size and counter, numeric Format/Step/Min/Max, and Telerik mask rules."
+             Code="@_textInputsCode">
+    <div class="grid w-full max-w-2xl gap-4 sm:grid-cols-2">
+        <StackTextBox @bind-Value="_tbEmail" Placeholder="email" ShowClearButton InputMode="email">
+            <TextBoxPrefixTemplate>✉</TextBoxPrefixTemplate>
+            <TextBoxSuffixTemplate>.com</TextBoxSuffixTemplate>
+        </StackTextBox>
+        <StackNumericTextBox @bind-Value="_ntbPrice" Format="C2" Min="0m" Max="10000m" Step="0.5m" Decimals="2" />
+        <StackMaskedTextBox @bind-Value="_mtbPhone" Mask="(999) 000-0000" ShowClearButton />
+        <StackNumericTextBox @bind-Value="_ntbPercent" Format="P0" Min="0d" Max="1d" Step="0.05d" />
+        <div class="sm:col-span-2">
+            <StackTextarea @bind-Value="_taNotes" AutoSize ShowCounter MaxLength="200" Rows="2" Placeholder="Notes (grows as you type)" />
+        </div>
+        <p class="text-xs text-muted-foreground sm:col-span-2">@_tbEmail · @_ntbPrice · @_mtbPhone · @_ntbPercent</p>
+    </div>
+</CodeSample>
+
+<!-- ComboBox & MultiSelect (Telerik-style) -->
+<CodeSample Title="ComboBox &amp; MultiSelect (Telerik API)"
+             Description="ComboBox: editable, Filterable, AllowCustom. MultiSelect: Value as a list of ids via ValueField, TagMode, AutoClose."
+             Code="@_comboMultiCode">
+    <div class="grid w-full max-w-2xl gap-4 sm:grid-cols-2">
+        <StackCombobox Data="@_acCountries" @bind-Value="_cbCountry" TextField="Name" ValueField="Name" Filterable GroupField="Region" Placeholder="Country (ComboBox)" />
+        <StackMultiSelect Data="@_msSkills" @bind-Value="_msSkillIds" TextField="Name" ValueField="Id" Filterable AutoClose="false" Placeholder="Skills (MultiSelect)" />
+        <p class="text-xs text-muted-foreground sm:col-span-2">@_cbCountry · ids: @string.Join(", ", _msSkillIds)</p>
+    </div>
+</CodeSample>
+
+<!-- Signature, FileSelect, Upload -->
+<CodeSample Title="Signature, FileSelect &amp; Upload"
+             Description="Signature returns a PNG data URL. FileSelect reads files in .NET; Upload posts to SaveUrl with progress."
+             Code="@_signatureFilesCode">
+    <div class="w-full max-w-2xl space-y-4">
+        <StackSignature @bind-Value="_signature" Width="360px" Height="140px" Smooth StrokeWidth="2" />
+        <p class="text-xs text-muted-foreground">@(_signature is null ? "Not signed" : $"Signed ({_signature.Length} characters of PNG data)")</p>
+        <StackFileSelect AllowedExtensions="@(new List<string> { ".pdf", ".png", ".jpg" })" MaxFileSize="5_000_000" OnSelect="OnFilesSelected" />
+        <p class="text-xs text-muted-foreground">@_fileSelectInfo</p>
+    </div>
+</CodeSample>
+
+<!-- Form -->
+<CodeSample Title="Form (generated from a model)"
+             Description="StackForm builds editors from property types, shows [Display] labels and DataAnnotations messages; Columns, groups and templates are available."
+             Code="@_formCode">
+    <div class="w-full max-w-2xl">
+        <StackForm Model="@_formModel" Columns="2" OnValidSubmit="@(_ => _formResult = $"Saved {_formModel.Name}")">
+            <FormValidation><DataAnnotationsValidator /></FormValidation>
+        </StackForm>
+        <p class="mt-2 text-xs text-muted-foreground">@_formResult</p>
+    </div>
+</CodeSample>
+
+<!-- Colors -->
+<CodeSample Title="ColorGradient, FlatColorPicker &amp; ColorPicker"
+             Description="HSV gradient with opacity and hex/RGB inputs, palette presets, Apply/Cancel, and a popup ColorPicker."
+             Code="@_colorPickersCode">
+    <div class="flex w-full flex-wrap items-start gap-6">
+        <StackColorGradient @bind-Value="_gradientColor" />
+        <StackFlatColorPicker @bind-Value="_flatColor" View="ColorPickerView.Palette" Palette="ColorPalettePresets.Office" Columns="10" TileWidth="1.1rem" TileHeight="1.1rem" />
+        <div class="space-y-2">
+            <StackColorPicker @bind-Value="_pickerColor" />
+            <p class="text-xs text-muted-foreground">@_gradientColor · @_flatColor · @_pickerColor</p>
+        </div>
+    </div>
+</CodeSample>
+
+<!-- Editor -->
+<CodeSample Title="Editor (rich text)"
+             Description="WYSIWYG HTML editor with Telerik-style tool sets, link/image/table dialogs and HTML view. Input and pasted HTML are sanitized."
+             Code="@_editorCode">
+    <div class="w-full max-w-3xl space-y-2">
+        <StackEditor @bind-Value="_editorHtml" Tools="@MyStackBlazor.Components.Form.EditorTools.EditorToolSets.All" Height="260px" Placeholder="Write something…" />
+        <p class="text-xs text-muted-foreground">@(_editorHtml?.Length ?? 0) characters of HTML</p>
+    </div>
+</CodeSample>
+
 <!-- AutoComplete -->
 <CodeSample Title="AutoComplete"
              Description="Telerik-style AutoComplete: free text with suggestions from Data (ValueField), filtering, grouping, templates, OnRead for server data, and Size/Rounded/FillMode."
@@ -281,7 +396,7 @@
         <!-- Basic -->
         <div class="space-y-2">
             <p class="text-sm font-semibold">Basic</p>
-            <StackMultiSelect TItem="string"
+            <StackMultiSelect TItem="string" TValue="string"
                          Options="_countries"
                          @bind-SelectedItems="_selCountries"
                          ItemLabel="x => x"
@@ -295,7 +410,7 @@
         <!-- With descriptions + groups -->
         <div class="space-y-2">
             <p class="text-sm font-semibold">With Groups &amp; Descriptions</p>
-            <StackMultiSelect TItem="TechOption"
+            <StackMultiSelect TItem="TechOption" TValue="TechOption"
                          Options="_techOptions"
                          @bind-SelectedItems="_selTech"
                          ItemLabel="x => x.Name"
@@ -312,7 +427,7 @@
         <!-- Max selection + custom template -->
         <div class="space-y-2">
             <p class="text-sm font-semibold">Max 3 Selections + Custom Item Template</p>
-            <StackMultiSelect TItem="TeamMember"
+            <StackMultiSelect TItem="TeamMember" TValue="TeamMember"
                          Options="_teamMembers"
                          @bind-SelectedItems="_selMembers"
                          ItemLabel="m => m.Name"
@@ -340,7 +455,7 @@
         <!-- Disabled state -->
         <div class="space-y-2">
             <p class="text-sm font-semibold">Disabled</p>
-            <StackMultiSelect TItem="string"
+            <StackMultiSelect TItem="string" TValue="string"
                          Options="_countries"
                          SelectedItems='new List<string> { "India", "Germany" }'
                          Placeholder="Disabled multi-select"
@@ -566,6 +681,134 @@
 </CodeSample>
 
 @code {
+    // ── Inputs batch demo ────────────────────────────────────────────────────
+    private string? _tbEmail;
+    private decimal _ntbPrice = 19.99m;
+    private double _ntbPercent = 0.25;
+    private string? _mtbPhone;
+    private string? _taNotes;
+    private string? _cbCountry;
+    public record MsSkill(int Id, string Name);
+    private readonly List<MsSkill> _msSkills = [new(1, "C#"), new(2, "Blazor"), new(3, "SQL"), new(4, "Azure"), new(5, "Tailwind")];
+    private List<int> _msSkillIds = [1, 2];
+    private string? _signature;
+    private string _fileSelectInfo = "No files selected";
+    private string? _gradientColor = "#3b82f6";
+    private string? _flatColor = "#ed7d31";
+    private string? _pickerColor = "#22c55e";
+    private string? _editorHtml = "<h2>Hello</h2><p>Try <b>bold</b>, lists and links.</p>";
+    private string? _formResult;
+
+    public enum FormPlan { Free, Pro, Enterprise }
+
+    public class FormDemoModel
+    {
+        [System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.Display(Name = "Full name")]
+        public string? Name { get; set; }
+        [System.ComponentModel.DataAnnotations.EmailAddress]
+        public string? Email { get; set; }
+        [System.ComponentModel.DataAnnotations.Range(18, 120)]
+        public int Age { get; set; } = 30;
+        public DateTime? StartDate { get; set; }
+        public FormPlan Plan { get; set; } = FormPlan.Pro;
+        public bool Newsletter { get; set; }
+    }
+
+    private readonly FormDemoModel _formModel = new();
+
+    private void OnFilesSelected(FileSelectEventArgs args) =>
+        _fileSelectInfo = string.Join(", ", args.Files.Select(f => f.IsValid ? $"{f.Name} ({f.Size} B)" : $"{f.Name} (rejected)"));
+
+    private const string _textInputsCode = """
+        <StackTextBox @bind-Value="email" ShowClearButton InputMode="email">
+            <TextBoxPrefixTemplate>✉</TextBoxPrefixTemplate>
+        </StackTextBox>
+        <StackNumericTextBox @bind-Value="price" Format="C2" Min="0m" Max="10000m" Step="0.5m" Decimals="2" />
+        <StackMaskedTextBox @bind-Value="phone" Mask="(999) 000-0000" />
+        <StackTextarea @bind-Value="notes" AutoSize ShowCounter MaxLength="200" />
+        """;
+
+    private const string _comboMultiCode = """
+        <StackCombobox Data="@countries" @bind-Value="country" TextField="Name" ValueField="Name"
+                       Filterable AllowCustom="false" GroupField="Region" />
+
+        <StackMultiSelect Data="@skills" @bind-Value="skillIds" TextField="Name" ValueField="Id"
+                          Filterable AutoClose="false" TagMode="MultiSelectTagMode.Multiple" />
+        """;
+
+    private const string _signatureFilesCode = """
+        <StackSignature @bind-Value="signaturePng" Width="360px" Height="140px" Smooth />
+
+        <StackFileSelect AllowedExtensions="@(new List<string> { ".pdf", ".png" })" MaxFileSize="5_000_000"
+                         OnSelect="@(async args => { foreach (var f in args.Files.Where(f => f.IsValid)) { await using var s = f.Stream; /* … */ } })" />
+
+        <StackUpload SaveUrl="api/upload/save" RemoveUrl="api/upload/remove" AllowedExtensions="@(new List<string> { ".jpg" })"
+                     OnUpload="@(args => args.RequestHeaders["X-CSRF"] = token)" />
+        """;
+
+    private const string _formCode = """
+        <StackForm Model="@person" Columns="2" OnValidSubmit="Save">
+            <FormValidation><DataAnnotationsValidator /></FormValidation>
+        </StackForm>
+
+        <!-- Or declare the items -->
+        <StackForm Model="@person" Orientation="FormOrientation.Horizontal" ValidationMessageType="FormValidationMessageType.Tooltip">
+            <FormItems>
+                <StackFormGroup LabelText="Account" Columns="2">
+                    <StackFormItem Field="@nameof(Person.Name)" Hint="As on your ID" />
+                    <StackFormItem Field="@nameof(Person.Newsletter)" EditorType="FormEditorType.Switch" />
+                </StackFormGroup>
+            </FormItems>
+        </StackForm>
+        """;
+
+    private const string _colorPickersCode = """
+        <StackColorGradient @bind-Value="color" Format="ColorFormat.Rgb" ShowOpacityEditor />
+        <StackFlatColorPicker @bind-Value="color" View="ColorPickerView.Palette" Palette="ColorPalettePresets.Office" />
+        <StackColorPicker @bind-Value="color" ShowButtons="false" />
+        """;
+
+    private const string _editorCode = """
+        @using MyStackBlazor.Components.Form.EditorTools
+
+        <StackEditor @bind-Value="html" Tools="@EditorToolSets.All" Height="260px" Placeholder="Write something…" />
+
+        <!-- Pick tools -->
+        <StackEditor @bind-Value="html" Tools="@(new List<IEditorTool> { new Bold(), new Italic(), new CreateLink(), new CustomTool("Stamp") })">
+            <EditorCustomTools>
+                <StackEditorCustomTool Name="Stamp"><button @onclick="InsertStamp">Stamp</button></StackEditorCustomTool>
+            </EditorCustomTools>
+        </StackEditor>
+        """;
+
+    // ── Date & time demo ─────────────────────────────────────────────────────
+    private DateTime? _dpDate = DateTime.Today;
+    private DateTime? _dpMonth;
+    private DateTime? _dtpValue = DateTime.Today.AddHours(9);
+    private TimeOnly? _tpValue = new TimeOnly(13, 30);
+    private DateTime? _diValue;
+    private DateTime? _calStart, _calEnd;
+
+    private const string _dateFamilyCode = """
+        <StackDatePicker @bind-Value="date" Format="dd MMM yyyy" ShowWeekNumbers ShowClearButton
+                         Min="@DateTime.Today" DisabledDates="@holidays" />
+
+        <StackDatePicker @bind-Value="month" BottomView="CalendarView.Year" Format="MMMM yyyy" />
+
+        <StackDateTimePicker @bind-Value="meeting" Format="dd/MM/yyyy HH:mm"
+                             Steps="@(new TimePickerSteps { Minute = 5 })" />
+
+        <StackTimePicker @bind-Value="time" Format="hh:mm tt"
+                         Steps="@(new TimePickerSteps { Minute = 15 })"
+                         Min="@DateTime.Today.AddHours(8)" Max="@DateTime.Today.AddHours(18)" />
+
+        <StackDateInput @bind-Value="birthday" Format="dd/MM/yyyy"
+                        FormatPlaceholder="DateInputFormatPlaceholder.Wide" />
+
+        <StackDateCalendar SelectionMode="CalendarSelectionMode.Range" Views="2"
+                           @bind-RangeStart="from" @bind-RangeEnd="to" />
+        """;
+
     // ── AutoComplete demo ────────────────────────────────────────────────────
     public record AcCountry(string Name, string Region);
 
@@ -833,14 +1076,14 @@
 
     private const string _multiSelectCode = """
         <!-- Basic string list -->
-        <StackMultiSelect TItem="string"
+        <StackMultiSelect TItem="string" TValue="string"
                      Options="_countries"
                      @bind-SelectedItems="_selCountries"
                      ItemLabel="x => x"
                      Placeholder="Select countries…" />
 
         <!-- Grouped with descriptions -->
-        <StackMultiSelect TItem="TechOption"
+        <StackMultiSelect TItem="TechOption" TValue="TechOption"
                      Options="_techOptions"
                      @bind-SelectedItems="_selTech"
                      ItemLabel="x => x.Name"
@@ -849,7 +1092,7 @@
                      Placeholder="Select technologies…" />
 
         <!-- Max 3, custom template -->
-        <StackMultiSelect TItem="TeamMember"
+        <StackMultiSelect TItem="TeamMember" TValue="TeamMember"
                      Options="_teamMembers"
                      @bind-SelectedItems="_selMembers"
                      ItemLabel="m => m.Name"

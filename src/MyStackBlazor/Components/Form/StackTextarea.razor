@@ -1,28 +1,210 @@
 @namespace MyStackBlazor.Components.Form
+@implements IDisposable
+@inject IJSRuntime JS
+@using System.Linq.Expressions
 
-<textarea id="@Id"
-          placeholder="@Placeholder"
-          disabled="@Disabled"
-          readonly="@ReadOnly"
-          rows="@Rows"
-          class="@($"flex min-h-[80px] w-full rounded-md border-2 border-input bg-background px-4 py-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 {Class}".Trim())"
-          @oninput="OnInputChanged"
-          @attributes="AdditionalAttributes">@Value</textarea>
+@*
+    Multi-line input modelled on the Telerik TextArea API.
+
+    <StackTextarea @bind-Value="notes" Rows="3" AutoSize MaxLength="500" ShowCounter />
+*@
+
+<span class="@BoxCls" style="@(Width is null ? null : $"width:{Width}")" title="@Title">
+    @if (TextAreaPrefixTemplate is not null)
+    {
+        <span class="flex shrink-0 pt-0.5 text-muted-foreground">@TextAreaPrefixTemplate</span>
+    }
+    <textarea @ref="_textarea"
+              id="@Id"
+              name="@Name"
+              placeholder="@Placeholder"
+              disabled="@IsDisabled"
+              readonly="@ReadOnly"
+              rows="@Rows"
+              maxlength="@MaxLength"
+              inputmode="@InputMode"
+              autocomplete="@AutoComplete"
+              autocapitalize="@AutoCapitalize"
+              spellcheck="@(SpellCheck is null ? null : SpellCheck.Value ? "true" : "false")"
+              tabindex="@TabIndex"
+              aria-label="@AriaLabel"
+              aria-labelledby="@AriaLabelledBy"
+              aria-describedby="@AriaDescribedBy"
+              aria-invalid="@(IsInvalid ? "true" : null)"
+              class="@TextAreaCls"
+              value="@_text"
+              @oninput="OnInputAsync"
+              @onchange="OnChangeAsync"
+              @onblur="OnBlur"
+              @attributes="AdditionalAttributes"></textarea>
+    @if (TextAreaSuffixTemplate is not null || ShowCounter)
+    {
+        <span class="flex shrink-0 flex-col items-end justify-between gap-1 text-muted-foreground">
+            @TextAreaSuffixTemplate
+            @if (ShowCounter)
+            {
+                <span class="text-xs tabular-nums" aria-live="polite">@(_text?.Length ?? 0)@(MaxLength is int max ? $" / {max}" : "")</span>
+            }
+        </span>
+    }
+</span>
 
 @code {
-    [Parameter] public string? Id { get; set; }
-    [Parameter] public string? Placeholder { get; set; }
     [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public Expression<Func<string?>>? ValueExpression { get; set; }
+    /// <summary>Milliseconds between the last keystroke and ValueChanged (0 = immediate, the default here).</summary>
+    [Parameter] public int DebounceDelay { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Name { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public int Rows { get; set; } = 4;
+    [Parameter] public int? TabIndex { get; set; }
+    [Parameter] public int? MaxLength { get; set; }
+    [Parameter] public string? InputMode { get; set; }
+    [Parameter] public string? AutoComplete { get; set; }
+    [Parameter] public string? AutoCapitalize { get; set; }
+    [Parameter] public bool? SpellCheck { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter] public string? AriaLabelledBy { get; set; }
+    [Parameter] public string? AriaDescribedBy { get; set; }
+
+    /// <summary>Grow and shrink with the content instead of scrolling.</summary>
+    [Parameter] public bool AutoSize { get; set; }
+    /// <summary>Which way the user can resize: None, Both, Horizontal, Vertical (default).</summary>
+    [Parameter] public TextAreaResizeMode ResizeMode { get; set; } = TextAreaResizeMode.Vertical;
+    /// <summary>Shows "length / MaxLength" under the text.</summary>
+    [Parameter] public bool ShowCounter { get; set; }
+
+    [Parameter] public bool Enabled { get; set; } = true;
+    /// <summary>Alias for <c>Enabled="false"</c> (earlier API).</summary>
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public bool ReadOnly { get; set; }
-    [Parameter] public int Rows { get; set; } = 4;
+
+    [Parameter] public string Rounded { get; set; } = DropDownListTheme.Rounded.Medium;
+    [Parameter] public string FillMode { get; set; } = DropDownListTheme.FillMode.Solid;
+    [Parameter] public string? Width { get; set; }
     [Parameter] public string? Class { get; set; }
-    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public RenderFragment? TextAreaPrefixTemplate { get; set; }
+    [Parameter] public RenderFragment? TextAreaSuffixTemplate { get; set; }
+
+    [Parameter] public EventCallback<object?> OnChange { get; set; }
+    [Parameter] public EventCallback OnBlur { get; set; }
+
+    [CascadingParameter] private EditContext? EditContext { get; set; }
+    /// <summary>Extra attributes go on the &lt;textarea&gt; element.</summary>
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
 
-    private async Task OnInputChanged(ChangeEventArgs e)
+    private ElementReference _textarea;
+    private string? _text;
+    private string? _lastParam;
+    private bool _synced;
+    private CancellationTokenSource? _debounce;
+    private FieldIdentifier? _field;
+    private EditContext? _subscribedContext;
+
+    private bool IsDisabled => !Enabled || Disabled;
+    private bool IsAutoSize => AutoSize || ResizeMode == TextAreaResizeMode.Auto;
+    private bool IsInvalid => EditContext is not null && _field is { } f && EditContext.GetValidationMessages(f).Any();
+
+    protected override void OnParametersSet()
     {
-        Value = e.Value?.ToString();
-        await ValueChanged.InvokeAsync(Value);
+        if (!_synced || Value != _lastParam)
+        {
+            _synced = true;
+            _lastParam = Value;
+            _text = Value;
+        }
+        if (ValueExpression is not null && _field is null) _field = FieldIdentifier.Create(ValueExpression);
+        if (!ReferenceEquals(_subscribedContext, EditContext))
+        {
+            if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged -= OnValidationStateChanged;
+            _subscribedContext = EditContext;
+            if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged += OnValidationStateChanged;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!IsAutoSize) return;
+        try { await JS.InvokeVoidAsync("MyStackBlazor.textAreaAutoSize", _textarea); } catch { }
+    }
+
+    public ValueTask FocusAsync() => _textarea.FocusAsync();
+
+    private async Task OnInputAsync(ChangeEventArgs e)
+    {
+        _text = e.Value?.ToString();
+        _debounce?.Cancel();
+        if (DebounceDelay > 0)
+        {
+            var cts = _debounce = new CancellationTokenSource();
+            try { await Task.Delay(DebounceDelay, cts.Token); }
+            catch (TaskCanceledException) { return; }
+        }
+        await PublishAsync(_text);
+    }
+
+    private async Task PublishAsync(string? text)
+    {
+        if (text == _lastParam) return;
+        _lastParam = text;
+        Value = text;
+        await ValueChanged.InvokeAsync(text);
+        if (EditContext is not null && _field is { } field) EditContext.NotifyFieldChanged(field);
+    }
+
+    private async Task OnChangeAsync(ChangeEventArgs e)
+    {
+        _debounce?.Cancel();
+        _text = e.Value?.ToString();
+        await PublishAsync(_text);
+        await OnChange.InvokeAsync(_text);
+    }
+
+    private void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs e) => _ = InvokeAsync(StateHasChanged);
+
+    private string BoxCls
+    {
+        get
+        {
+            var rounded = FillMode == DropDownListTheme.FillMode.Flat ? "rounded-none" : Rounded switch
+            {
+                DropDownListTheme.Rounded.None  => "rounded-none",
+                DropDownListTheme.Rounded.Small => "rounded-sm",
+                DropDownListTheme.Rounded.Large => "rounded-lg",
+                DropDownListTheme.Rounded.Full  => "rounded-2xl",
+                _                               => "rounded-md",
+            };
+            var fill = FillMode switch
+            {
+                DropDownListTheme.FillMode.Flat    => "border-0 border-b-2 border-input bg-transparent",
+                DropDownListTheme.FillMode.Outline => "border-2 border-input bg-transparent",
+                _                                  => "border-2 border-input bg-background",
+            };
+            return $"flex w-full gap-2 px-4 py-3 text-sm transition-colors {rounded} {fill} " +
+                   "ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 " +
+                   (IsDisabled ? "cursor-not-allowed opacity-50 " : "") +
+                   (IsInvalid ? "border-destructive " : "") +
+                   Class;
+        }
+    }
+
+    private string TextAreaCls =>
+        "min-h-[56px] min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed " +
+        (IsAutoSize ? "resize-none overflow-hidden" : ResizeMode switch
+        {
+            TextAreaResizeMode.None       => "resize-none",
+            TextAreaResizeMode.Both       => "resize",
+            TextAreaResizeMode.Horizontal => "resize-x",
+            _                             => "resize-y",
+        });
+
+    public void Dispose()
+    {
+        _debounce?.Cancel();
+        if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged -= OnValidationStateChanged;
     }
 }

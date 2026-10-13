@@ -1,314 +1,197 @@
 @namespace MyStackBlazor.Components.Form
 @typeparam TItem
+@typeparam TValue
+@implements IDisposable
+@implements IDropDownListPopupSettingsHost
+@inject IJSRuntime JS
+@using System.Globalization
+@using System.Linq.Expressions
+@using System.Reflection
 
-<div class="relative @Class" @attributes="AdditionalAttributes">
+@*
+    Multiple selection with tags, modelled on the Telerik MultiSelect API.
 
-    <!-- ── Trigger ──────────────────────────────────────────────── -->
-    <div class="@TriggerCls"
-         tabindex="@(Disabled ? "-1" : "0")"
-         @onclick="ToggleOpen"
-         @onkeydown="OnTriggerKeyDown"
-         role="combobox"
-         aria-expanded="@_open"
-         aria-haspopup="listbox">
+    <StackMultiSelect Data="@skills" @bind-Value="skillIds" TextField="Name" ValueField="Id"
+                      Filterable Placeholder="Skills" />
 
-        <!-- Tag pills or placeholder -->
-        <div class="flex flex-1 flex-wrap items-center gap-1 min-w-0">
-            @if (_selected.Count == 0)
+    Earlier API (still supported; existing markup needs TValue, usually the same as TItem):
+    <StackMultiSelect TItem="string" TValue="string" Options="@names" @bind-SelectedItems="picked" ItemLabel="x => x" />
+*@
+
+<CascadingValue Value="(IDropDownListPopupSettingsHost)this" IsFixed="true">
+    @MultiSelectSettings
+</CascadingValue>
+
+<div class="@($"relative inline-flex w-full flex-col {Class}".TrimEnd())" style="@(Width is null ? null : $"width:{Width}")" @attributes="AdditionalAttributes">
+
+    <!-- ── Tags + input ──────────────────────────────────────────── -->
+    <div class="@BoxCls" @onclick="OnBoxClickAsync">
+        <div class="flex min-w-0 flex-1 flex-wrap items-center gap-1 py-1">
+            @if (_selected.Count > 0 && TagMode == MultiSelectTagMode.Single)
             {
-                <span class="text-sm text-muted-foreground select-none">@Placeholder</span>
+                <span class="@TagCls">
+                    <span class="truncate">@_selected.Count @(_selected.Count == 1 ? "item" : "items") selected</span>
+                    @if (CanEdit)
+                    {
+                        <button type="button" class="@TagRemoveCls" aria-label="Clear selection" tabindex="-1"
+                                @onclick="ClearAsync" @onclick:stopPropagation="true" @onmousedown:preventDefault="true">✕</button>
+                    }
+                </span>
             }
             else
             {
-                var visible = MaxVisibleTags > 0 && _selected.Count > MaxVisibleTags
-                              ? _selected.Take(MaxVisibleTags).ToList()
-                              : _selected;
-
-                @foreach (var item in visible)
+                var visible = MaxVisibleTags > 0 && _selected.Count > MaxVisibleTags ? _selected.Take(MaxVisibleTags).ToList() : _selected;
+                @foreach (var value in visible)
                 {
-                    var capturedItem = item;
-                    var lbl = GetLabel(capturedItem);
-                    <span class="inline-flex max-w-[140px] shrink-0 items-center gap-1 rounded-full bg-primary/10 pl-2.5 pr-1 py-0.5 text-xs font-medium text-primary ring-1 ring-primary/20">
-                        <span class="truncate">@lbl</span>
-                        @if (!Disabled)
+                    var v = value;
+                    var item = ItemFor(v);
+                    var text = item is { } found ? TextOf(found) : v?.ToString() ?? "";
+                    <span class="@TagCls" data-tag="@text">
+                        @if (TagTemplate is not null && item is { } tagItem) { @TagTemplate(tagItem) } else { <span class="truncate">@text</span> }
+                        @if (CanEdit)
                         {
-                            <button type="button"
-                                    class="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full hover:bg-primary/20 transition-colors"
-                                    aria-label="Remove @lbl"
-                                    @onclick="@(() => RemoveItem(capturedItem))"
-                                    @onclick:stopPropagation="true">
-                                <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
-                                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                                </svg>
-                            </button>
+                            <button type="button" class="@TagRemoveCls" aria-label="@($"Remove {text}")" tabindex="-1"
+                                    @onclick="() => RemoveAsync(v)" @onclick:stopPropagation="true" @onmousedown:preventDefault="true">✕</button>
                         }
                     </span>
                 }
-
                 @if (MaxVisibleTags > 0 && _selected.Count > MaxVisibleTags)
                 {
-                    <span class="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                        +@(_selected.Count - MaxVisibleTags) more
-                    </span>
+                    <span class="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">+@(_selected.Count - MaxVisibleTags) more</span>
                 }
             }
+
+            <input @ref="_inputRef"
+                   id="@Id"
+                   type="text"
+                   role="combobox"
+                   autocomplete="off"
+                   aria-autocomplete="list"
+                   aria-haspopup="listbox"
+                   aria-expanded="@(_open ? "true" : "false")"
+                   aria-controls="@(_open ? ListId : null)"
+                   aria-activedescendant="@(_open && _focused is int f ? OptionId(f) : null)"
+                   aria-label="@(AriaLabel ?? Placeholder)"
+                   aria-labelledby="@AriaLabelledBy"
+                   aria-describedby="@AriaDescribedBy"
+                   aria-invalid="@(IsInvalid ? "true" : null)"
+                   tabindex="@TabIndex"
+                   inputmode="@InputMode"
+                   title="@Title"
+                   placeholder="@(_selected.Count == 0 ? Placeholder : null)"
+                   disabled="@IsDisabled"
+                   readonly="@(ReadOnly || !EffectiveFilterable)"
+                   class="@($"h-6 min-w-[3rem] flex-1 bg-transparent outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed {(EffectiveFilterable ? "" : "cursor-pointer caret-transparent")}")"
+                   value="@_filter"
+                   @oninput="OnInputAsync"
+                   @onkeydown="OnKeyDownAsync"
+                   @onblur="OnBlurAsync" />
         </div>
 
-        <!-- Right icons: clear + chevron -->
-        <div class="ml-1 flex shrink-0 items-center gap-1">
-            @if (_selected.Count > 0 && !Disabled)
+        <div class="ml-1 flex shrink-0 items-center gap-1 self-center">
+            @if (ShowClearButton && CanEdit && _selected.Count > 0)
             {
-                <button type="button"
-                        class="flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                        aria-label="Clear all"
-                        @onclick="ClearAll"
-                        @onclick:stopPropagation="true">
-                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
+                <button type="button" tabindex="-1" aria-label="Clear all"
+                        class="flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                        @onclick="ClearAsync" @onclick:stopPropagation="true" @onmousedown:preventDefault="true">
+                    <svg class="h-3.5 w-3.5" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                 </button>
             }
-            <svg class="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150 @(_open ? "rotate-180" : "")"
-                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-            </svg>
+            <svg class="@($"h-4 w-4 shrink-0 text-muted-foreground transition-transform {(_open ? "rotate-180" : "")}")" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><polyline points="6 9 12 15 18 9" /></svg>
         </div>
     </div>
 
-    <!-- ── Dropdown panel ────────────────────────────────────────── -->
+    <!-- ── Popup ─────────────────────────────────────────────────── -->
     @if (_open)
     {
-        <div class="fixed inset-0 z-40" @onclick="Close" aria-hidden="true"></div>
-
-        <div class="absolute left-0 top-full z-50 mt-1 w-full min-w-[220px] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg"
-             role="listbox"
-             aria-multiselectable="true">
-
-            <!-- Search input -->
-            <div class="flex items-center gap-2 border-b px-3 py-2">
-                <svg class="h-4 w-4 shrink-0 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-                </svg>
-                <input @ref="_searchRef"
-                       type="text"
-                       class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                       placeholder="@SearchPlaceholder"
-                       autocomplete="off"
-                       @bind="_search"
-                       @bind:event="oninput"
-                       @onkeydown="OnSearchKeyDown"
-                       aria-label="Search options" />
-                @if (!string.IsNullOrEmpty(_search))
-                {
-                    <button type="button"
-                            class="text-muted-foreground hover:text-foreground transition-colors"
-                            @onclick="@(() => _search = "")"
-                            @onclick:stopPropagation="true">
-                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-                            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                        </svg>
-                    </button>
-                }
-            </div>
-
-            <!-- Select All row -->
-            @if (ShowSelectAll && !HasGroups)
+        <div class="@PopupCls" style="@PopupStyle" @onmousedown:preventDefault="true">
+            @if (AdaptiveMode == AdaptiveMode.Auto)
             {
-                var allFiltered    = FilteredOptions.ToList();
-                var allAreSelected = allFiltered.Any() && allFiltered.All(IsSelected);
-                var someSelected   = allFiltered.Any(IsSelected) && !allAreSelected;
+                <div class="hidden items-center justify-between border-b px-4 py-3 max-sm:flex">
+                    <span class="text-sm font-semibold">@(Title ?? Placeholder ?? "Select")</span>
+                    <button type="button" class="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-accent" aria-label="Close" @onclick="() => CloseFromUserAsync()">✕</button>
+                </div>
+            }
+            @if (HeaderTemplate is not null)
+            {
+                <div class="border-b px-3 py-2 text-sm">@HeaderTemplate</div>
+            }
 
-                <button type="button"
-                        class="flex w-full items-center gap-2.5 border-b px-3 py-2 text-sm text-left hover:bg-accent transition-colors"
-                        @onclick="ToggleSelectAll"
-                        @onclick:stopPropagation="true">
-                    <span class="flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 transition-colors
-                                 @(allAreSelected ? "border-primary bg-primary" : someSelected ? "border-primary bg-primary/30" : "border-muted-foreground/40")">
-                        @if (allAreSelected)
-                        {
-                            <svg class="h-2.5 w-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                        }
-                        else if (someSelected)
-                        {
-                            <svg class="h-2.5 w-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                        }
-                    </span>
+            @if (ShowSelectAll && _view.Count > 0 && !HasGroups && !IsVirtual)
+            {
+                var selectable = _view.Where(i => !IsItemDisabled(i)).ToList();
+                var all = selectable.Count > 0 && selectable.All(IsSelected);
+                var some = !all && selectable.Any(IsSelected);
+                <button type="button" class="flex w-full items-center gap-2.5 border-b px-3 py-2 text-left text-sm transition-colors hover:bg-accent" @onclick="() => ToggleAllAsync(selectable)">
+                    @Checkbox(all, some)
                     <span class="font-medium">Select All</span>
                     @if (ShowCount)
                     {
-                        <span class="ml-auto text-xs text-muted-foreground">@_selected.Count / @allFiltered.Count</span>
+                        <span class="ml-auto text-xs text-muted-foreground">@_selected.Count / @selectable.Count</span>
                     }
                 </button>
             }
 
-            <!-- Options list -->
-            <div class="max-h-56 overflow-y-auto overscroll-contain p-1" role="group">
-                @if (!FilteredOptions.Any())
+            <div id="@ListId" role="listbox" aria-multiselectable="true" aria-label="@(AriaLabel ?? Placeholder ?? "Options")" class="@ListCls" style="@ListStyle">
+                @if (_loading)
                 {
-                    <div class="flex flex-col items-center gap-1 py-6 text-sm text-muted-foreground">
-                        <svg class="h-8 w-8 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-                        </svg>
-                        <span>No results for "@_search"</span>
+                    <div class="py-4 text-center text-sm text-muted-foreground">Loading…</div>
+                }
+                else if (_view.Count == 0)
+                {
+                    <div class="py-6 text-center text-sm text-muted-foreground">
+                        @if (NoDataTemplate is not null) { @NoDataTemplate } else { <text>No data found.</text> }
                     </div>
+                }
+                else if (IsVirtual)
+                {
+                    <Virtualize TItem="Row" Items="_rows" ItemSize="ItemHeight" OverscanCount="@Math.Max(3, PageSize / 2)" Context="row">
+                        @RenderOption(row.Item, row.Index)
+                    </Virtualize>
                 }
                 else
                 {
-                    var flatList = FilteredOptions.ToList();
-
-                    @if (HasGroups)
+                    string? previousGroup = null;
+                    @for (var i = 0; i < _view.Count; i++)
                     {
-                        var groups = flatList
-                            .GroupBy(o => ItemGroup?.Invoke(o) ?? "")
-                            .OrderBy(g => g.Key);
-
-                        @foreach (var group in groups)
+                        var item = _view[i];
+                        if (HasGroups)
                         {
-                            if (!string.IsNullOrEmpty(group.Key))
+                            var group = GroupOf(item);
+                            if (i == 0 || group != previousGroup)
                             {
-                                <!-- Group header with optional select-all for the group -->
-                                var gItems       = group.ToList();
-                                var gAllSelected = gItems.All(IsSelected);
-                                var gSomeSelected = gItems.Any(IsSelected) && !gAllSelected;
-                                <div class="flex items-center gap-2 px-2 pt-2 pb-0.5">
+                                var groupItems = _view.Where(x => GroupOf(x) == group && !IsItemDisabled(x)).ToList();
+                                var gAll = groupItems.Count > 0 && groupItems.All(IsSelected);
+                                var gSome = !gAll && groupItems.Any(IsSelected);
+                                <div role="presentation" class="flex items-center gap-2 px-2 pb-0.5 pt-2">
                                     @if (ShowSelectAll)
                                     {
-                                        <button type="button"
-                                                class="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border-2 transition-colors
-                                                       @(gAllSelected ? "border-primary bg-primary" : gSomeSelected ? "border-primary bg-primary/30" : "border-muted-foreground/30")"
-                                                @onclick="@(() => ToggleGroupAll(gItems))"
-                                                @onclick:stopPropagation="true">
-                                            @if (gAllSelected)
-                                            {
-                                                <svg class="h-2 w-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                            }
-                                            else if (gSomeSelected)
-                                            {
-                                                <svg class="h-2 w-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3.5"><line x1="4" y1="12" x2="20" y2="12"/></svg>
-                                            }
-                                        </button>
+                                        <button type="button" class="flex" aria-label="@($"Select all {group}")" @onclick="() => ToggleAllAsync(groupItems)">@Checkbox(gAll, gSome)</button>
                                     }
-                                    <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">@group.Key</span>
-                                </div>
-                            }
-
-                            @foreach (var item in group)
-                            {
-                                var capturedItem  = item;
-                                var isSelected    = IsSelected(capturedItem);
-                                var isDisabled    = IsItemDisabled(capturedItem) || (MaxSelection > 0 && !isSelected && _selected.Count >= MaxSelection);
-                                var focusedIdx    = flatList.IndexOf(capturedItem);
-                                var isFocused     = _focusedIdx == focusedIdx;
-                                var lbl           = GetLabel(capturedItem);
-                                var desc          = ItemDescription?.Invoke(capturedItem);
-
-                                <div class="flex cursor-pointer items-start gap-2.5 rounded px-2 py-2 text-sm transition-colors
-                                            @(isFocused ? "bg-accent" : "hover:bg-accent")
-                                            @(isDisabled ? "pointer-events-none opacity-40" : "")"
-                                     role="option"
-                                     aria-selected="@isSelected.ToString().ToLowerInvariant()"
-                                     aria-disabled="@isDisabled.ToString().ToLowerInvariant()"
-                                     @onclick="@(() => ToggleItem(capturedItem))"
-                                     @onclick:stopPropagation="true"
-                                     @onmouseenter="@(() => _focusedIdx = focusedIdx)">
-                                    <span class="mt-px flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 transition-colors
-                                                 @(isSelected ? "border-primary bg-primary" : "border-muted-foreground/40 bg-background")">
-                                        @if (isSelected)
-                                        {
-                                            <svg class="h-2.5 w-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                        }
+                                    <span class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                        @if (GroupHeaderTemplate is not null) { @GroupHeaderTemplate(group) } else { @group }
                                     </span>
-                                    <div class="min-w-0 flex-1">
-                                        @if (ItemTemplate is not null)
-                                        {
-                                            @ItemTemplate(capturedItem)
-                                        }
-                                        else
-                                        {
-                                            <span class="font-medium leading-tight">@lbl</span>
-                                            @if (!string.IsNullOrEmpty(desc))
-                                            {
-                                                <span class="mt-0.5 block truncate text-xs text-muted-foreground">@desc</span>
-                                            }
-                                        }
-                                    </div>
-                                    @if (isSelected)
-                                    {
-                                        <svg class="ml-auto h-3.5 w-3.5 shrink-0 self-center text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                                        </svg>
-                                    }
                                 </div>
                             }
+                            previousGroup = group;
                         }
-                    }
-                    else
-                    {
-                        @for (int i = 0; i < flatList.Count; i++)
-                        {
-                            var capturedItem  = flatList[i];
-                            var capturedIdx   = i;
-                            var isSelected    = IsSelected(capturedItem);
-                            var isDisabled    = IsItemDisabled(capturedItem) || (MaxSelection > 0 && !isSelected && _selected.Count >= MaxSelection);
-                            var isFocused     = _focusedIdx == capturedIdx;
-                            var lbl           = GetLabel(capturedItem);
-                            var desc          = ItemDescription?.Invoke(capturedItem);
-
-                            <div class="flex cursor-pointer items-start gap-2.5 rounded px-2 py-2 text-sm transition-colors
-                                        @(isFocused ? "bg-accent" : "hover:bg-accent")
-                                        @(isDisabled ? "pointer-events-none opacity-40" : "")"
-                                 role="option"
-                                 aria-selected="@isSelected.ToString().ToLowerInvariant()"
-                                 @onclick="@(() => ToggleItem(capturedItem))"
-                                 @onclick:stopPropagation="true"
-                                 @onmouseenter="@(() => _focusedIdx = capturedIdx)">
-                                <span class="mt-px flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 transition-colors
-                                             @(isSelected ? "border-primary bg-primary" : "border-muted-foreground/40 bg-background")">
-                                    @if (isSelected)
-                                    {
-                                        <svg class="h-2.5 w-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                    }
-                                </span>
-                                <div class="min-w-0 flex-1">
-                                    @if (ItemTemplate is not null)
-                                    {
-                                        @ItemTemplate(capturedItem)
-                                    }
-                                    else
-                                    {
-                                        <span class="font-medium leading-tight">@lbl</span>
-                                        @if (!string.IsNullOrEmpty(desc))
-                                        {
-                                            <span class="mt-0.5 block truncate text-xs text-muted-foreground">@desc</span>
-                                        }
-                                    }
-                                </div>
-                                @if (isSelected)
-                                {
-                                    <svg class="ml-auto h-3.5 w-3.5 shrink-0 self-center text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                                    </svg>
-                                }
-                            </div>
-                        }
+                        @RenderOption(item, i)
                     }
                 }
             </div>
 
-            <!-- Footer -->
-            @if (_selected.Count > 0)
+            @if (FooterTemplate is not null)
             {
-                <div class="flex items-center justify-between border-t px-3 py-2">
-                    <span class="text-xs text-muted-foreground">
-                        @_selected.Count @(_selected.Count == 1 ? "item" : "items") selected
-                        @if (MaxSelection > 0) { <text> (max @MaxSelection)</text> }
-                    </span>
-                    <button type="button"
-                            class="text-xs font-medium text-destructive hover:underline transition-colors"
-                            @onclick="ClearAll"
-                            @onclick:stopPropagation="true">
-                        Clear all
-                    </button>
+                <div class="border-t px-3 py-2 text-sm">@FooterTemplate</div>
+            }
+            else if (ShowCount && _selected.Count > 0)
+            {
+                <div class="flex items-center justify-between border-t px-3 py-2 text-xs text-muted-foreground">
+                    <span>@_selected.Count @(_selected.Count == 1 ? "item" : "items") selected@(MaxSelection > 0 ? $" (max {MaxSelection})" : "")</span>
+                    @if (CanEdit)
+                    {
+                        <button type="button" class="font-medium text-destructive hover:underline" @onclick="ClearAsync">Clear all</button>
+                    }
                 </div>
             }
         </div>
@@ -316,194 +199,617 @@
 </div>
 
 @code {
-    // ── Parameters ───────────────────────────────────────────────────────────
+    // ── Data & value ─────────────────────────────────────────────────────────
+    [Parameter] public IEnumerable<TItem>? Data { get; set; }
+    [Parameter] public string TextField { get; set; } = "Text";
+    [Parameter] public string ValueField { get; set; } = "Value";
+    [Parameter] public string? GroupField { get; set; }
+
+    /// <summary>The selected values. Supports <c>@bind-Value</c>.</summary>
+    [Parameter] public List<TValue>? Value { get; set; }
+    [Parameter] public EventCallback<List<TValue>> ValueChanged { get; set; }
+    [Parameter] public Expression<Func<List<TValue>?>>? ValueExpression { get; set; }
+    /// <summary>Resolves items for selected values that are not in the loaded data (remote data).</summary>
+    [Parameter] public Func<List<TValue>, Task<List<TItem>>>? ValueMapper { get; set; }
+
+    [Parameter] public string? Placeholder { get; set; }
+
+    // ── Behaviour ────────────────────────────────────────────────────────────
+    /// <summary>Lets the user type in the input to filter the list.</summary>
+    [Parameter] public bool Filterable { get; set; }
+    [Parameter] public StringFilterOperator FilterOperator { get; set; } = StringFilterOperator.StartsWith;
+    [Parameter] public int MinLength { get; set; } = 1;
+    [Parameter] public int DebounceDelay { get; set; } = 150;
+    /// <summary>Close the popup after each selection (Telerik default true).</summary>
+    [Parameter] public bool AutoClose { get; set; } = true;
+    [Parameter] public MultiSelectTagMode TagMode { get; set; } = MultiSelectTagMode.Multiple;
+    /// <summary>Show at most this many tags, then "+N more" (0 = all; earlier API default 3).</summary>
+    [Parameter] public int MaxVisibleTags { get; set; } = 3;
+    /// <summary>Maximum number of selected items (0 = no limit; earlier API).</summary>
+    [Parameter] public int MaxSelection { get; set; }
+    [Parameter] public bool ShowClearButton { get; set; } = true;
+    /// <summary>Shows a "Select All" row (and per-group checkboxes). Earlier API.</summary>
+    [Parameter] public bool ShowSelectAll { get; set; } = true;
+    /// <summary>Shows the selected count. Earlier API.</summary>
+    [Parameter] public bool ShowCount { get; set; } = true;
+
+    [Parameter] public bool Enabled { get; set; } = true;
+    [Parameter] public bool ReadOnly { get; set; }
+
+    // ── Virtualization ───────────────────────────────────────────────────────
+    [Parameter] public DropDownScrollMode ScrollMode { get; set; } = DropDownScrollMode.Scrollable;
+    [Parameter] public float ItemHeight { get; set; }
+    [Parameter] public int PageSize { get; set; } = 20;
+
+    // ── Appearance ───────────────────────────────────────────────────────────
+    [Parameter] public string Size { get; set; } = DropDownListTheme.Size.Medium;
+    [Parameter] public string Rounded { get; set; } = DropDownListTheme.Rounded.Medium;
+    [Parameter] public string FillMode { get; set; } = DropDownListTheme.FillMode.Solid;
+    [Parameter] public string? Width { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public AdaptiveMode AdaptiveMode { get; set; } = AdaptiveMode.None;
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? PopupHeight { get; set; }
+    [Parameter] public string? PopupWidth { get; set; }
+    [Parameter] public string? PopupClass { get; set; }
+    /// <summary>Holds a <see cref="StackMultiSelectPopupSettings"/> child.</summary>
+    [Parameter] public RenderFragment? MultiSelectSettings { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public int? TabIndex { get; set; }
+    [Parameter] public string? InputMode { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter] public string? AriaLabelledBy { get; set; }
+    [Parameter] public string? AriaDescribedBy { get; set; }
+
+    // ── Templates & events ───────────────────────────────────────────────────
+    [Parameter] public RenderFragment<TItem>? ItemTemplate { get; set; }
+    [Parameter] public RenderFragment<TItem>? TagTemplate { get; set; }
+    [Parameter] public RenderFragment? HeaderTemplate { get; set; }
+    [Parameter] public RenderFragment? FooterTemplate { get; set; }
+    [Parameter] public RenderFragment? NoDataTemplate { get; set; }
+    [Parameter] public RenderFragment<string>? GroupHeaderTemplate { get; set; }
+
+    [Parameter] public EventCallback<object?> OnChange { get; set; }
+    [Parameter] public EventCallback OnBlur { get; set; }
+    [Parameter] public EventCallback<DropDownListOpenEventArgs> OnOpen { get; set; }
+    [Parameter] public EventCallback<DropDownListCloseEventArgs> OnClose { get; set; }
+    [Parameter] public EventCallback<MultiSelectReadEventArgs<TItem>> OnRead { get; set; }
+    [Parameter] public Action<MultiSelectItemRenderEventArgs<TItem>>? OnItemRender { get; set; }
+
+    // ── Earlier API ──────────────────────────────────────────────────────────
+    /// <summary>Earlier name of <see cref="Data"/>.</summary>
     [Parameter] public IEnumerable<TItem>? Options { get; set; }
-    [Parameter] public IList<TItem> SelectedItems { get; set; } = new List<TItem>();
-    [Parameter] public EventCallback<IList<TItem>> SelectedItemsChanged { get; set; }
+    /// <summary>Earlier name of <see cref="Value"/> (selected values; the items themselves when there is no ValueField).</summary>
+    [Parameter] public IList<TValue>? SelectedItems { get; set; }
+    [Parameter] public EventCallback<IList<TValue>> SelectedItemsChanged { get; set; }
+    /// <summary>Item text; overrides <see cref="TextField"/>.</summary>
     [Parameter] public Func<TItem, string?>? ItemLabel { get; set; }
+    /// <summary>Second line under the item text (also matched by the filter).</summary>
     [Parameter] public Func<TItem, string?>? ItemDescription { get; set; }
+    /// <summary>Group of an item; overrides <see cref="GroupField"/>.</summary>
     [Parameter] public Func<TItem, string?>? ItemGroup { get; set; }
     [Parameter] public Func<TItem, bool>? ItemDisabled { get; set; }
-    [Parameter] public RenderFragment<TItem>? ItemTemplate { get; set; }
-    [Parameter] public string Placeholder { get; set; } = "Select options…";
+    /// <summary>Earlier API; kept but unused (the input itself filters).</summary>
     [Parameter] public string SearchPlaceholder { get; set; } = "Search…";
+    /// <summary>Alias for <c>Enabled="false"</c>.</summary>
     [Parameter] public bool Disabled { get; set; }
-    [Parameter] public int MaxSelection { get; set; } = 0;
-    [Parameter] public int MaxVisibleTags { get; set; } = 3;
-    [Parameter] public bool ShowSelectAll { get; set; } = true;
-    [Parameter] public bool ShowCount { get; set; } = true;
-    [Parameter] public string? Class { get; set; }
+
+    [CascadingParameter] private EditContext? EditContext { get; set; }
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
 
-    // ── Internal state ───────────────────────────────────────────────────────
+    // ── State ────────────────────────────────────────────────────────────────
+    private readonly record struct Row(TItem Item, int Index);
+
+    private readonly string _uid = $"ms-{Guid.NewGuid():N}"[..11];
+    private ElementReference _inputRef;
+    private List<TValue> _selected = [];
+    private object? _lastParam;
+    private bool _synced;
+    private string _filter = "";
     private bool _open;
-    private string _search = "";
-    private int _focusedIdx = -1;
-    private ElementReference _searchRef;
+    private int? _focused;
+    private bool _loading;
+    private bool _pendingChange;
+    private bool _scrollPending;
+    private List<TItem> _view = [];
+    private List<Row> _rows = [];
+    private List<TItem> _remote = [];
+    private readonly List<TItem> _mapped = [];
+    private CancellationTokenSource? _debounceCts, _readCts;
+    private StackDropDownListPopupSettings? _popupSettings;
+    private string? _accessorsFor;
+    private Func<TItem, object?>? _textAccessor, _valueAccessor, _groupAccessor;
+    private FieldIdentifier? _field;
+    private EditContext? _subscribedContext;
 
-    private List<TItem> _selected => SelectedItems?.ToList() ?? [];
+    // Earlier API (Options / SelectedItems) kept the popup open and always filtered; keep that unless set explicitly.
+    private bool _autoCloseSet, _filterableSet, _legacyApi;
+    private bool EffectiveAutoClose => _autoCloseSet || !_legacyApi ? AutoClose : false;
+    private bool EffectiveFilterable => _filterableSet || !_legacyApi ? Filterable : true;
 
-    private bool HasGroups => ItemGroup is not null;
+    public override Task SetParametersAsync(ParameterView parameters)
+    {
+        _autoCloseSet = parameters.TryGetValue<bool>(nameof(AutoClose), out _);
+        _filterableSet = parameters.TryGetValue<bool>(nameof(Filterable), out _);
+        _legacyApi = parameters.TryGetValue<IEnumerable<TItem>?>(nameof(Options), out _)
+                     || parameters.TryGetValue<IList<TValue>?>(nameof(SelectedItems), out _);
+        return base.SetParametersAsync(parameters);
+    }
 
-    private string TriggerCls =>
-        "flex min-h-10 w-full cursor-pointer items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm ring-offset-background transition-all " +
-        (_open ? "border-ring ring-2 ring-ring ring-offset-2 " : "hover:border-ring/50 ") +
-        (Disabled ? "pointer-events-none cursor-not-allowed opacity-50 " : "");
+    private IEnumerable<TItem> Source => OnRead.HasDelegate ? _remote.Concat(_mapped) : Data ?? Options ?? [];
+    private bool IsDisabled => !Enabled || Disabled;
+    private bool CanEdit => !IsDisabled && !ReadOnly;
+    private bool IsVirtual => ScrollMode == DropDownScrollMode.Virtual && ItemHeight > 0;
+    private bool HasGroups => (ItemGroup is not null || _groupAccessor is not null) && !IsVirtual;
+    private string ListId => $"{Id ?? _uid}-listbox";
+    private string OptionId(int index) => $"{ListId}-{index}";
+    private bool IsInvalid => EditContext is not null && _field is { } f && EditContext.GetValidationMessages(f).Any();
 
-    private IEnumerable<TItem> FilteredOptions =>
-        (Options ?? []).Where(o =>
-            string.IsNullOrWhiteSpace(_search) ||
-            GetLabel(o).Contains(_search, StringComparison.OrdinalIgnoreCase) ||
-            (ItemDescription?.Invoke(o) ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase)
-        );
-
-    private string GetLabel(TItem item) =>
-        ItemLabel?.Invoke(item) ?? item?.ToString() ?? "";
-
-    private bool IsSelected(TItem item) =>
-        _selected.Contains(item);
-
-    private bool IsItemDisabled(TItem item) =>
-        ItemDisabled?.Invoke(item) ?? false;
+    public void SetPopupSettings(StackDropDownListPopupSettings settings) => _popupSettings = settings;
 
     // ── Lifecycle ────────────────────────────────────────────────────────────
+    protected override async Task OnParametersSetAsync()
+    {
+        var key = $"{TextField}|{ValueField}|{GroupField}";
+        if (_accessorsFor != key)
+        {
+            _accessorsFor = key;
+            _textAccessor = BuildAccessor(TextField);
+            _valueAccessor = BuildAccessor(ValueField);
+            // A ValueField whose type is not TValue (e.g. legacy items with a Value property) means "the item is the value".
+            if (_valueAccessor is not null && typeof(TItem) == typeof(TValue)
+                && typeof(TItem).GetProperty(ValueField, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase)?.PropertyType is Type t
+                && !typeof(TValue).IsAssignableFrom(t))
+                _valueAccessor = null;
+            _groupAccessor = BuildAccessor(GroupField);
+        }
+
+        // Value (Telerik) wins over SelectedItems (earlier API) when both are bound.
+        object? incoming = Value is not null ? Value : SelectedItems;
+        if (!_synced || !ReferenceEquals(incoming, _lastParam))
+        {
+            _synced = true;
+            _lastParam = incoming;
+            _selected = (incoming as IEnumerable<TValue>)?.ToList() ?? [];
+            await MapMissingAsync();
+        }
+
+        if (_open && !OnRead.HasDelegate) BuildView();
+
+        if (ValueExpression is not null && _field is null) _field = FieldIdentifier.Create(ValueExpression);
+        if (!ReferenceEquals(_subscribedContext, EditContext))
+        {
+            if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged -= OnValidationStateChanged;
+            _subscribedContext = EditContext;
+            if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged += OnValidationStateChanged;
+        }
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_open && !firstRender)
+        if (firstRender)
         {
-            try { await _searchRef.FocusAsync(); } catch { }
+            try { await JS.InvokeVoidAsync("MyStackBlazor.autoCompletePreventKeys", _inputRef); } catch { }
         }
+        if (_open && _scrollPending && _focused is int index)
+        {
+            _scrollPending = false;
+            try { await JS.InvokeVoidAsync("MyStackBlazor.dropDownScrollIntoView", ListId, index); } catch { }
+        }
+    }
+
+    // ── Public API ───────────────────────────────────────────────────────────
+    public void Open()
+    {
+        if (IsDisabled || _open) return;
+        _ = InvokeAsync(async () => { await LoadAsync(); _open = true; StateHasChanged(); });
+    }
+
+    public void Close()
+    {
+        if (!_open) return;
+        _open = false;
+        StateHasChanged();
+    }
+
+    public void Refresh() => _ = InvokeAsync(StateHasChanged);
+
+    public async Task Rebind()
+    {
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    public ValueTask FocusAsync() => _inputRef.FocusAsync();
+
+    // ── Item helpers ─────────────────────────────────────────────────────────
+    private static Func<TItem, object?>? BuildAccessor(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        var props = new List<PropertyInfo>();
+        var type = typeof(TItem);
+        foreach (var part in path.Split('.'))
+        {
+            var prop = type.GetProperty(part, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+            if (prop is null) return null;
+            props.Add(prop);
+            type = prop.PropertyType;
+        }
+        return item =>
+        {
+            object? current = item;
+            foreach (var prop in props) { if (current is null) return null; current = prop.GetValue(current); }
+            return current;
+        };
+    }
+
+    private string TextOf(TItem item) =>
+        ItemLabel?.Invoke(item) ?? (_textAccessor is not null ? _textAccessor(item)?.ToString() : item?.ToString()) ?? "";
+
+    private string GroupOf(TItem item) => ItemGroup?.Invoke(item) ?? _groupAccessor?.Invoke(item)?.ToString() ?? "";
+
+    private TValue? ValueOf(TItem item)
+    {
+        object? raw = _valueAccessor is not null ? _valueAccessor(item) : item;
+        if (raw is null) return default;
+        if (raw is TValue typed) return typed;
+        var target = Nullable.GetUnderlyingType(typeof(TValue)) ?? typeof(TValue);
+        try { return (TValue)(target.IsEnum ? Enum.ToObject(target, raw) : Convert.ChangeType(raw, target, CultureInfo.InvariantCulture)); }
+        catch { return default; }
+    }
+
+    private bool IsSelected(TItem item) => _selected.Contains(ValueOf(item)!);
+    private bool IsItemDisabled(TItem item) => ItemDisabled?.Invoke(item) ?? false;
+    private bool LimitReached => MaxSelection > 0 && _selected.Count >= MaxSelection;
+
+    private TItem? ItemFor(TValue value)
+    {
+        foreach (var item in Source)
+            if (EqualityComparer<TValue?>.Default.Equals(ValueOf(item), value)) return item;
+        return default;
+    }
+
+    private async Task MapMissingAsync()
+    {
+        if (ValueMapper is null) return;
+        var missing = _selected.Where(v => ItemFor(v) is null).ToList();
+        if (missing.Count == 0) return;
+        _mapped.AddRange(await ValueMapper(missing));
+    }
+
+    // ── Data ─────────────────────────────────────────────────────────────────
+    private static bool Matches(string text, string filter, StringFilterOperator op) => op switch
+    {
+        StringFilterOperator.Contains       => text.Contains(filter, StringComparison.CurrentCultureIgnoreCase),
+        StringFilterOperator.DoesNotContain => !text.Contains(filter, StringComparison.CurrentCultureIgnoreCase),
+        StringFilterOperator.EndsWith       => text.EndsWith(filter, StringComparison.CurrentCultureIgnoreCase),
+        StringFilterOperator.IsEqualTo      => text.Equals(filter, StringComparison.CurrentCultureIgnoreCase),
+        StringFilterOperator.IsNotEqualTo   => !text.Equals(filter, StringComparison.CurrentCultureIgnoreCase),
+        _                                   => text.StartsWith(filter, StringComparison.CurrentCultureIgnoreCase),
+    };
+
+    private void BuildView()
+    {
+        IEnumerable<TItem> items = OnRead.HasDelegate ? _remote : Source;
+        if (EffectiveFilterable && !OnRead.HasDelegate && _filter.Length >= Math.Max(1, MinLength))
+            items = items.Where(i => Matches(TextOf(i), _filter, FilterOperator)
+                                     || (ItemDescription?.Invoke(i) ?? "").Contains(_filter, StringComparison.CurrentCultureIgnoreCase));
+        if (HasGroups) items = items.OrderBy(GroupOf, StringComparer.CurrentCulture);
+        _view = items.ToList();
+        _rows = IsVirtual ? _view.Select((item, index) => new Row(item, index)).ToList() : [];
+        if (_focused is int f && f >= _view.Count) _focused = null;
+    }
+
+    private async Task LoadAsync()
+    {
+        if (OnRead.HasDelegate)
+        {
+            _readCts?.Cancel();
+            var cts = _readCts = new CancellationTokenSource();
+            _loading = true;
+            var args = new MultiSelectReadEventArgs<TItem>
+            {
+                Request = new DropDownListReadRequest { FilterText = _filter.Length > 0 ? _filter : null, FilterOperator = FilterOperator },
+                CancellationToken = cts.Token,
+            };
+            await OnRead.InvokeAsync(args);
+            if (cts.IsCancellationRequested) return;
+            _remote = args.Data?.ToList() ?? [];
+            _loading = false;
+        }
+        BuildView();
     }
 
     // ── Open / close ─────────────────────────────────────────────────────────
-    private void ToggleOpen()
+    private async Task OpenFromUserAsync()
     {
-        if (Disabled) return;
-        _open = !_open;
-        if (_open) { _search = ""; _focusedIdx = -1; }
+        if (!CanEdit || _open) return;
+        var args = new DropDownListOpenEventArgs();
+        await OnOpen.InvokeAsync(args);
+        if (args.IsCancelled) return;
+        await LoadAsync();
+        _open = true;
     }
 
-    private void Close()
+    private async Task CloseFromUserAsync()
     {
+        if (!_open) return;
+        var args = new DropDownListCloseEventArgs();
+        await OnClose.InvokeAsync(args);
+        if (args.IsCancelled) return;
         _open = false;
-        _search = "";
-        _focusedIdx = -1;
+        _focused = null;
+    }
+
+    private async Task OnBoxClickAsync()
+    {
+        if (!CanEdit) return;
+        try { await _inputRef.FocusAsync(); } catch { }
+        if (_open) await CloseFromUserAsync();
+        else await OpenFromUserAsync();
     }
 
     // ── Selection ────────────────────────────────────────────────────────────
-    private async Task ToggleItem(TItem item)
+    private async Task PublishAsync()
     {
-        if (IsItemDisabled(item)) return;
-        var list = _selected;
-        if (list.Contains(item))
-        {
-            list.Remove(item);
-        }
-        else
-        {
-            if (MaxSelection > 0 && list.Count >= MaxSelection) return;
-            list.Add(item);
-        }
+        var list = _selected.ToList();
+        _lastParam = list;
+        Value = list;
+        _pendingChange = true;
+        await ValueChanged.InvokeAsync(list);
         await SelectedItemsChanged.InvokeAsync(list);
+        if (EditContext is not null && _field is { } field) EditContext.NotifyFieldChanged(field);
     }
 
-    private async Task RemoveItem(TItem item)
+    private async Task ToggleAsync(TItem item)
     {
-        var list = _selected;
-        list.Remove(item);
-        await SelectedItemsChanged.InvokeAsync(list);
-    }
-
-    private async Task ClearAll()
-    {
-        await SelectedItemsChanged.InvokeAsync(new List<TItem>());
-    }
-
-    private async Task ToggleSelectAll()
-    {
-        var filtered = FilteredOptions.ToList();
-        var allSelected = filtered.All(IsSelected);
-        if (allSelected)
+        if (!CanEdit || IsItemDisabled(item)) return;
+        var value = ValueOf(item)!;
+        if (!_selected.Remove(value))
         {
-            // Deselect all filtered
-            var list = _selected.Where(s => !filtered.Contains(s)).ToList();
-            await SelectedItemsChanged.InvokeAsync(list);
+            if (LimitReached) return;
+            _selected.Add(value);
+        }
+        await PublishAsync();
+
+        if (_filter.Length > 0)
+        {
+            _filter = "";
+            if (_open) await LoadAsync();
+        }
+        if (EffectiveAutoClose) await CloseFromUserAsync();
+    }
+
+    private async Task ToggleAllAsync(List<TItem> items)
+    {
+        if (!CanEdit) return;
+        var values = items.Select(ValueOf).ToList();
+        if (items.All(IsSelected))
+        {
+            _selected.RemoveAll(v => values.Contains(v));
         }
         else
         {
-            // Select all filtered (respecting MaxSelection)
-            var list = _selected.ToList();
-            foreach (var item in filtered.Where(f => !list.Contains(f) && !IsItemDisabled(f)))
+            foreach (var value in values)
             {
-                if (MaxSelection > 0 && list.Count >= MaxSelection) break;
-                list.Add(item);
+                if (value is null || _selected.Contains(value)) continue;
+                if (LimitReached) break;
+                _selected.Add(value);
             }
-            await SelectedItemsChanged.InvokeAsync(list);
         }
+        await PublishAsync();
     }
 
-    private async Task ToggleGroupAll(List<TItem> groupItems)
+    private async Task RemoveAsync(TValue value)
     {
-        var allSelected = groupItems.All(IsSelected);
-        if (allSelected)
-        {
-            var list = _selected.Where(s => !groupItems.Contains(s)).ToList();
-            await SelectedItemsChanged.InvokeAsync(list);
-        }
-        else
-        {
-            var list = _selected.ToList();
-            foreach (var item in groupItems.Where(g => !list.Contains(g) && !IsItemDisabled(g)))
-            {
-                if (MaxSelection > 0 && list.Count >= MaxSelection) break;
-                list.Add(item);
-            }
-            await SelectedItemsChanged.InvokeAsync(list);
-        }
+        if (!CanEdit) return;
+        _selected.Remove(value);
+        await PublishAsync();
+        await CommitAsync();
     }
 
-    // ── Keyboard: trigger ────────────────────────────────────────────────────
-    private void OnTriggerKeyDown(KeyboardEventArgs e)
+    private async Task ClearAsync()
     {
+        if (!CanEdit) return;
+        _selected.Clear();
+        await PublishAsync();
+        await CommitAsync();
+    }
+
+    private async Task CommitAsync()
+    {
+        if (!_pendingChange) return;
+        _pendingChange = false;
+        await OnChange.InvokeAsync(_selected.ToList());
+    }
+
+    // ── Input & keyboard ─────────────────────────────────────────────────────
+    private async Task OnInputAsync(ChangeEventArgs e)
+    {
+        _filter = e.Value?.ToString() ?? "";
+        _focused = null;
+        _debounceCts?.Cancel();
+        var cts = _debounceCts = new CancellationTokenSource();
+        try { if (DebounceDelay > 0) await Task.Delay(DebounceDelay, cts.Token); }
+        catch (TaskCanceledException) { return; }
+
+        if (_open) await LoadAsync();
+        else await OpenFromUserAsync();
+        if (_view.Count > 0 && _filter.Length > 0) { _focused = 0; _scrollPending = true; }
+    }
+
+    private async Task OnBlurAsync()
+    {
+        _debounceCts?.Cancel();
+        _filter = "";
+        await CloseFromUserAsync();
+        await CommitAsync();
+        await OnBlur.InvokeAsync();
+    }
+
+    private async Task OnKeyDownAsync(KeyboardEventArgs e)
+    {
+        if (!CanEdit) return;
         switch (e.Key)
         {
-            case "Enter":
-            case " ":
-            case "ArrowDown":
-                if (!_open) { _open = true; _search = ""; _focusedIdx = 0; }
+            case "ArrowDown" when !_open || e.AltKey:
+                await OpenFromUserAsync();
+                if (!e.AltKey && _view.Count > 0) Move(1);
                 break;
+            case "ArrowUp" when e.AltKey:
             case "Escape":
-                Close();
+                await CloseFromUserAsync();
                 break;
-            case "Backspace":
-                if (!_open && _selected.Count > 0)
-                    _ = RemoveItem(_selected[^1]);
-                break;
-        }
-    }
-
-    // ── Keyboard: search input ───────────────────────────────────────────────
-    private async Task OnSearchKeyDown(KeyboardEventArgs e)
-    {
-        var flat = FilteredOptions.ToList();
-        switch (e.Key)
-        {
-            case "ArrowDown":
-                _focusedIdx = Math.Min(_focusedIdx + 1, flat.Count - 1);
-                break;
-            case "ArrowUp":
-                _focusedIdx = Math.Max(_focusedIdx - 1, 0);
-                break;
+            case "ArrowDown": Move(1); break;
+            case "ArrowUp": Move(-1); break;
+            case "Home" when _open && !EffectiveFilterable: _focused = _view.Count > 0 ? 0 : null; _scrollPending = true; break;
+            case "End" when _open && !EffectiveFilterable: _focused = _view.Count > 0 ? _view.Count - 1 : null; _scrollPending = true; break;
             case "Enter":
-                if (_focusedIdx >= 0 && _focusedIdx < flat.Count)
-                    await ToggleItem(flat[_focusedIdx]);
+            case " " when !EffectiveFilterable:
+                if (_open && _focused is int index && index < _view.Count) await ToggleAsync(_view[index]);
+                else if (!_open) await OpenFromUserAsync();
                 break;
-            case "Escape":
-                Close();
+            case "Backspace" when _filter.Length == 0 && _selected.Count > 0:
+                await RemoveAsync(_selected[^1]);
                 break;
             case "Tab":
-                Close();
+                await CloseFromUserAsync();
                 break;
         }
+    }
+
+    private void Move(int delta)
+    {
+        if (_view.Count == 0) return;
+        _focused = Math.Clamp((_focused ?? -1) + delta, 0, _view.Count - 1);
+        _scrollPending = true;
+    }
+
+    private void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs e) => _ = InvokeAsync(StateHasChanged);
+
+    // ── Rendering ────────────────────────────────────────────────────────────
+    private static RenderFragment Checkbox(bool on, bool partial) =>
+        @<span class="@($"flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 transition-colors {(on ? "border-primary bg-primary" : partial ? "border-primary bg-primary/30" : "border-muted-foreground/40 bg-background")}")" aria-hidden="true">
+            @if (on)
+            {
+                <svg class="h-2.5 w-2.5 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+            }
+            else if (partial)
+            {
+                <svg class="h-2.5 w-2.5 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><line x1="5" y1="12" x2="19" y2="12" /></svg>
+            }
+        </span>;
+
+    private RenderFragment RenderOption(TItem item, int index)
+    {
+        string? extra = null;
+        if (OnItemRender is not null)
+        {
+            var args = new MultiSelectItemRenderEventArgs<TItem> { Item = item };
+            OnItemRender(args);
+            extra = args.Class;
+        }
+        var selected = IsSelected(item);
+        var disabled = IsItemDisabled(item) || (!selected && LimitReached);
+        var focused = _focused == index;
+        var description = ItemDescription?.Invoke(item);
+        var cls = "flex w-full cursor-pointer items-start gap-2.5 rounded-sm px-2 py-1.5 text-sm transition-colors " +
+                  (focused ? "bg-accent text-accent-foreground " : "hover:bg-accent hover:text-accent-foreground ") +
+                  (disabled ? "pointer-events-none opacity-40 " : "") + extra;
+        var style = IsVirtual ? $"height:{ItemHeight.ToString(CultureInfo.InvariantCulture)}px" : null;
+
+        return @<div id="@OptionId(index)" role="option" data-index="@index"
+                     aria-selected="@(selected ? "true" : "false")" aria-disabled="@(disabled ? "true" : null)"
+                     class="@cls" style="@style" @onclick="() => ToggleAsync(item)">
+            <span class="mt-px">@Checkbox(selected, false)</span>
+            <span class="min-w-0 flex-1">
+                @if (ItemTemplate is not null)
+                {
+                    @ItemTemplate(item)
+                }
+                else
+                {
+                    <span class="block truncate font-medium leading-tight">@TextOf(item)</span>
+                    @if (!string.IsNullOrEmpty(description))
+                    {
+                        <span class="mt-0.5 block truncate text-xs text-muted-foreground">@description</span>
+                    }
+                }
+            </span>
+        </div>;
+    }
+
+    // ── CSS ──────────────────────────────────────────────────────────────────
+    private string BoxCls
+    {
+        get
+        {
+            var size = Size switch
+            {
+                DropDownListTheme.Size.Small => "min-h-8 px-2 text-xs",
+                DropDownListTheme.Size.Large => "min-h-12 px-4 text-base",
+                _                            => "min-h-10 px-3 text-sm",
+            };
+            var rounded = FillMode == DropDownListTheme.FillMode.Flat ? "rounded-none" : Rounded switch
+            {
+                DropDownListTheme.Rounded.None  => "rounded-none",
+                DropDownListTheme.Rounded.Small => "rounded-sm",
+                DropDownListTheme.Rounded.Large => "rounded-lg",
+                DropDownListTheme.Rounded.Full  => "rounded-3xl",
+                _                               => "rounded-md",
+            };
+            var fill = FillMode switch
+            {
+                DropDownListTheme.FillMode.Flat    => "border-0 border-b-2 border-input bg-transparent",
+                DropDownListTheme.FillMode.Outline => "border-2 border-input bg-transparent",
+                _                                  => "border border-input bg-background shadow-sm",
+            };
+            return $"flex w-full cursor-pointer items-center gap-1.5 transition-colors {size} {rounded} {fill} " +
+                   "ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 " +
+                   (IsDisabled ? "pointer-events-none cursor-not-allowed opacity-50 " : "") +
+                   (IsInvalid ? "border-destructive" : "");
+        }
+    }
+
+    private const string TagCls =
+        "inline-flex max-w-[160px] shrink-0 items-center gap-1 rounded-full bg-primary/10 py-0.5 pl-2.5 pr-1 text-xs font-medium text-primary ring-1 ring-primary/20";
+    private const string TagRemoveCls =
+        "flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full text-[9px] leading-none transition-colors hover:bg-primary/20";
+
+    private string PopupCls =>
+        "absolute left-0 top-full z-50 mt-1 min-w-full overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg animate-fade-in " +
+        (AdaptiveMode == AdaptiveMode.Auto
+            ? "max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:mt-0 max-sm:w-full! max-sm:max-w-none! max-sm:rounded-b-none max-sm:rounded-t-xl "
+            : "") +
+        (_popupSettings?.Class ?? PopupClass);
+
+    private string? PopupStyle => JoinStyles(("width", _popupSettings?.Width ?? PopupWidth), ("min-width", _popupSettings?.MinWidth), ("max-width", _popupSettings?.MaxWidth));
+
+    private string ListCls => "overflow-y-auto overscroll-contain p-1" + (AdaptiveMode == AdaptiveMode.Auto ? " max-sm:max-h-[60vh]!" : "");
+
+    private string? ListStyle
+    {
+        get
+        {
+            var height = _popupSettings?.Height ?? PopupHeight;
+            var maxHeight = _popupSettings?.MaxHeight;
+            if (IsVirtual) height ??= "200px";
+            else if (height is null) maxHeight ??= "15rem";
+            return JoinStyles(("height", height), ("min-height", _popupSettings?.MinHeight), ("max-height", maxHeight));
+        }
+    }
+
+    private static string? JoinStyles(params (string Name, string? Value)[] styles)
+    {
+        var css = string.Join(";", styles.Where(s => !string.IsNullOrEmpty(s.Value)).Select(s => $"{s.Name}:{s.Value}"));
+        return css.Length == 0 ? null : css;
+    }
+
+    public void Dispose()
+    {
+        _debounceCts?.Cancel();
+        _readCts?.Cancel();
+        if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged -= OnValidationStateChanged;
     }
 }

@@ -1,0 +1,131 @@
+@namespace MyStackBlazor.Components.Form
+@implements IDisposable
+
+@*
+    Form modelled on the Telerik Form API. Without FormItems it generates an editor per model property
+    (string → TextBox, number → NumericTextBox, bool → CheckBox, DateTime → DatePicker, enum → DropDownList).
+
+    <StackForm Model="@person" Columns="2" OnValidSubmit="Save">
+        <FormValidation><DataAnnotationsValidator /></FormValidation>
+        <FormItems>
+            <StackFormItem Field="@nameof(Person.Name)" />
+            <StackFormItem Field="@nameof(Person.Bio)" EditorType="FormEditorType.TextArea" ColSpan="2" />
+        </FormItems>
+    </StackForm>
+*@
+
+<EditForm EditContext="_context" OnSubmit="OnSubmitAsync" id="@Id" class="@($"space-y-4 {Class}".TrimEnd())" style="@(Width is null ? null : $"width:{Width}")" @attributes="AdditionalAttributes">
+    @FormValidation
+    <CascadingValue Value="this" IsFixed="true">
+        <div class="grid" style="@GridStyle(Columns, ColumnSpacing)">
+            @if (FormItems is not null)
+            {
+                @FormItems
+            }
+            else if (Model is not null)
+            {
+                @foreach (var property in FormEditorFactory.EditableProperties(Model))
+                {
+                    <StackFormItem @key="property.Name" Field="@property.Name" />
+                }
+            }
+        </div>
+    </CascadingValue>
+
+    <div class="@ButtonsCls">
+        @if (FormButtons is not null)
+        {
+            @FormButtons
+        }
+        else
+        {
+            <button type="submit" disabled="@(!Enabled)"
+                    class="@($"rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 {(ButtonsLayout == FormButtonsLayout.Stretch ? "flex-1" : "")}")">
+                Submit
+            </button>
+        }
+    </div>
+</EditForm>
+
+@code {
+    /// <summary>The object being edited. Ignored when <see cref="EditContext"/> is set.</summary>
+    [Parameter] public object? Model { get; set; }
+    /// <summary>Use your own EditContext (its Model is edited).</summary>
+    [Parameter] public EditContext? EditContext { get; set; }
+
+    /// <summary>StackFormItem / StackFormGroup declarations. Leave empty to generate items for every property.</summary>
+    [Parameter] public RenderFragment? FormItems { get; set; }
+    /// <summary>Validators, e.g. &lt;DataAnnotationsValidator /&gt;.</summary>
+    [Parameter] public RenderFragment? FormValidation { get; set; }
+    /// <summary>Custom buttons (a Submit button is shown when empty).</summary>
+    [Parameter] public RenderFragment? FormButtons { get; set; }
+
+    [Parameter] public int Columns { get; set; } = 1;
+    /// <summary>Gap between columns and rows, e.g. "1rem" (default).</summary>
+    [Parameter] public string? ColumnSpacing { get; set; }
+    [Parameter] public FormOrientation Orientation { get; set; } = FormOrientation.Vertical;
+    [Parameter] public FormButtonsLayout ButtonsLayout { get; set; } = FormButtonsLayout.Start;
+    [Parameter] public FormValidationMessageType ValidationMessageType { get; set; } = FormValidationMessageType.Inline;
+    /// <summary>Disables every generated editor and the default Submit button.</summary>
+    [Parameter] public bool Enabled { get; set; } = true;
+
+    /// <summary>Handles submit yourself (no automatic validation). Receives the EditContext.</summary>
+    [Parameter] public EventCallback<EditContext> OnSubmit { get; set; }
+    [Parameter] public EventCallback<EditContext> OnValidSubmit { get; set; }
+    [Parameter] public EventCallback<EditContext> OnInvalidSubmit { get; set; }
+    /// <summary>Fires whenever a field changes.</summary>
+    [Parameter] public EventCallback OnUpdate { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Width { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private EditContext _context = new(new object());
+    private object? _contextFor;
+    private readonly string _uid = $"form-{Guid.NewGuid():N}"[..13];
+
+    /// <summary>The EditContext in use.</summary>
+    public EditContext CurrentEditContext => _context;
+
+    internal object EditedModel => _context.Model;
+    internal string Uid => Id ?? _uid;
+
+    protected override void OnParametersSet()
+    {
+        var source = (object?)EditContext ?? Model;
+        if (source is null || ReferenceEquals(source, _contextFor)) return;
+        _context.OnFieldChanged -= OnFieldChanged;
+        _contextFor = source;
+        _context = EditContext ?? new EditContext(Model!);
+        _context.OnFieldChanged += OnFieldChanged;
+    }
+
+    private void OnFieldChanged(object? sender, FieldChangedEventArgs e) => _ = InvokeAsync(() => OnUpdate.InvokeAsync());
+
+    public void Refresh() => StateHasChanged();
+
+    private async Task OnSubmitAsync(EditContext context)
+    {
+        if (OnSubmit.HasDelegate)
+        {
+            await OnSubmit.InvokeAsync(context);
+            return;
+        }
+        if (context.Validate()) await OnValidSubmit.InvokeAsync(context);
+        else await OnInvalidSubmit.InvokeAsync(context);
+    }
+
+    internal static string GridStyle(int columns, string? spacing) =>
+        $"grid-template-columns:repeat({Math.Max(1, columns)}, minmax(0, 1fr));gap:{spacing ?? "1rem"}";
+
+    private string ButtonsCls => "flex gap-2 " + ButtonsLayout switch
+    {
+        FormButtonsLayout.Center  => "justify-center",
+        FormButtonsLayout.End     => "justify-end",
+        FormButtonsLayout.Stretch => "[&>*]:flex-1",
+        _                         => "justify-start",
+    };
+
+    public void Dispose() => _context.OnFieldChanged -= OnFieldChanged;
+}

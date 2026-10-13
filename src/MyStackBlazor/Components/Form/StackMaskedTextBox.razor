@@ -1,81 +1,260 @@
 @namespace MyStackBlazor.Components.Form
+@implements IDisposable
+@inject IJSRuntime JS
+@using System.Linq.Expressions
 
-<div class="relative @Class" @attributes="AdditionalAttributes">
-    <input type="text"
-           value="@_display"
-           placeholder="@(Placeholder ?? MaskToPlaceholder())"
-           maxlength="@Mask?.Length"
-           class="flex h-9 w-full rounded-md border-2 border-input bg-background px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-           @oninput="OnInput"
-           @onkeydown="OnKeyDown" />
-    @if (!string.IsNullOrEmpty(Mask))
-    {
-        <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground/50">
-            @Mask
-        </span>
-    }
+@*
+    Masked input modelled on the Telerik MaskedTextBox API (see MaskEngine for the mask characters).
+
+    <StackMaskedTextBox @bind-Value="phone" Mask="(999) 000-0000" />
+    <StackMaskedTextBox @bind-Value="code" Mask="LL-0000" Rules="@(new() { ['L'] = "[A-F]" })" IncludeLiterals />
+*@
+
+<div class="@($"relative {Class}".TrimEnd())" style="@(Width is null ? null : $"width:{Width}")" title="@Title" @attributes="AdditionalAttributes">
+    <span class="@BoxCls">
+        @MaskedTextBoxPrefixTemplate
+        <input @ref="_input"
+               id="@Id"
+               name="@Name"
+               type="text"
+               autocomplete="@(AutoComplete ?? "off")"
+               value="@_display"
+               placeholder="@EffectivePlaceholder"
+               maxlength="@(_engine.IsEmptyMask ? null : _engine.Length)"
+               disabled="@IsDisabled"
+               readonly="@ReadOnly"
+               tabindex="@TabIndex"
+               aria-label="@AriaLabel"
+               aria-labelledby="@AriaLabelledBy"
+               aria-describedby="@AriaDescribedBy"
+               aria-invalid="@(IsInvalid ? "true" : null)"
+               class="h-full min-w-0 flex-1 bg-transparent font-mono tracking-wide outline-none placeholder:font-sans placeholder:tracking-normal placeholder:text-muted-foreground disabled:cursor-not-allowed"
+               @onfocus="OnFocus"
+               @onblur="OnBlurAsync"
+               @oninput="OnInputAsync"
+               @onchange="OnChangeAsync" />
+        @if (ShowClearButton && !IsDisabled && !ReadOnly && _slots.Any(s => s is not null))
+        {
+            <button type="button" tabindex="-1" aria-label="Clear"
+                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    @onmousedown:preventDefault="true" @onclick="ClearAsync">
+                <svg class="h-3.5 w-3.5" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            </button>
+        }
+        @MaskedTextBoxSuffixTemplate
+    </span>
 </div>
 
 @code {
     [Parameter] public string? Value { get; set; }
     [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public Expression<Func<string?>>? ValueExpression { get; set; }
 
-    /// <summary>
-    /// Mask pattern. Use:
-    ///   0 = digit, a = letter, * = any character
-    /// Example: "000-000-0000" for phone, "00/00/0000" for date
-    /// </summary>
+    /// <summary>Mask pattern, e.g. "(999) 000-0000" or "LL-0000".</summary>
     [Parameter] public string? Mask { get; set; }
+    /// <summary>Custom mask characters: character → regular expression for one character.</summary>
+    [Parameter] public Dictionary<char, string>? Rules { get; set; }
+    /// <summary>Shown in empty positions while editing (default '_').</summary>
+    [Parameter] public char Prompt { get; set; } = '_';
+    /// <summary>Shown in empty positions while not focused (default: same as Prompt).</summary>
+    [Parameter] public char? PromptPlaceholder { get; set; }
+    /// <summary>Value includes the literal characters ("(555) 123-4567" instead of "5551234567").</summary>
+    [Parameter] public bool IncludeLiterals { get; set; }
+    /// <summary>Show the mask only while focused; otherwise the Placeholder.</summary>
+    [Parameter] public bool MaskOnFocus { get; set; }
 
     [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public bool Enabled { get; set; } = true;
+    [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public bool ShowClearButton { get; set; }
+
+    [Parameter] public string Size { get; set; } = DropDownListTheme.Size.Medium;
+    [Parameter] public string Rounded { get; set; } = DropDownListTheme.Rounded.Medium;
+    [Parameter] public string FillMode { get; set; } = DropDownListTheme.FillMode.Solid;
+    [Parameter] public string? Width { get; set; }
     [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? MaskedTextBoxPrefixTemplate { get; set; }
+    [Parameter] public RenderFragment? MaskedTextBoxSuffixTemplate { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Name { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public int? TabIndex { get; set; }
+    [Parameter] public string? AutoComplete { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter] public string? AriaLabelledBy { get; set; }
+    [Parameter] public string? AriaDescribedBy { get; set; }
+
+    [Parameter] public EventCallback<object?> OnChange { get; set; }
+    [Parameter] public EventCallback OnBlur { get; set; }
+
+    [CascadingParameter] private EditContext? EditContext { get; set; }
+    /// <summary>Extra attributes go on the wrapper element (earlier API).</summary>
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
 
+    private ElementReference _input;
+    private MaskEngine _engine = new(null, null);
+    private string? _engineFor;
+    private char?[] _slots = [];
     private string _display = "";
+    private bool _focused;
+    private bool _synced;
+    private string? _lastParam;
+    private int? _caret;
+    private FieldIdentifier? _field;
+    private EditContext? _subscribedContext;
+
+    private bool IsDisabled => !Enabled;
+    private bool IsInvalid => EditContext is not null && _field is { } f && EditContext.GetValidationMessages(f).Any();
+    private bool IsComplete => _slots.All(s => s is not null);
+
+    private string? EffectivePlaceholder => Placeholder;
 
     protected override void OnParametersSet()
     {
-        if (Value is not null && Mask is not null)
-            _display = ApplyMask(Value.Replace("-", "").Replace("/", "").Replace("(", "").Replace(")", "").Replace(" ", ""));
-        else
-            _display = Value ?? "";
+        var key = $"{Mask}|{string.Join(",", Rules?.Select(r => $"{r.Key}{r.Value}") ?? [])}";
+        var maskChanged = key != _engineFor;
+        if (maskChanged)
+        {
+            _engineFor = key;
+            _engine = new MaskEngine(Mask, Rules);
+        }
+
+        if (maskChanged || !_synced || Value != _lastParam)
+        {
+            _synced = true;
+            _lastParam = Value;
+            _slots = _engine.IsEmptyMask ? [] : _engine.Fill(Value ?? "", Prompt, IncludeLiterals);
+            _display = Render();
+        }
+
+        if (ValueExpression is not null && _field is null) _field = FieldIdentifier.Create(ValueExpression);
+        if (!ReferenceEquals(_subscribedContext, EditContext))
+        {
+            if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged -= OnValidationStateChanged;
+            _subscribedContext = EditContext;
+            if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged += OnValidationStateChanged;
+        }
     }
 
-    private async Task OnInput(ChangeEventArgs e)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_caret is int caret)
+        {
+            _caret = null;
+            try { await JS.InvokeVoidAsync("MyStackBlazor.setCaret", _input, caret); } catch { }
+        }
+    }
+
+    public ValueTask FocusAsync() => _input.FocusAsync();
+
+    /// <summary>What the input shows: the mask with prompts, or nothing when empty and not focused.</summary>
+    private string Render()
+    {
+        if (_engine.IsEmptyMask) return Value ?? "";
+        // With MaskOnFocus an empty, unfocused input shows the Placeholder instead of the mask.
+        if (MaskOnFocus && !_focused && _slots.All(s => s is null)) return "";
+        return _engine.Format(_slots, _focused ? Prompt : PromptPlaceholder ?? Prompt);
+    }
+
+    private void OnFocus()
+    {
+        _focused = true;
+        _display = Render();
+        _caret = _engine.CaretAfterSlot(_slots.TakeWhile(s => s is not null).Count());
+    }
+
+    private async Task OnBlurAsync()
+    {
+        _focused = false;
+        _display = Render();
+        await OnBlur.InvokeAsync();
+    }
+
+    private async Task OnInputAsync(ChangeEventArgs e)
     {
         var raw = e.Value?.ToString() ?? "";
-        if (Mask is not null)
-        {
-            var digits = new string(raw.Where(c => char.IsLetterOrDigit(c)).ToArray());
-            _display   = ApplyMask(digits);
-            Value      = digits;
-        }
-        else
+        if (_engine.IsEmptyMask)
         {
             _display = raw;
-            Value    = raw;
+            await PublishAsync(raw);
+            return;
         }
-        await ValueChanged.InvokeAsync(Value);
-    }
 
-    private void OnKeyDown(KeyboardEventArgs e) { }
+        var caret = raw.Length;
+        try { caret = await JS.InvokeAsync<int>("MyStackBlazor.getCaret", _input); } catch { }
+        var typedBeforeCaret = _engine.SlotsBefore(raw, caret, Prompt);
 
-    private string ApplyMask(string raw)
-    {
-        if (Mask is null) return raw;
-        var result = new System.Text.StringBuilder();
-        var ri = 0;
-        foreach (var m in Mask)
+        var previous = _display;
+        _slots = _engine.Fill(raw, Prompt, inputHasLiterals: false);
+        var next = _engine.Format(_slots, Prompt);
+
+        if (next == previous && raw != previous)
         {
-            if (ri >= raw.Length) break;
-            if (m == '0' && char.IsDigit(raw[ri]))     { result.Append(raw[ri++]); }
-            else if (m == 'a' && char.IsLetter(raw[ri])) { result.Append(raw[ri++]); }
-            else if (m == '*')                          { result.Append(raw[ri++]); }
-            else                                        { result.Append(m); }
+            // The text did not change (rejected character): force the DOM back to the masked text.
+            _display = raw;
+            StateHasChanged();
+            await Task.Yield();
         }
-        return result.ToString();
+        _display = next;
+        _caret = _engine.CaretAfterSlot(Math.Min(typedBeforeCaret, _slots.Count(s => s is not null)));
+        await PublishAsync(_engine.Value(_slots, IncludeLiterals, Prompt));
     }
 
-    private string MaskToPlaceholder() =>
-        Mask?.Replace('0', '_').Replace('a', '_').Replace('*', '_') ?? "";
+    private async Task PublishAsync(string value)
+    {
+        if (value == _lastParam) return;
+        _lastParam = value;
+        Value = value;
+        await ValueChanged.InvokeAsync(value);
+        if (EditContext is not null && _field is { } field) EditContext.NotifyFieldChanged(field);
+    }
+
+    private Task OnChangeAsync(ChangeEventArgs e) => OnChange.InvokeAsync(Value);
+
+    private async Task ClearAsync()
+    {
+        _slots = new char?[_engine.SlotCount];
+        _display = Render();
+        await PublishAsync("");
+        await OnChange.InvokeAsync(Value);
+    }
+
+    private void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs e) => _ = InvokeAsync(StateHasChanged);
+
+    private string BoxCls
+    {
+        get
+        {
+            var size = Size switch
+            {
+                DropDownListTheme.Size.Small => "h-8 px-2 text-xs",
+                DropDownListTheme.Size.Large => "h-12 px-4 text-base",
+                _                            => "h-10 px-3 text-sm",
+            };
+            var rounded = FillMode == DropDownListTheme.FillMode.Flat ? "rounded-none" : Rounded switch
+            {
+                DropDownListTheme.Rounded.None  => "rounded-none",
+                DropDownListTheme.Rounded.Small => "rounded-sm",
+                DropDownListTheme.Rounded.Large => "rounded-lg",
+                DropDownListTheme.Rounded.Full  => "rounded-full",
+                _                               => "rounded-md",
+            };
+            var fill = FillMode switch
+            {
+                DropDownListTheme.FillMode.Flat    => "border-0 border-b-2 border-input bg-transparent",
+                DropDownListTheme.FillMode.Outline => "border-2 border-input bg-transparent",
+                _                                  => "border-2 border-input bg-background",
+            };
+            return $"flex w-full items-center gap-2 transition-colors {size} {rounded} {fill} " +
+                   "ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 " +
+                   (IsDisabled ? "cursor-not-allowed opacity-50 " : "") +
+                   (IsInvalid ? "border-destructive" : "");
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_subscribedContext is not null) _subscribedContext.OnValidationStateChanged -= OnValidationStateChanged;
+    }
 }

@@ -1,0 +1,77 @@
+@namespace MyStackBlazor.Components.Form
+@typeparam TValue
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@using System.Linq.Expressions
+
+@*
+    Shows a field's validation messages in a tooltip next to an element (Telerik ValidationTooltip).
+    Place it inside an EditForm.
+
+    <StackTextBox Id="email" @bind-Value="model.Email" />
+    <StackValidationTooltip For="@(() => model.Email)" TargetSelector="#email" Position="TooltipPosition.Right" />
+*@
+
+@if (_messages.Count > 0)
+{
+    <div @ref="_tooltip"
+         role="alert"
+         style="position:fixed;visibility:hidden"
+         class="@($"z-50 max-w-xs rounded-md bg-destructive px-2 py-1 text-xs font-medium text-destructive-foreground shadow-md {Class}".TrimEnd())">
+        @string.Join(" ", _messages)
+    </div>
+}
+
+@code {
+    [CascadingParameter] private EditContext? EditContext { get; set; }
+
+    [EditorRequired, Parameter] public Expression<Func<TValue>> For { get; set; } = null!;
+    /// <summary>CSS selector of the element the tooltip points at, e.g. "#email".</summary>
+    [EditorRequired, Parameter] public string TargetSelector { get; set; } = "";
+    [Parameter] public TooltipPosition Position { get; set; } = TooltipPosition.Bottom;
+    [Parameter] public string? Class { get; set; }
+
+    private ElementReference _tooltip;
+    private FieldIdentifier _field;
+    private List<string> _messages = [];
+    private EditContext? _subscribed;
+    private bool _anchored;
+
+    protected override void OnParametersSet()
+    {
+        if (EditContext is null)
+            throw new InvalidOperationException($"{nameof(StackValidationTooltip<TValue>)} requires a cascading EditContext. Place it inside an EditForm.");
+        _field = FieldIdentifier.Create(For);
+        if (!ReferenceEquals(EditContext, _subscribed))
+        {
+            if (_subscribed is not null) _subscribed.OnValidationStateChanged -= OnValidationStateChanged;
+            _subscribed = EditContext;
+            _subscribed.OnValidationStateChanged += OnValidationStateChanged;
+        }
+        _messages = EditContext.GetValidationMessages(_field).ToList();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_messages.Count == 0) { _anchored = false; return; }
+        try
+        {
+            await JS.InvokeVoidAsync("MyStackBlazor.anchorTo", TargetSelector, _tooltip, Position.ToString().ToLowerInvariant());
+            _anchored = true;
+        }
+        catch { /* JS not loaded or prerendering. */ }
+    }
+
+    private void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs e)
+    {
+        _messages = EditContext!.GetValidationMessages(_field).ToList();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_subscribed is not null) _subscribed.OnValidationStateChanged -= OnValidationStateChanged;
+        if (!_anchored) return;
+        try { await JS.InvokeVoidAsync("MyStackBlazor.unanchor", _tooltip); } catch { }
+    }
+}

@@ -1,0 +1,21 @@
+@namespace MyStackBlazor.Components.Form
+
+@* A titled group of form items with its own columns (Telerik FormGroup). It spans the whole form width. *@
+
+<fieldset class="@($"min-w-0 space-y-3 rounded-md border p-4 {Class}".TrimEnd())" style="grid-column:1 / -1">
+    @if (!string.IsNullOrEmpty(LabelText))
+    {
+        <legend class="px-1 text-sm font-semibold">@LabelText</legend>
+    }
+    <div class="grid" style="@StackForm.GridStyle(Columns, ColumnSpacing)">
+        @ChildContent
+    </div>
+</fieldset>
+
+@code {
+    [Parameter] public string? LabelText { get; set; }
+    [Parameter] public int Columns { get; set; } = 1;
+    [Parameter] public string? ColumnSpacing { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

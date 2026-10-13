@@ -1,0 +1,246 @@
+@namespace MyStackBlazor.Components.Form
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@using System.Globalization
+@using System.Linq.Expressions
+
+@*
+    Signature pad modelled on the Telerik Signature API. Value is a PNG data URL ("data:image/png;base64,…").
+
+    <StackSignature @bind-Value="signature" Width="400px" Height="160px" Color="#1e3a8a" Smooth />
+*@
+
+<div id="@Id" class="@BoxCls" style="@($"width:{Width};height:{Height}")" @attributes="AdditionalAttributes">
+    @RenderPad(_padRef0, isPopup: false)
+</div>
+
+@if (_maximized)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @onclick="() => _maximized = false">
+        <div role="dialog" aria-modal="true" aria-label="Signature (enlarged)"
+             class="@($"relative rounded-lg border bg-background p-2 shadow-xl")"
+             style="@PopupStyle"
+             @onclick:stopPropagation="true"
+             @onkeydown="OnPopupKeyDown">
+            @RenderPad(_padRef1, isPopup: true)
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>The signature as a PNG data URL. Supports <c>@bind-Value</c>.</summary>
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public Expression<Func<string?>>? ValueExpression { get; set; }
+
+    [Parameter] public string Width { get; set; } = "300px";
+    [Parameter] public string Height { get; set; } = "120px";
+    /// <summary>Stroke colour (default: text colour of the theme, black on export).</summary>
+    [Parameter] public string Color { get; set; } = "#000000";
+    [Parameter] public string BackgroundColor { get; set; } = "#ffffff";
+    [Parameter] public double StrokeWidth { get; set; } = 1;
+    /// <summary>Draw curves through the pointer points instead of straight segments.</summary>
+    [Parameter] public bool Smooth { get; set; }
+    /// <summary>Shows a button that opens a larger drawing area.</summary>
+    [Parameter] public bool Maximizable { get; set; } = true;
+    /// <summary>How much larger the maximized area is (default 3).</summary>
+    [Parameter] public double PopupScale { get; set; } = 3;
+    /// <summary>Resolution of the exported image relative to the on-screen size (default 2).</summary>
+    [Parameter] public double ExportScale { get; set; } = 2;
+    /// <summary>Hides the dashed signature line.</summary>
+    [Parameter] public bool HideLine { get; set; }
+
+    [Parameter] public bool Enabled { get; set; } = true;
+    [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public string Rounded { get; set; } = DropDownListTheme.Rounded.Medium;
+    [Parameter] public string FillMode { get; set; } = DropDownListTheme.FillMode.Solid;
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public int? TabIndex { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter] public string? AriaLabelledBy { get; set; }
+    [Parameter] public string? AriaDescribedBy { get; set; }
+
+    [Parameter] public EventCallback<object?> OnChange { get; set; }
+    [Parameter] public EventCallback OnBlur { get; set; }
+
+    [CascadingParameter] private EditContext? EditContext { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private sealed class PadRef { public ElementReference Canvas; public bool Initialized; }
+
+    private readonly PadRef _padRef0 = new();
+    private readonly PadRef _padRef1 = new();
+    private DotNetObjectReference<StackSignature>? _dotnet;
+    private bool _maximized;
+    private string? _lastParam;
+    private bool _synced;
+    private bool _loadPending;
+    private string? _optionsKey;
+    private FieldIdentifier? _field;
+
+    private bool CanDraw => Enabled && !ReadOnly;
+    private bool IsInvalid => EditContext is not null && _field is { } f && EditContext.GetValidationMessages(f).Any();
+
+    private object Options(bool popup) => new
+    {
+        color = Color,
+        background = BackgroundColor,
+        strokeWidth = popup ? StrokeWidth * PopupScale : StrokeWidth,
+        smooth = Smooth,
+        exportScale = popup ? ExportScale / PopupScale : ExportScale,
+        disabled = !CanDraw,
+    };
+
+    protected override void OnParametersSet()
+    {
+        if (!_synced || Value != _lastParam)
+        {
+            _synced = true;
+            _lastParam = Value;
+            _loadPending = true;
+        }
+        if (ValueExpression is not null && _field is null) _field = FieldIdentifier.Create(ValueExpression);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        _dotnet ??= DotNetObjectReference.Create(this);
+        var key = $"{Color}|{BackgroundColor}|{StrokeWidth}|{Smooth}|{ExportScale}|{PopupScale}|{CanDraw}";
+        var optionsChanged = key != _optionsKey;
+        _optionsKey = key;
+
+        foreach (var (pad, popup) in new[] { (_padRef0, false), (_padRef1, true) })
+        {
+            if (popup && !_maximized) { pad.Initialized = false; continue; }
+            try
+            {
+                if (!pad.Initialized)
+                {
+                    pad.Initialized = true;
+                    await JS.InvokeVoidAsync("MyStackBlazor.signatureInit", pad.Canvas, _dotnet, Options(popup));
+                    await JS.InvokeVoidAsync("MyStackBlazor.signatureLoad", pad.Canvas, Value);
+                }
+                else
+                {
+                    if (optionsChanged) await JS.InvokeVoidAsync("MyStackBlazor.signatureSetOptions", pad.Canvas, Options(popup));
+                    if (_loadPending) await JS.InvokeVoidAsync("MyStackBlazor.signatureLoad", pad.Canvas, Value);
+                }
+            }
+            catch { /* JS not loaded or prerendering. */ }
+        }
+        _loadPending = false;
+    }
+
+    /// <summary>Called from JS when a stroke ends.</summary>
+    [JSInvokable]
+    public async Task OnSignatureChanged(string dataUrl)
+    {
+        if (!CanDraw) return;
+        await SetValueAsync(dataUrl);
+        _loadPending = true; // keep the other pad (inline / maximized) in sync
+        StateHasChanged();
+    }
+
+    private async Task SetValueAsync(string? value)
+    {
+        _lastParam = value;
+        Value = value;
+        await ValueChanged.InvokeAsync(value);
+        await OnChange.InvokeAsync(value);
+        if (EditContext is not null && _field is { } field) EditContext.NotifyFieldChanged(field);
+    }
+
+    private void OnPopupKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") _maximized = false;
+    }
+
+    /// <summary>Removes the signature.</summary>
+    public async Task ClearAsync()
+    {
+        if (!CanDraw) return;
+        await SetValueAsync(null);
+        _loadPending = true;
+    }
+
+    public void Refresh() => _ = InvokeAsync(StateHasChanged);
+
+    private RenderFragment RenderPad(PadRef pad, bool isPopup) =>
+        @<div class="relative h-full w-full">
+            <canvas @ref="pad.Canvas"
+                    role="img"
+                    tabindex="@(isPopup ? 0 : TabIndex ?? 0)"
+                    aria-label="@(AriaLabel ?? (Value is null ? "Signature pad, empty" : "Signature pad, signed"))"
+                    aria-labelledby="@AriaLabelledBy"
+                    aria-describedby="@AriaDescribedBy"
+                    aria-invalid="@(IsInvalid ? "true" : null)"
+                    aria-disabled="@(CanDraw ? null : "true")"
+                    class="@($"block h-full w-full touch-none rounded-[inherit] outline-none focus-visible:ring-2 focus-visible:ring-ring {(CanDraw ? "cursor-crosshair" : "cursor-not-allowed")}")"
+                    @onblur="OnBlur"></canvas>
+            @if (!HideLine)
+            {
+                <div class="pointer-events-none absolute inset-x-[8%] bottom-[22%] border-b border-dashed border-muted-foreground/50" aria-hidden="true"></div>
+            }
+            <div class="absolute right-1 top-1 flex gap-1">
+                @if (CanDraw && Value is not null)
+                {
+                    <button type="button" class="@ButtonCls" aria-label="Clear signature" @onclick="ClearAsync">
+                        <svg class="h-3.5 w-3.5" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    </button>
+                }
+                @if (Maximizable && !isPopup)
+                {
+                    <button type="button" class="@ButtonCls" aria-label="Maximize signature" @onclick="() => _maximized = true">
+                        <svg class="h-3.5 w-3.5" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" /></svg>
+                    </button>
+                }
+                @if (isPopup)
+                {
+                    <button type="button" class="@ButtonCls" aria-label="Minimize signature" @onclick="() => _maximized = false">
+                        <svg class="h-3.5 w-3.5" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" /><line x1="14" y1="10" x2="21" y2="3" /><line x1="3" y1="21" x2="10" y2="14" /></svg>
+                    </button>
+                }
+            </div>
+        </div>;
+
+    private string PopupStyle => $"width:min(calc({Width} * {PopupScale.ToString(CultureInfo.InvariantCulture)}), 95vw);height:min(calc({Height} * {PopupScale.ToString(CultureInfo.InvariantCulture)}), 85vh)";
+
+    private string BoxCls
+    {
+        get
+        {
+            var rounded = FillMode == DropDownListTheme.FillMode.Flat ? "rounded-none" : Rounded switch
+            {
+                DropDownListTheme.Rounded.None  => "rounded-none",
+                DropDownListTheme.Rounded.Small => "rounded-sm",
+                DropDownListTheme.Rounded.Large => "rounded-lg",
+                DropDownListTheme.Rounded.Full  => "rounded-2xl",
+                _                               => "rounded-md",
+            };
+            var fill = FillMode switch
+            {
+                DropDownListTheme.FillMode.Flat    => "border-0 border-b-2 border-input",
+                DropDownListTheme.FillMode.Outline => "border-2 border-input",
+                _                                  => "border border-input shadow-sm",
+            };
+            return $"relative inline-block overflow-hidden {rounded} {fill} " +
+                   (Enabled ? "" : "opacity-50 ") +
+                   (IsInvalid ? "border-destructive " : "") +
+                   Class;
+        }
+    }
+
+    private const string ButtonCls =
+        "flex h-6 w-6 items-center justify-center rounded-md bg-background/80 text-muted-foreground shadow-sm ring-1 ring-border transition-colors hover:bg-accent hover:text-foreground";
+
+    public async ValueTask DisposeAsync()
+    {
+        foreach (var pad in new[] { _padRef0, _padRef1 })
+        {
+            if (!pad.Initialized) continue;
+            try { await JS.InvokeVoidAsync("MyStackBlazor.signatureDispose", pad.Canvas); } catch { }
+        }
+        _dotnet?.Dispose();
+    }
+}

@@ -1,0 +1,233 @@
+@namespace MyStackBlazor.Components.Form
+@inject IJSRuntime JS
+@using System.Globalization
+
+@*
+    Scrollable hour / minute / second / AM-PM columns used in the TimePicker and DateTimePicker popups.
+    Columns follow the time parts of Format; Up/Down change a column, Left/Right switch columns, Enter confirms.
+*@
+
+<div class="@($"flex gap-1 p-2 {Class}".TrimEnd())" role="group" aria-label="Time">
+    @for (var c = 0; c < _columns.Count; c++)
+    {
+        var columnIndex = c;
+        var column = _columns[columnIndex];
+        var selected = Selected(column.Kind);
+        var listId = $"{_uid}-{column.Kind}";
+        <div class="flex flex-col items-center">
+            <div class="pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">@column.Label</div>
+            <div @ref="_columnRefs[columnIndex]"
+                 id="@listId"
+                 role="listbox"
+                 tabindex="0"
+                 aria-label="@column.Label"
+                 aria-activedescendant="@($"{listId}-{column.Values.IndexOf(selected)}")"
+                 class="h-48 w-14 overflow-y-auto overscroll-contain rounded-md border p-1 outline-none [scrollbar-width:thin] focus-visible:ring-2 focus-visible:ring-ring"
+                 @onkeydown="e => OnKeyDownAsync(columnIndex, e)">
+                @for (var i = 0; i < column.Values.Count; i++)
+                {
+                    var value = column.Values[i];
+                    var disabled = IsDisabled(column.Kind, value);
+                    var isSelected = value == selected;
+                    <div id="@($"{listId}-{i}")"
+                         role="option"
+                         data-index="@i"
+                         aria-selected="@(isSelected ? "true" : "false")"
+                         aria-disabled="@(disabled ? "true" : null)"
+                         class="@($"cursor-pointer rounded-sm px-2 py-1 text-center text-sm tabular-nums transition-colors {(isSelected ? "bg-primary text-primary-foreground" : "hover:bg-accent")} {(disabled ? "pointer-events-none opacity-30" : "")}")"
+                         @onclick="() => SelectAsync(column.Kind, value)">
+                        @column.Text(value)
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>The time shown and edited (its date part is kept).</summary>
+    [Parameter] public DateTime? Value { get; set; }
+    [Parameter] public EventCallback<DateTime?> ValueChanged { get; set; }
+    /// <summary>Format whose time parts decide the columns (default "t").</summary>
+    [Parameter] public string Format { get; set; } = "t";
+    [Parameter] public TimePickerSteps? Steps { get; set; }
+    [Parameter] public TimeSpan? MinTime { get; set; }
+    [Parameter] public TimeSpan? MaxTime { get; set; }
+    /// <summary>Date used when <see cref="Value"/> is empty.</summary>
+    [Parameter] public DateTime BaseDate { get; set; } = DateTime.Today;
+    /// <summary>Called when Enter is pressed in a column.</summary>
+    [Parameter] public EventCallback OnEnter { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private sealed record Column(DatePartKind Kind, string Label, List<int> Values, Func<int, string> Text);
+
+    private static readonly string[] ColumnKeys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End", "PageUp", "PageDown", "Enter"];
+
+    private readonly string _uid = $"ts-{Guid.NewGuid():N}"[..11];
+    private readonly Dictionary<int, ElementReference> _columnRefs = [];
+    private List<Column> _columns = [];
+    private string? _builtFor;
+    private int? _focusColumn;
+    private bool _scrollPending = true;
+    private bool _keysRegistered;
+
+    private CultureInfo Culture => CultureInfo.CurrentCulture;
+    private DateTime Current => Value ?? BaseDate.Date;
+
+    public ValueTask FocusAsync() => _columnRefs.TryGetValue(0, out var first) ? first.FocusAsync() : ValueTask.CompletedTask;
+
+    protected override void OnParametersSet()
+    {
+        var key = $"{Format}|{Steps?.Hour}|{Steps?.Minute}|{Steps?.Second}";
+        if (_builtFor == key) return;
+        _builtFor = key;
+
+        var tokens = new DateInputFormat(Format, Culture).Tokens;
+        var hourStep = Math.Max(1, Steps?.Hour ?? 1);
+        var minuteStep = Math.Max(1, Steps?.Minute ?? 1);
+        var secondStep = Math.Max(1, Steps?.Second ?? 1);
+
+        _columns = [];
+        foreach (var token in tokens)
+        {
+            switch (token.Kind)
+            {
+                case DatePartKind.Hour24 when _columns.All(c => c.Kind is not (DatePartKind.Hour24 or DatePartKind.Hour12)):
+                    _columns.Add(new(DatePartKind.Hour24, "Hour", Range(0, 23, hourStep), v => v.ToString("00", Culture)));
+                    break;
+                case DatePartKind.Hour12 when _columns.All(c => c.Kind is not (DatePartKind.Hour24 or DatePartKind.Hour12)):
+                    _columns.Add(new(DatePartKind.Hour12, "Hour", Range(1, 12, hourStep), v => v.ToString("00", Culture)));
+                    break;
+                case DatePartKind.Minute when _columns.All(c => c.Kind != DatePartKind.Minute):
+                    _columns.Add(new(DatePartKind.Minute, "Min", Range(0, 59, minuteStep), v => v.ToString("00", Culture)));
+                    break;
+                case DatePartKind.Second when _columns.All(c => c.Kind != DatePartKind.Second):
+                    _columns.Add(new(DatePartKind.Second, "Sec", Range(0, 59, secondStep), v => v.ToString("00", Culture)));
+                    break;
+                case DatePartKind.AmPm when _columns.All(c => c.Kind != DatePartKind.AmPm):
+                    _columns.Add(new(DatePartKind.AmPm, "", [0, 1], v => v == 0 ? Culture.DateTimeFormat.AMDesignator : Culture.DateTimeFormat.PMDesignator));
+                    break;
+            }
+        }
+        if (_columns.Count == 0)
+        {
+            _columns.Add(new(DatePartKind.Hour24, "Hour", Range(0, 23, hourStep), v => v.ToString("00", Culture)));
+            _columns.Add(new(DatePartKind.Minute, "Min", Range(0, 59, minuteStep), v => v.ToString("00", Culture)));
+        }
+        _scrollPending = true;
+    }
+
+    private static List<int> Range(int from, int to, int step) =>
+        Enumerable.Range(0, (to - from) / step + 1).Select(i => from + i * step).ToList();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_keysRegistered)
+        {
+            _keysRegistered = true;
+            foreach (var element in _columnRefs.Values)
+                try { await JS.InvokeVoidAsync("MyStackBlazor.dropDownPreventKeys", element, ColumnKeys); } catch { }
+        }
+
+        if (_scrollPending)
+        {
+            _scrollPending = false;
+            foreach (var column in _columns)
+            {
+                var index = column.Values.IndexOf(Selected(column.Kind));
+                if (index < 0) continue;
+                try { await JS.InvokeVoidAsync("MyStackBlazor.dropDownScrollIntoView", $"{_uid}-{column.Kind}", index); } catch { }
+            }
+        }
+
+        if (_focusColumn is int focus && _columnRefs.TryGetValue(focus, out var columnRef))
+        {
+            _focusColumn = null;
+            try { await columnRef.FocusAsync(); } catch { }
+        }
+    }
+
+    // ── Values ───────────────────────────────────────────────────────────────
+    private int Selected(DatePartKind kind)
+    {
+        var t = Current;
+        var hour12 = t.Hour % 12 == 0 ? 12 : t.Hour % 12;
+        var value = kind switch
+        {
+            DatePartKind.Hour24 => t.Hour,
+            DatePartKind.Hour12 => hour12,
+            DatePartKind.Minute => t.Minute,
+            DatePartKind.Second => t.Second,
+            _                   => t.Hour >= 12 ? 1 : 0,
+        };
+        // Snap to the nearest available step.
+        var column = _columns.FirstOrDefault(c => c.Kind == kind);
+        return column is null || column.Values.Contains(value) ? value : column.Values.LastOrDefault(v => v <= value, column.Values[0]);
+    }
+
+    private DateTime With(DatePartKind kind, int value)
+    {
+        var t = Current;
+        var hour = t.Hour;
+        switch (kind)
+        {
+            case DatePartKind.Hour24: hour = value; break;
+            case DatePartKind.Hour12: hour = value % 12 + (t.Hour >= 12 ? 12 : 0); break;
+            case DatePartKind.AmPm: hour = t.Hour % 12 + (value == 1 ? 12 : 0); break;
+        }
+        var minute = kind == DatePartKind.Minute ? value : Selected(DatePartKind.Minute);
+        var second = kind == DatePartKind.Second ? value : _columns.Any(c => c.Kind == DatePartKind.Second) ? Selected(DatePartKind.Second) : 0;
+        return t.Date.AddHours(hour).AddMinutes(minute).AddSeconds(second);
+    }
+
+    private bool IsDisabled(DatePartKind kind, int value)
+    {
+        if (MinTime is null && MaxTime is null) return false;
+        var candidate = With(kind, value).TimeOfDay;
+        // An hour is only disabled when the whole hour is out of range.
+        var (from, to) = kind is DatePartKind.Hour24 or DatePartKind.Hour12 or DatePartKind.AmPm
+            ? (new TimeSpan(candidate.Hours, 0, 0), new TimeSpan(candidate.Hours, 59, 59))
+            : (candidate, candidate);
+        return (MaxTime is TimeSpan max && from > max) || (MinTime is TimeSpan min && to < min);
+    }
+
+    private async Task SelectAsync(DatePartKind kind, int value)
+    {
+        if (IsDisabled(kind, value)) return;
+        var next = With(kind, value);
+        Value = next;
+        _scrollPending = true;
+        await ValueChanged.InvokeAsync(next);
+    }
+
+    // ── Keyboard ─────────────────────────────────────────────────────────────
+    private async Task OnKeyDownAsync(int columnIndex, KeyboardEventArgs e)
+    {
+        var column = _columns[columnIndex];
+        var index = column.Values.IndexOf(Selected(column.Kind));
+        var count = column.Values.Count;
+        int? target = e.Key switch
+        {
+            "ArrowDown" => (index + 1) % count,
+            "ArrowUp"   => (index - 1 + count) % count,
+            "PageDown"  => Math.Min(count - 1, index + 5),
+            "PageUp"    => Math.Max(0, index - 5),
+            "Home"      => 0,
+            "End"       => count - 1,
+            _           => null,
+        };
+
+        if (target is int t)
+        {
+            await SelectAsync(column.Kind, column.Values[t]);
+            return;
+        }
+
+        switch (e.Key)
+        {
+            case "ArrowLeft" when columnIndex > 0: _focusColumn = columnIndex - 1; break;
+            case "ArrowRight" when columnIndex < _columns.Count - 1: _focusColumn = columnIndex + 1; break;
+            case "Enter": await OnEnter.InvokeAsync(); break;
+        }
+    }
+}
