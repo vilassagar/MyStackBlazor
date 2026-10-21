@@ -46,6 +46,9 @@ jobs:
     needs: build-and-test
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # required for NuGet Trusted Publishing (OIDC)
 
     steps:
       - uses: actions/checkout@v4
@@ -64,24 +67,28 @@ jobs:
 
       - name: Pack all packages
         run: |
-          dotnet pack src/MyStackBlazor/MyStackBlazor.csproj \
-            -c Release -o nupkgs /p:Version=${{ steps.version.outputs.VERSION }}
-          dotnet pack src/MyStackBlazor.Core/MyStackBlazor.Core.csproj \
-            -c Release -o nupkgs /p:Version=${{ steps.version.outputs.VERSION }}
-          dotnet pack src/MyStackBlazor.Security/MyStackBlazor.Security.csproj \
-            -c Release -o nupkgs /p:Version=${{ steps.version.outputs.VERSION }}
-          dotnet pack src/MyStackBlazor.Accessibility/MyStackBlazor.Accessibility.csproj \
-            -c Release -o nupkgs /p:Version=${{ steps.version.outputs.VERSION }}
-          dotnet pack src/MyStackBlazor.DataGrid/MyStackBlazor.DataGrid.csproj \
-            -c Release -o nupkgs /p:Version=${{ steps.version.outputs.VERSION }}
-          dotnet pack src/MyStackBlazor.Localization/MyStackBlazor.Localization.csproj \
-            -c Release -o nupkgs /p:Version=${{ steps.version.outputs.VERSION }}
+          for proj in \
+            src/MyStackBlazor/MyStackBlazor.csproj \
+            src/MyStackBlazor.Core/MyStackBlazor.Core.csproj \
+            src/MyStackBlazor.Security/MyStackBlazor.Security.csproj \
+            src/MyStackBlazor.Accessibility/MyStackBlazor.Accessibility.csproj \
+            src/MyStackBlazor.Calendar/MyStackBlazor.Calendar.csproj \
+            src/MyStackBlazor.DataGrid/MyStackBlazor.DataGrid.csproj \
+            src/MyStackBlazor.Localization/MyStackBlazor.Localization.csproj; do
+            dotnet pack $proj -c Release -o nupkgs /p:Version=${{ steps.version.outputs.VERSION }}
+          done
         env:
           CI: true
+
+      - name: NuGet login (Trusted Publishing)
+        uses: NuGet/login@v1
+        id: nuget-login
+        with:
+          user: vilassagar89
 
       - name: Push to NuGet.org
         run: |
           dotnet nuget push nupkgs/*.nupkg \
-            --api-key ${{ secrets.NUGET_API_KEY }} \
+            --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY }} \
             --source https://api.nuget.org/v3/index.json \
             --skip-duplicate
