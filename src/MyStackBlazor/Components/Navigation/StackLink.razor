@@ -1,0 +1,54 @@
+@namespace MyStackBlazor.Components.Navigation
+
+<a href="@(Disabled ? null : Href)"
+   class="@ComputedClass"
+   target="@(External ? "_blank" : Target)"
+   rel="@(External ? "noopener noreferrer" : Rel)"
+   aria-disabled="@(Disabled ? "true" : null)"
+   @attributes="AdditionalAttributes">
+    @ChildContent
+    @if (External && ShowExternalIcon)
+    {
+        <StackLucideIcon Name="external-link" Size="xs" Class="ml-0.5 inline-block align-baseline" />
+        <span class="sr-only">(opens in a new tab)</span>
+    }
+</a>
+
+@code {
+    /// <summary>Styled text link (MudLink equivalent).</summary>
+    [Parameter] public string? Href { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    /// <summary>"always" (default), "hover" or "none".</summary>
+    [Parameter] public string Underline { get; set; } = "always";
+    /// <summary>"primary" (default), "muted" or "inherit".</summary>
+    [Parameter] public string Color { get; set; } = "primary";
+    /// <summary>Open in a new tab with safe rel attributes and an "opens in a new tab" hint for screen readers.</summary>
+    [Parameter] public bool External { get; set; }
+    [Parameter] public bool ShowExternalIcon { get; set; } = true;
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? Target { get; set; }
+    [Parameter] public string? Rel { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string ComputedClass
+    {
+        get
+        {
+            var color = Color switch
+            {
+                "muted"   => "text-muted-foreground hover:text-foreground",
+                "inherit" => "text-inherit",
+                _         => "text-primary hover:text-primary/80",
+            };
+            var underline = Underline switch
+            {
+                "none"  => "no-underline",
+                "hover" => "no-underline hover:underline",
+                _       => "underline",
+            };
+            var disabled = Disabled ? "pointer-events-none opacity-50" : "";
+            return $"underline-offset-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm {color} {underline} {disabled} {Class}".Trim();
+        }
+    }
+}

@@ -1,0 +1,114 @@
+@namespace MyStackBlazor.Components.Charts
+@using System.Globalization
+
+<div class="@($"flex flex-col gap-2 {Class}".Trim())" @attributes="AdditionalAttributes">
+    @{
+        var rows = Values.Count;
+        var cols = rows == 0 ? 0 : Values.Max(r => r.Count);
+        var (min, max) = Range();
+        var cellW = cols == 0 ? 0 : PlotW / cols;
+        var cellH = rows == 0 ? 0 : Math.Min(40, PlotH / rows);
+        var height = MT + rows * cellH + MB;
+    }
+    <svg viewBox="@($"0 0 {F(Width)} {F(height)}")" role="img" aria-label="@(Title ?? "Heat map")" class="h-auto w-full">
+        <title>@(Title ?? "Heat map")</title>
+
+        @for (var r = 0; r < rows; r++)
+        {
+            var y = MT + r * cellH;
+            @((MarkupString)ChartHelpers.SvgText(ML - 8, y + cellH / 2 + 4, "end", 11, "var(--color-muted-foreground)", Label(RowLabels, r)))
+            @for (var c = 0; c < Values[r].Count; c++)
+            {
+                var v = Values[r][c];
+                var x = ML + c * cellW;
+                var fill = v is null ? "var(--color-muted)" : ColorFor(v.Value, min, max);
+                <rect x="@F(x + Gap / 2)" y="@F(y + Gap / 2)" width="@F(Math.Max(0, cellW - Gap))" height="@F(Math.Max(0, cellH - Gap))"
+                      rx="2" fill="@fill">
+                    <title>@($"{Label(RowLabels, r)} · {Label(ColumnLabels, c)}: {(v is null ? "no data" : v.Value.ToString(ValueFormat, CultureInfo.CurrentCulture))}")</title>
+                </rect>
+                @if (ShowValues && v is not null && cellW >= 24)
+                {
+                    var t = (v.Value - min) / (max - min == 0 ? 1 : max - min);
+                    @((MarkupString)ChartHelpers.SvgText(x + cellW / 2, y + cellH / 2 + 4, "middle", 10, t > 0.55 ? "#ffffff" : "#111827", v.Value.ToString(ValueFormat, CultureInfo.CurrentCulture)))
+                }
+            }
+        }
+
+        @for (var c = 0; c < cols; c++)
+        {
+            if (ColumnLabels is null || c >= ColumnLabels.Count) continue;
+            if (cols > 16 && c % (int)Math.Ceiling(cols / 16.0) != 0) continue; // thin out crowded labels
+            @((MarkupString)ChartHelpers.SvgText(ML + c * cellW + cellW / 2, MT + rows * cellH + 16, "middle", 11, "var(--color-muted-foreground)", ColumnLabels[c]))
+        }
+
+        @if (ShowLegend && rows > 0)
+        {
+            var ly = MT + rows * cellH + 30;
+            <defs>
+                <linearGradient id="@_gradId" x1="0" x2="1" y1="0" y2="0">
+                    <stop offset="0" stop-color="@LowColor" />
+                    <stop offset="1" stop-color="@HighColor" />
+                </linearGradient>
+            </defs>
+            <rect x="@F(ML)" y="@F(ly)" width="160" height="8" rx="4" fill="url(#@_gradId)" />
+            @((MarkupString)ChartHelpers.SvgText(ML, ly + 22, "start", 10, "var(--color-muted-foreground)", min.ToString(ValueFormat, CultureInfo.CurrentCulture)))
+            @((MarkupString)ChartHelpers.SvgText(ML + 160, ly + 22, "end", 10, "var(--color-muted-foreground)", max.ToString(ValueFormat, CultureInfo.CurrentCulture)))
+        }
+    </svg>
+</div>
+
+@code {
+    /// <summary>Grid of values coloured by intensity (MudBlazor HeatMap equivalent) — e.g. activity per weekday × hour.</summary>
+    /// <remarks><c>Values[row][column]</c>; null = no data.</remarks>
+    [EditorRequired, Parameter] public IReadOnlyList<IReadOnlyList<double?>> Values { get; set; } = [];
+    [Parameter] public IReadOnlyList<string>? RowLabels { get; set; }
+    [Parameter] public IReadOnlyList<string>? ColumnLabels { get; set; }
+    [Parameter] public string? Title { get; set; }
+    /// <summary>Colour for the lowest value (hex).</summary>
+    [Parameter] public string LowColor { get; set; } = "#e0e7ff";
+    /// <summary>Colour for the highest value (hex).</summary>
+    [Parameter] public string HighColor { get; set; } = "#4338ca";
+    /// <summary>Fixed scale; default is the data's min/max.</summary>
+    [Parameter] public double? Min { get; set; }
+    [Parameter] public double? Max { get; set; }
+    [Parameter] public bool ShowValues { get; set; }
+    [Parameter] public bool ShowLegend { get; set; } = true;
+    /// <summary>.NET format for values in cells, tooltips and the legend.</summary>
+    [Parameter] public string ValueFormat { get; set; } = "0.##";
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private const double Width = 560, ML = 70, MR = 10, MT = 10, MB = 60, Gap = 2;
+    private const double PlotW = Width - ML - MR;
+    private const double PlotH = 320;
+    private readonly string _gradId = $"msb-hm-{Guid.NewGuid():N}";
+
+    private (double Min, double Max) Range()
+    {
+        var all = Values.SelectMany(r => r).Where(v => v is not null).Select(v => v!.Value).ToList();
+        var min = Min ?? (all.Count > 0 ? all.Min() : 0);
+        var max = Max ?? (all.Count > 0 ? all.Max() : 1);
+        return (min, max);
+    }
+
+    internal string ColorFor(double v, double min, double max)
+    {
+        var t = max - min == 0 ? 1 : Math.Clamp((v - min) / (max - min), 0, 1);
+        var (r1, g1, b1) = Hex(LowColor);
+        var (r2, g2, b2) = Hex(HighColor);
+        int Mix(int a, int b) => (int)Math.Round(a + (b - a) * t);
+        return $"#{Mix(r1, r2):x2}{Mix(g1, g2):x2}{Mix(b1, b2):x2}";
+    }
+
+    private static (int R, int G, int B) Hex(string hex)
+    {
+        var h = hex.TrimStart('#');
+        if (h.Length == 3) h = string.Concat(h.Select(c => $"{c}{c}"));
+        if (h.Length != 6 || !int.TryParse(h, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var n)) return (0, 0, 0);
+        return ((n >> 16) & 255, (n >> 8) & 255, n & 255);
+    }
+
+    private static string Label(IReadOnlyList<string>? labels, int i) => labels is not null && i < labels.Count ? labels[i] : (i + 1).ToString(CultureInfo.InvariantCulture);
+
+    private static string F(double v) => v.ToString("0.#", CultureInfo.InvariantCulture);
+}

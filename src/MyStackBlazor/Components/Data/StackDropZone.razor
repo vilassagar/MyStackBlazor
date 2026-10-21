@@ -1,0 +1,143 @@
+@namespace MyStackBlazor.Components.Data
+@typeparam TItem
+@implements IDisposable
+
+<section class="@ZoneClass"
+         aria-label="@(Title ?? Identifier)"
+         @ondragenter="OnDragEnter" @ondragover:preventDefault="true"
+         @ondragleave="OnDragLeave"
+         @ondrop="() => DropAtAsync(null)" @ondrop:preventDefault="true">
+    @if (Title is not null || HeaderTemplate is not null)
+    {
+        <header class="mb-2 flex items-center justify-between px-1 text-sm font-semibold text-foreground">
+            @if (HeaderTemplate is not null)
+            {
+                @HeaderTemplate
+            }
+            else
+            {
+                <span>@Title</span>
+                @if (ShowCount)
+                {
+                    <span class="rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground">@Items.Count</span>
+                }
+            }
+        </header>
+    }
+
+    <div class="flex min-h-12 flex-1 flex-col gap-2" role="list">
+        @for (var i = 0; i < Items.Count; i++)
+        {
+            var item = Items[i];
+            var index = i;
+            var draggable = Container!.AllowsDrag(item);
+            <div role="listitem"
+                 tabindex="0"
+                 draggable="@(draggable ? "true" : "false")"
+                 aria-roledescription="draggable item"
+                 aria-keyshortcuts="Alt+ArrowLeft Alt+ArrowRight"
+                 class="@ItemClass(item, index)"
+                 @ondragstart="() => Container.StartDrag(item)"
+                 @ondragend="Container.EndDrag"
+                 @ondragenter="() => _hoverIndex = index"
+                 @ondrop="() => DropAtAsync(index)" @ondrop:preventDefault="true" @ondrop:stopPropagation="true"
+                 @onkeydown="e => OnItemKeyDown(e, item)">
+                @if (ItemTemplate is not null)
+                {
+                    @ItemTemplate(item)
+                }
+                else if (Container.ItemTemplate is not null)
+                {
+                    @Container.ItemTemplate(item)
+                }
+                else
+                {
+                    <div class="rounded-md border bg-background px-3 py-2 text-sm shadow-sm">@item</div>
+                }
+            </div>
+        }
+        @if (Items.Count == 0 && EmptyContent is not null)
+        {
+            @EmptyContent
+        }
+    </div>
+</section>
+
+@code {
+    [CascadingParameter] public StackDropContainer<TItem>? Container { get; set; }
+
+    /// <summary>Zone id passed to <c>ItemsSelector</c> and <c>ItemDropped</c>, e.g. "todo".</summary>
+    [Parameter, EditorRequired] public string Identifier { get; set; } = "";
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public bool ShowCount { get; set; } = true;
+    [Parameter] public RenderFragment? HeaderTemplate { get; set; }
+    [Parameter] public RenderFragment<TItem>? ItemTemplate { get; set; }
+    [Parameter] public RenderFragment? EmptyContent { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private IReadOnlyList<TItem> Items => Container?.ItemsFor(Identifier).ToList() ?? [];
+    private int? _hoverIndex;
+    // dragenter/dragleave also fire for child elements (child enter before parent leave), so count instead of toggling.
+    private int _enterDepth;
+    private bool _over => _enterDepth > 0;
+
+    private string ZoneClass
+    {
+        get
+        {
+            var state = !_over || Container is null || !Container.IsDragging
+                ? "border-border"
+                : Container.AllowsDrop(Identifier) ? "border-primary bg-primary/5" : "border-destructive bg-destructive/5 cursor-not-allowed";
+            return $"flex flex-col rounded-lg border-2 border-dashed bg-muted/30 p-2 transition-colors {state} {Class}".Trim();
+        }
+    }
+
+    private string ItemClass(TItem item, int index)
+    {
+        var dragging = Container!.IsDragging && EqualityComparer<TItem>.Default.Equals(Container.Dragging, item);
+        var dropMarker = _over && Container.IsDragging && _hoverIndex == index ? "border-t-2 border-primary pt-1" : "";
+        var cursor = Container.AllowsDrag(item) ? "cursor-grab active:cursor-grabbing" : "";
+        return $"rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring {cursor} {(dragging ? "opacity-40" : "")} {dropMarker}".Trim();
+    }
+
+    protected override void OnInitialized()
+    {
+        if (Container is null) throw new InvalidOperationException($"{nameof(StackDropZone<TItem>)} must be inside a StackDropContainer.");
+        Container.RegisterZone(this);
+    }
+
+    internal void Refresh()
+    {
+        if (Container is { IsDragging: false }) { _enterDepth = 0; _hoverIndex = null; }
+        StateHasChanged();
+    }
+
+    private void OnDragEnter() => _enterDepth++;
+
+    private void OnDragLeave()
+    {
+        if (_enterDepth > 0) _enterDepth--;
+        if (_enterDepth == 0) _hoverIndex = null;
+    }
+
+    private Task DropAtAsync(int? index)
+    {
+        _enterDepth = 0;
+        var at = index ?? _hoverIndex ?? Items.Count;
+        _hoverIndex = null;
+        return Container!.DropAsync(Identifier, at);
+    }
+
+    private Task OnItemKeyDown(KeyboardEventArgs e, TItem item)
+    {
+        if (!e.AltKey || !Container!.AllowsDrag(item)) return Task.CompletedTask;
+        return e.Key switch
+        {
+            "ArrowLeft" or "ArrowUp"    => Container.MoveToNeighbourAsync(item, Identifier, -1),
+            "ArrowRight" or "ArrowDown" => Container.MoveToNeighbourAsync(item, Identifier, +1),
+            _ => Task.CompletedTask,
+        };
+    }
+
+    public void Dispose() => Container?.UnregisterZone(this);
+}

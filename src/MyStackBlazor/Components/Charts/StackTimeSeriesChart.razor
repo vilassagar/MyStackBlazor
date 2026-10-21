@@ -1,0 +1,161 @@
+@namespace MyStackBlazor.Components.Charts
+@using System.Globalization
+
+<div class="@($"flex flex-col gap-2 {Class}".Trim())" @attributes="AdditionalAttributes">
+    <svg viewBox="0 0 560 300" role="img" aria-label="@(Title ?? "Time series chart")" class="h-auto w-full">
+        <title>@(Title ?? "Time series chart")</title>
+        @{
+            var (t0, t1) = TimeRange();
+            var (yMin, yMax, ticks) = YScale();
+            var yRange = yMax - yMin;
+        }
+
+        @for (var ti = 0; ti <= ticks; ti++)
+        {
+            var yVal = yMin + ti * yRange / ticks;
+            var yPx = YPos(yVal, yMin, yRange);
+            <line x1="@F(ML)" y1="@F(yPx)" x2="@F(ML + PlotW)" y2="@F(yPx)" stroke="var(--color-border)" stroke-width="1" stroke-dasharray="3 3" aria-hidden="true" />
+            @((MarkupString)ChartHelpers.SvgText(ML - 6, yPx + 4, "end", 11, "var(--color-muted-foreground)", ChartHelpers.FormatY(yVal)))
+        }
+
+        @foreach (var (tick, label) in TimeTicks(t0, t1))
+        {
+            var x = XPos(tick, t0, t1);
+            <line x1="@F(x)" y1="@F(MT + PlotH)" x2="@F(x)" y2="@F(MT + PlotH + 4)" stroke="var(--color-border)" aria-hidden="true" />
+            @((MarkupString)ChartHelpers.SvgText(x, MT + PlotH + 18, "middle", 11, "var(--color-muted-foreground)", label))
+        }
+
+        @for (var si = 0; si < Series.Count; si++)
+        {
+            var s = Series[si];
+            var color = ChartHelpers.ResolveColor(s.Color, si);
+            var pts = s.Points.OrderBy(p => p.Time).ToList();
+            foreach (var segment in Segments(pts))
+            {
+                var d = string.Join(" ", segment.Select((p, i) => $"{(i == 0 ? "M" : "L")} {F(XPos(p.Time, t0, t1))} {F(YPos(p.Value!.Value, yMin, yRange))}"));
+                @if (ShowArea && segment.Count > 1)
+                {
+                    var baseY = F(YPos(Math.Max(yMin, Math.Min(0, yMax)), yMin, yRange));
+                    <path d="@($"{d} L {F(XPos(segment[^1].Time, t0, t1))} {baseY} L {F(XPos(segment[0].Time, t0, t1))} {baseY} Z")"
+                          fill="@color" opacity="0.12" aria-hidden="true" />
+                }
+                <path d="@d" fill="none" stroke="@color" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true" />
+            }
+            @if (ShowDots || pts.Count(p => p.Value is not null) == 1)
+            {
+                @foreach (var p in pts.Where(p => p.Value is not null))
+                {
+                    <circle cx="@F(XPos(p.Time, t0, t1))" cy="@F(YPos(p.Value!.Value, yMin, yRange))" r="3" fill="@color">
+                        <title>@($"{s.Name} · {p.Time.ToString(TooltipFormat, CultureInfo.CurrentCulture)}: {p.Value.Value.ToString(ValueFormat, CultureInfo.CurrentCulture)}")</title>
+                    </circle>
+                }
+            }
+        }
+    </svg>
+
+    @if (ShowLegend && Series.Count > 1)
+    {
+        <div class="flex flex-wrap justify-center gap-4 text-xs text-muted-foreground">
+            @for (var si = 0; si < Series.Count; si++)
+            {
+                <span class="inline-flex items-center gap-1.5">
+                    <span class="h-2.5 w-2.5 rounded-full" style="background:@ChartHelpers.ResolveColor(Series[si].Color, si)"></span>
+                    @Series[si].Name
+                </span>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Line chart over a real time axis (MudBlazor TimeSeries equivalent): points are placed by their date, so
+    /// irregular intervals look right, and null values leave gaps instead of drawing through them.
+    /// </summary>
+    [EditorRequired, Parameter] public IReadOnlyList<TimeSeries> Series { get; set; } = [];
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public bool ShowArea { get; set; }
+    [Parameter] public bool ShowDots { get; set; }
+    [Parameter] public bool ShowLegend { get; set; } = true;
+    /// <summary>Fixed axis range; default fits the data.</summary>
+    [Parameter] public DateTime? From { get; set; }
+    [Parameter] public DateTime? To { get; set; }
+    /// <summary>.NET date format for axis labels. Default picks one from the span (time of day, day, month or year).</summary>
+    [Parameter] public string? AxisFormat { get; set; }
+    [Parameter] public string TooltipFormat { get; set; } = "g";
+    [Parameter] public string ValueFormat { get; set; } = "0.##";
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private const double ML = 55, MT = 20, PlotW = 485, PlotH = 235;
+
+    private (DateTime From, DateTime To) TimeRange()
+    {
+        var times = Series.SelectMany(s => s.Points).Select(p => p.Time).ToList();
+        var from = From ?? (times.Count > 0 ? times.Min() : DateTime.Today);
+        var to = To ?? (times.Count > 0 ? times.Max() : DateTime.Today.AddDays(1));
+        if (to <= from) to = from.AddDays(1);
+        return (from, to);
+    }
+
+    private (double Min, double Max, int Ticks) YScale()
+    {
+        var vals = Series.SelectMany(s => s.Points).Where(p => p.Value is not null).Select(p => p.Value!.Value).ToList();
+        return vals.Count == 0 ? (0, 10, 5) : ChartHelpers.NiceScale(Math.Min(0, vals.Min()), vals.Max());
+    }
+
+    private static double XPos(DateTime t, DateTime from, DateTime to) =>
+        ML + PlotW * (t - from).TotalMilliseconds / (to - from).TotalMilliseconds;
+
+    private static double YPos(double v, double min, double range) =>
+        MT + PlotH - (range > 0 ? PlotH * (v - min) / range : PlotH / 2);
+
+    /// <summary>Splits the line at null values so missing data shows as a gap.</summary>
+    internal static List<List<TimePoint>> Segments(IReadOnlyList<TimePoint> points)
+    {
+        var result = new List<List<TimePoint>>();
+        List<TimePoint>? current = null;
+        foreach (var p in points)
+        {
+            if (p.Value is null) { current = null; continue; }
+            if (current is null) result.Add(current = []);
+            current.Add(p);
+        }
+        return result;
+    }
+
+    /// <summary>About six evenly spaced ticks on calendar-friendly boundaries.</summary>
+    internal IEnumerable<(DateTime Tick, string Label)> TimeTicks(DateTime from, DateTime to)
+    {
+        var span = to - from;
+        (TimeSpan step, int months, string fmt) unit =
+            span.TotalHours <= 12   ? (TimeSpan.FromHours(Math.Max(1, Math.Ceiling(span.TotalHours / 6))), 0, "t")
+          : span.TotalDays <= 3     ? (TimeSpan.FromHours(Math.Ceiling(span.TotalHours / 6 / 6) * 6), 0, "g")
+          : span.TotalDays <= 62    ? (TimeSpan.FromDays(Math.Max(1, Math.Ceiling(span.TotalDays / 6))), 0, "MMM d")
+          : span.TotalDays <= 800   ? (TimeSpan.Zero, Math.Max(1, (int)Math.Ceiling(span.TotalDays / 30.44 / 6)), "MMM yyyy")
+          :                           (TimeSpan.Zero, Math.Max(12, (int)Math.Ceiling(span.TotalDays / 365.25 / 6) * 12), "yyyy");
+        var fmt = AxisFormat ?? unit.fmt;
+
+        DateTime t;
+        if (unit.months > 0)
+        {
+            t = new DateTime(from.Year, from.Month, 1);
+            if (unit.months >= 12) t = new DateTime(from.Year, 1, 1);
+            // First tick on the next month/year boundary at or after the start.
+            if (t < from) t = unit.months >= 12 ? t.AddYears(1) : t.AddMonths(1);
+        }
+        else
+        {
+            t = unit.step >= TimeSpan.FromDays(1) ? from.Date : new DateTime(from.Year, from.Month, from.Day, from.Hour, 0, 0);
+            if (t < from) t = t.Add(unit.step);
+        }
+
+        for (var guard = 0; t <= to && guard < 50; guard++)
+        {
+            yield return (t, t.ToString(fmt, CultureInfo.CurrentCulture));
+            t = unit.months > 0 ? t.AddMonths(unit.months) : t.Add(unit.step);
+        }
+    }
+
+    private static string F(double v) => v.ToString("0.#", CultureInfo.InvariantCulture);
+}

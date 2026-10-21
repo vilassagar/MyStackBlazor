@@ -1,0 +1,19 @@
+@namespace MyStackBlazor.Components.Data
+
+<div class="@($"{BaseClass} {(Sticky ? "sticky top-0 z-10" : "")} {Class}".Trim())"
+     role="presentation"
+     @attributes="AdditionalAttributes">
+    @ChildContent
+</div>
+
+@code {
+    /// <summary>Section heading inside a list (e.g. "A", "Today", "Archived"). Used by <c>StackListView</c> grouping; can be placed manually too.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    /// <summary>Stick to the top of the scrolling list while its section is visible.</summary>
+    [Parameter] public bool Sticky { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    internal const string BaseClass =
+        "border-b bg-muted/80 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur";
+}

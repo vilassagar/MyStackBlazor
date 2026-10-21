@@ -1,0 +1,29 @@
+@namespace MyStackBlazor.Components.Data
+
+<CascadingValue Value="this" IsFixed="true">
+    <ol class="@ComputedClass" aria-label="@AriaLabel" @attributes="AdditionalAttributes">
+        @ChildContent
+    </ol>
+</CascadingValue>
+
+@code {
+    /// <summary>List of events on a line (MudTimeline equivalent). Fill with <c>StackTimelineItem</c>s.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    /// <summary>"vertical" (default) or "horizontal" (scrolls sideways on small screens).</summary>
+    [Parameter] public string Orientation { get; set; } = "vertical";
+    /// <summary>Vertical only, from the md breakpoint: items alternate left and right of a centred line.</summary>
+    [Parameter] public bool Alternate { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    internal bool IsHorizontal => Orientation == "horizontal";
+    internal bool IsAlternate => Alternate && !IsHorizontal;
+
+    private int _count;
+    internal int NextIndex() => _count++;
+
+    private string ComputedClass => IsHorizontal
+        ? $"flex overflow-x-auto pb-2 {Class}".Trim()
+        : $"relative flex flex-col {Class}".Trim();
+}

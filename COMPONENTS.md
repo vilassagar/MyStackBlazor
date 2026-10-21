@@ -18,6 +18,7 @@
 - [Chat / AI Elements](#chat--ai-elements)
 - [Overlays](#overlays)
 - [Enterprise Packages](#enterprise-packages)
+- [MudBlazor Gap Analysis](#mudblazor-gap-analysis)
 - [Missing — Requires External Library](#missing--requires-external-library)
 
 ---
@@ -162,8 +163,11 @@
 | 🆕 | **GaugeChart** | `Components/Charts/GaugeChart.razor` | Half-circle gauge; threshold color zones; unit label |
 | 🆕 | **LineChart** | `Components/Charts/LineChart.razor` | Multi-series lines; optional area fill; hover tooltip |
 | 🆕 | **PieChart** | `Components/Charts/PieChart.razor` | Pie or donut; percentage labels; center label; hover tooltip |
+| 🆕 | **StackHeatMapChart** | `Components/Charts/StackHeatMapChart.razor` | Rows × columns coloured by value; low/high colours, fixed scale, cell values, gradient legend |
+| 🆕 | **StackTimeSeriesChart** | `Components/Charts/StackTimeSeriesChart.razor` | Lines on a real date axis (calendar-aligned ticks); null values leave gaps; area fill |
+| 🆕 | **StackSankeyChart** | `Components/Charts/StackSankeyChart.razor` | Flows between stages; band width ∝ value; automatic column layout |
 
-**Shared models** (`Components/Charts/ChartModels.cs`): `ChartSeries`, `ChartSegment`, `GaugeThreshold`
+**Shared models** (`Components/Charts/ChartModels.cs`): `ChartSeries`, `ChartSegment`, `GaugeThreshold`, `TimeSeries` / `TimePoint`, `SankeyLink`
 
 ---
 
@@ -236,20 +240,79 @@ Installed separately — see [Modular Packages](#modular-packages) in README.
 
 ---
 
+## MudBlazor Gap Analysis
+
+Compared against **MudBlazor v9.11.0** (released 2026-09-27), checked 2026-10-21 against the component folders in
+[`src/MudBlazor/Components`](https://github.com/MudBlazor/MudBlazor/tree/dev/src/MudBlazor/Components) and the MyStackBlazor source code.
+All 16 missing and 6 partly covered items were added on 2026-10-22. MudBlazor's internal building blocks
+(`MudElement`, `MudRender`, `MudInputControl`) are not needed by apps and have no equivalent on purpose.
+
+### 🆕 Added — previously partly covered
+
+| MudBlazor | MyStackBlazor | What was added |
+|-----------|---------------|----------------|
+| `MudMessageBox` | `StackMessageBox`, `DialogService.ShowMessageBoxAsync` | Up to three answers (yes `true` / no `false` / cancel `null`), custom body content, destructive style, Escape and optional backdrop close. Works declaratively (`ShowAsync()`) or through the service (rendered by `StackConfirmDialogHost`) |
+| `MudList` + `MudListSubheader` | `StackListView` `GroupBy`, `StackListSubheader` | Grouped lists with sticky subheaders, typed group sorting, optional counts, custom `GroupHeaderTemplate`. Empty lists now show `EmptyText` |
+| `MudImage` | `StackImage` | Fallback image, error content, native lazy loading, `Fit`, `AspectRatio`, loading skeleton |
+| `MudPaper` | `StackPaper` | Surface with `Elevation` 0–4, `Outlined`, `Square`, `Padding` |
+| `MudContainer` | `StackContainer` | Centred page width (`MaxWidth` sm–2xl/full) with responsive gutters |
+| `MudSpacer` | `StackSpacer` | Fills free space in a flex row |
+| `MudLink` | `StackLink` | Underline/colour options; `External` adds `target="_blank"`, `rel="noopener noreferrer"` and a screen-reader hint |
+| `MudToggleIconButton` | `StackToggleIconButton` | Lucide icon and label per state, `aria-pressed` |
+
+### 🆕 Added — previously missing
+
+| MudBlazor | MyStackBlazor | Notes |
+|-----------|---------------|-------|
+| `MudDropContainer` / `MudDropZone` | `StackDropContainer<T>` + `StackDropZone<T>` | Drag between zones with drop index, `CanDrop` / `CanDrag`, Alt+←/→ keyboard moves with a screen-reader announcement. Uses HTML5 drag and drop, which doesn't work with touch on iOS Safari |
+| `MudNavGroup` | `StackNavGroup` | Collapsible, nestable; opens itself when the URL is under its `Href` |
+| `MudProgressCircular` + indeterminate | `StackProgress` `Variant="circular"`, `Indeterminate` | Ring with optional % label, colours, sizes; indeterminate bar and ring. The default linear bar is unchanged |
+| `MudOverlay` | `StackOverlay` | Page or parent (`Absolute`) backdrop, loader, `AutoClose`, blur |
+| `MudExitPrompt` | `StackExitPrompt` | Styled confirm for in-app navigation, browser prompt for reload/close (`NavigationLock`) |
+| `MudHidden` / `MudBreakpointProvider` | `StackHidden` + `BreakpointService` | `Below` / `From` / `Invert`; hidden content isn't rendered. Service is registered by `AddMyStackBlazor()` |
+| `MudTimeline` | `StackTimeline` + `StackTimelineItem` | Vertical, horizontal, alternate; icons, colours, time, opposite content |
+| `MudHotkey` | `StackHotkey` | `ctrl+k`, `mod+s` (⌘ on Mac), `shift+?`, sequences like `g i`; ignores typing in inputs unless allowed |
+| `MudFabMenu` | `StackFabMenu` + `StackFabMenuItem` | Speed-dial in 4 directions, labels, Escape closes |
+| `MudAvatarGroup` | `StackAvatarGroup` | `Max`, `Total`, "+N", automatic initials |
+| Charts: HeatMap, TimeSeries, Sankey | `StackHeatMapChart`, `StackTimeSeriesChart`, `StackSankeyChart` | Heat map with colour scale and legend; time axis with calendar ticks and gaps for nulls; Sankey with layered layout (cycles ignored) |
+| `MudScrollToTop` | `StackScrollToTop` | Page or container scroll, threshold, smooth (respects reduced motion) |
+| `MudHighlighter` | `StackHighlighter` | Several terms, case option, whole-word extension, regex-safe |
+| `MudSwipeArea` | `StackSwipeArea` | Direction callbacks and signed distance; optional mouse |
+| `MudPageContentNavigation` | `StackTableOfContents` | Scans h2–h4 (adds ids), highlights the section being read, offset for sticky headers |
+| `MudFocusTrap` | `StackFocusTrap` | Declarative wrapper over the `MyStackBlazor.Accessibility` focus manager; restores focus on release |
+
+### ✅ Already covered
+
+| MudBlazor | MyStackBlazor |
+|-----------|---------------|
+| Alert, AppBar, Autocomplete, Avatar, Badge, Breadcrumbs | `StackAlert`, `StackAppBar`, `StackAutoComplete`, `StackAvatar`, `StackBadge`, `StackBreadcrumb` |
+| Button, IconButton, Fab, ButtonGroup | `StackButton` (`Size="icon"`), `StackFloatingActionButton`, `StackButtonGroup` |
+| Card, Carousel, Collapse, ExpansionPanel | `StackCard`, `StackCarousel`, `StackCollapsible`, `StackAccordion` / `StackPanelBar` |
+| Charts: Bar, StackedBar, Donut, Pie, Line, Radar, Rose, ScatterPlot | `StackBarChart` (`Stacked`), `StackDoughnutChart`, `StackPieChart`, `StackLineChart`, `StackRadarChart`, `StackPolarAreaChart`, `StackScatterChart` (+ `StackGaugeChart`) |
+| CheckBox, Chip, ChipSet, ColorPicker | `StackCheckbox`, `StackChip`, `StackChipList`, `StackColorPicker` |
+| DataGrid, Table, TableSimple, Virtualize | `MsDataGrid`, `StackDataTable` / `StackAdvancedTable`, `StackTable`, `StackMsVirtualList` |
+| DatePicker, TimePicker, Picker | `StackDatePicker`, `StackDateRangePicker`, `StackTimePicker`, `StackDateTimePicker` |
+| Dialog, Drawer, Divider, Menu, Popover, Tooltip, Snackbar | `StackDialog`, `StackDrawer` / `StackSheet`, `StackSeparator`, `StackDropdownMenu` / `StackContextMenu`, `StackPopover`, `StackTooltip`, `StackToaster` |
+| Field, Form, Input, TextField, NumericField, Mask | `StackFormField`, `StackForm`, `StackInput`, `StackTextBox`, `StackNumericTextBox`, `StackMaskedTextBox` |
+| FileUpload, Radio, Rating, Select, Slider, Switch | `StackFileUpload`, `StackRadioGroup`, `StackRating`, `StackSelect` / `StackDropDownList`, `StackSlider`, `StackSwitch` |
+| Grid, Layout, Main, Stack, SplitPanel | `StackGridLayout`, `StackLayout`, `StackSplitter` / `StackResizablePanelGroup` |
+| Icon, NavMenu, Pagination, Skeleton, Stepper, Tabs | `StackIcon` / `StackLucideIcon`, `StackNavigationMenu` / `StackNavLink`, `StackPagination`, `StackSkeleton`, `StackStepper`, `StackTabs` |
+| ThemeProvider, RTLProvider, Toggle, ToolBar, TreeView, Typography | `StackThemeProvider`, `MsRtlProvider`, `StackToggleGroup`, `StackToolbar`, `StackTreeView`, `StackTypography` |
+
+---
+
 ## Missing — Requires External Library
 
 The following categories need dedicated third-party rendering engines and are **not included** in MyStackBlazor. Recommended integrations are listed.
 
 ### 📊 Charts (advanced)
-Basic charts (Line, Bar, Pie, Gauge) are now built-in — see [Charts](#charts) above. Complex types still require a library.
+Line, Bar (incl. stacked), Pie, Doughnut, Gauge, Radar, Polar Area, Scatter, Heat Map, Time Series and Sankey are built-in — see [Charts](#charts) above. These still require a library:
 
 | Component | Recommended Library |
 |-----------|-------------------|
-| Bubble / Scatter Chart | [ApexCharts.Blazor](https://github.com/apexcharts/Blazor-ApexCharts) |
+| Bubble Chart | [ApexCharts.Blazor](https://github.com/apexcharts/Blazor-ApexCharts) |
 | Candlestick / OHLC / Stock Chart | ApexCharts.Blazor |
-| Heatmap Chart | ApexCharts.Blazor |
-| Radar / Spider Chart | ApexCharts.Blazor |
-| Sankey / Waterfall Chart | ApexCharts.Blazor |
+| Waterfall Chart | ApexCharts.Blazor |
 
 ### 🔵 Gauges (advanced)
 `GaugeChart` (half-circle) is now built-in — see [Charts](#charts) above. Full circular and linear gauges still need a library.
@@ -260,10 +323,7 @@ Basic charts (Line, Bar, Pie, Gauge) are now built-in — see [Charts](#charts) 
 | Linear Gauge | ApexCharts.Blazor |
 
 ### 📦 Barcodes
-| Component | Recommended Library |
-|-----------|-------------------|
-| Barcode | [BarcodeLib](https://github.com/barnhill/barcodelib) + render as image |
-| QR Code | [QRCoder](https://github.com/codebude/QRCoder) |
+Now built-in: `StackBarcode`, `StackQRCode` (drawing) and `StackBarcodeScanInput` (camera/hardware scanning). No external library needed.
 
 ### 📄 PDF
 | Component | Recommended Library |

@@ -11,10 +11,28 @@
                    OnConfirm="() => DialogService.Resolve(true)"
                    OnCancel="() => DialogService.Resolve(false)" />
 
+@if (DialogService.CurrentMessageBox is { } mb)
+{
+    <StackMessageBox @key="mb"
+                     IsOpen="true"
+                     Title="@mb.Options.Title"
+                     Message="@mb.Options.Message"
+                     YesText="@mb.Options.YesText"
+                     NoText="@mb.Options.NoText"
+                     CancelText="@mb.Options.CancelText"
+                     Destructive="@mb.Options.Destructive"
+                     CloseOnBackdropClick="@mb.Options.CloseOnBackdropClick"
+                     OnResult="r => DialogService.ResolveMessageBox(r)">
+        @mb.Options.Content
+    </StackMessageBox>
+}
+
 @code {
     protected override void OnInitialized() =>
-        DialogService.OnChanged += StateHasChanged;
+        DialogService.OnChanged += OnServiceChanged;
+
+    private void OnServiceChanged() => InvokeAsync(StateHasChanged);
 
     public void Dispose() =>
-        DialogService.OnChanged -= StateHasChanged;
+        DialogService.OnChanged -= OnServiceChanged;
 }

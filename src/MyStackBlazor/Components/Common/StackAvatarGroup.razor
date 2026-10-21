@@ -1,0 +1,49 @@
+@namespace MyStackBlazor.Components.Common
+
+<div class="@($"flex items-center {Class}".Trim())" role="group" aria-label="@AriaLabel" @attributes="AdditionalAttributes">
+    @{ var shown = Max > 0 ? Avatars.Take(Max).ToList() : Avatars.ToList(); }
+    @for (var i = 0; i < shown.Count; i++)
+    {
+        var a = shown[i];
+        <div class="@($"{(i == 0 ? "" : SpacingClass)} rounded-full ring-2 ring-background")" title="@a.Name">
+            <StackAvatar Src="@a.Src" Alt="@(a.Name ?? "")" Initials="@(a.Initials ?? InitialsOf(a.Name))" Size="@Size" />
+        </div>
+    }
+    @if (Overflow > 0)
+    {
+        <div class="@($"{SpacingClass} rounded-full ring-2 ring-background")">
+            <StackAvatar Size="@Size" Alt="@($"{Overflow} more")">
+                <span class="flex h-full w-full items-center justify-center bg-muted text-xs font-medium text-muted-foreground">+@Overflow</span>
+            </StackAvatar>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Overlapping row of avatars with a "+N" counter (MudAvatarGroup equivalent).</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<AvatarItem> Avatars { get; set; } = [];
+    /// <summary>Show at most this many; the rest become "+N". 0 = show all.</summary>
+    [Parameter] public int Max { get; set; } = 4;
+    /// <summary>Total people when <see cref="Avatars"/> is only a sample (e.g. 4 avatars of 120 members).</summary>
+    [Parameter] public int? Total { get; set; }
+    /// <summary>Avatar size, passed to <c>StackAvatar</c>.</summary>
+    [Parameter] public string Size { get; set; } = "default";
+    /// <summary>Overlap: "tight", "default", "loose".</summary>
+    [Parameter] public string Spacing { get; set; } = "default";
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private int Overflow => Math.Max(0, (Total ?? Avatars.Count) - (Max > 0 ? Math.Min(Max, Avatars.Count) : Avatars.Count));
+
+    private string SpacingClass => Spacing switch { "tight" => "-ml-4", "loose" => "-ml-1", _ => "-ml-2.5" };
+
+    private static string? InitialsOf(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return null;
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 1
+            ? parts[0][..1].ToUpperInvariant()
+            : $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
+    }
+}

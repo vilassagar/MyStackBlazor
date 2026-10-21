@@ -1,0 +1,117 @@
+@namespace MyStackBlazor.Components.Media
+
+<div class="@($"relative overflow-hidden {RoundedClass} {Class}".Trim())"
+     style="@WrapperStyle"
+     @attributes="AdditionalAttributes">
+    @if (!_loaded && !_failed && ShowSkeleton)
+    {
+        <div class="absolute inset-0 animate-pulse bg-muted" aria-hidden="true"></div>
+    }
+
+    @if (_failed && ErrorContent is not null)
+    {
+        @ErrorContent
+    }
+    else if (_failed)
+    {
+        <div class="flex h-full min-h-16 w-full items-center justify-center bg-muted text-muted-foreground" role="img" aria-label="@Alt">
+            <StackLucideIcon Name="image-off" Size="lg" />
+        </div>
+    }
+    else
+    {
+        <img src="@CurrentSrc"
+             alt="@Alt"
+             width="@Width"
+             height="@Height"
+             loading="@(Lazy ? "lazy" : "eager")"
+             decoding="async"
+             class="@($"block h-full w-full {FitClass} transition-opacity duration-300 {(_loaded || !ShowSkeleton ? "opacity-100" : "opacity-0")} {ImageClass}".Trim())"
+             @onload="OnLoaded"
+             @onerror="OnError" />
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string? Src { get; set; }
+    /// <summary>Alternative text. Use "" for purely decorative images.</summary>
+    [Parameter, EditorRequired] public string Alt { get; set; } = "";
+    /// <summary>Image shown if <see cref="Src"/> fails to load (e.g. a placeholder or default avatar).</summary>
+    [Parameter] public string? Fallback { get; set; }
+    /// <summary>Content shown when the image and fallback both fail. Default: an "image off" icon.</summary>
+    [Parameter] public RenderFragment? ErrorContent { get; set; }
+
+    /// <summary>Native lazy loading (default on): the browser fetches the image when it nears the viewport.</summary>
+    [Parameter] public bool Lazy { get; set; } = true;
+    /// <summary>"cover" (default), "contain", "fill", "none", "scale-down".</summary>
+    [Parameter] public string Fit { get; set; } = "cover";
+    /// <summary>Fixed shape, e.g. "16/9", "1/1", "4/3". Null keeps the image's own proportions.</summary>
+    [Parameter] public string? AspectRatio { get; set; }
+    [Parameter] public int? Width { get; set; }
+    [Parameter] public int? Height { get; set; }
+    /// <summary>"none", "sm", "md" (default), "lg", "xl", "full".</summary>
+    [Parameter] public string Rounded { get; set; } = "md";
+    /// <summary>Pulse placeholder until the image has loaded.</summary>
+    [Parameter] public bool ShowSkeleton { get; set; } = true;
+
+    [Parameter] public EventCallback OnLoad { get; set; }
+    [Parameter] public EventCallback OnFailed { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? ImageClass { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool _loaded;
+    private bool _failed;
+    private bool _usingFallback;
+    private string? _lastSrc;
+
+    private string? CurrentSrc => _usingFallback ? Fallback : Src;
+
+    private string? WrapperStyle => AspectRatio is null ? null : $"aspect-ratio:{AspectRatio}";
+
+    private string FitClass => Fit switch
+    {
+        "contain"    => "object-contain",
+        "fill"       => "object-fill",
+        "none"       => "object-none",
+        "scale-down" => "object-scale-down",
+        _            => "object-cover",
+    };
+
+    private string RoundedClass => Rounded switch
+    {
+        "none" => "",
+        "sm"   => "rounded-sm",
+        "lg"   => "rounded-lg",
+        "xl"   => "rounded-xl",
+        "full" => "rounded-full",
+        _      => "rounded-md",
+    };
+
+    protected override void OnParametersSet()
+    {
+        if (Src == _lastSrc) return;
+        _lastSrc = Src;
+        _loaded = false;
+        _usingFallback = string.IsNullOrEmpty(Src) && !string.IsNullOrEmpty(Fallback);
+        _failed = string.IsNullOrEmpty(Src) && string.IsNullOrEmpty(Fallback);
+    }
+
+    private Task OnLoaded()
+    {
+        _loaded = true;
+        return OnLoad.InvokeAsync();
+    }
+
+    private async Task OnError()
+    {
+        if (!_usingFallback && !string.IsNullOrEmpty(Fallback))
+        {
+            _usingFallback = true;
+            return;
+        }
+        _failed = true;
+        _usingFallback = false;
+        await OnFailed.InvokeAsync();
+    }
+}

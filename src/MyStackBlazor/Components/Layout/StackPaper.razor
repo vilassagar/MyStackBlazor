@@ -1,0 +1,30 @@
+@namespace MyStackBlazor.Components.Layout
+
+<div class="@ComputedClass" @attributes="AdditionalAttributes">
+    @ChildContent
+</div>
+
+@code {
+    /// <summary>Plain surface for grouping content (MudPaper equivalent). Lighter than <c>StackCard</c>: no header/footer structure.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    /// <summary>Shadow depth 0–4. 0 = flat.</summary>
+    [Parameter] public int Elevation { get; set; } = 1;
+    /// <summary>Draw a border instead of relying on the shadow.</summary>
+    [Parameter] public bool Outlined { get; set; }
+    /// <summary>Remove corner rounding.</summary>
+    [Parameter] public bool Square { get; set; }
+    /// <summary>Padding: "none", "sm", "md" (default), "lg".</summary>
+    [Parameter] public string Padding { get; set; } = "md";
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string ComputedClass
+    {
+        get
+        {
+            var shadow = Math.Clamp(Elevation, 0, 4) switch { 0 => "", 1 => "shadow-sm", 2 => "shadow", 3 => "shadow-md", _ => "shadow-lg" };
+            var pad = Padding switch { "none" => "", "sm" => "p-2", "lg" => "p-6", _ => "p-4" };
+            return $"bg-card text-card-foreground {(Square ? "" : "rounded-lg")} {(Outlined ? "border" : "")} {shadow} {pad} {Class}".Trim();
+        }
+    }
+}

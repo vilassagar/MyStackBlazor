@@ -1,0 +1,108 @@
+@namespace MyStackBlazor.Components.Navigation
+@using Microsoft.AspNetCore.Components.Routing
+@inject NavigationManager Nav
+@implements IDisposable
+
+<div class="@Class" @attributes="AdditionalAttributes">
+    <button type="button"
+            id="@_buttonId"
+            class="@ButtonClass"
+            aria-expanded="@(_expanded ? "true" : "false")"
+            aria-controls="@_panelId"
+            disabled="@Disabled"
+            title="@(Collapsed ? Title : null)"
+            @onclick="ToggleAsync">
+        @if (Icon is not null)
+        {
+            <StackLucideIcon Name="@Icon" Size="sm" />
+        }
+        @if (!Collapsed)
+        {
+            <span class="min-w-0 flex-1 truncate text-left">@Title</span>
+            <StackLucideIcon Name="chevron-right" Size="sm"
+                             Class="@($"transition-transform duration-200 {(_expanded ? "rotate-90" : "")}")" />
+        }
+        else
+        {
+            <span class="sr-only">@Title</span>
+        }
+    </button>
+    @if (_expanded && !Collapsed)
+    {
+        <div id="@_panelId" role="group" aria-labelledby="@_buttonId"
+             class="mt-1 flex flex-col gap-0.5 border-l border-border pl-3 ml-5">
+            @ChildContent
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Collapsible section of a sidebar nav (MudNavGroup equivalent). Put <c>StackNavLink</c>s or nested groups inside.</summary>
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public bool Expanded { get; set; }
+    [Parameter] public EventCallback<bool> ExpandedChanged { get; set; }
+
+    /// <summary>
+    /// URL prefix this group covers, e.g. "settings". When the current page is under it the group opens itself
+    /// and its header is highlighted.
+    /// </summary>
+    [Parameter] public string? Href { get; set; }
+
+    /// <summary>Icon-only mode for a collapsed sidebar (children are hidden).</summary>
+    [Parameter] public bool Collapsed { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private readonly string _buttonId = $"msb-navgrp-{Guid.NewGuid():N}";
+    private readonly string _panelId = $"msb-navgrp-panel-{Guid.NewGuid():N}";
+    private bool _expanded;
+    private bool _lastExpandedParam;
+    private bool _routeActive;
+
+    private string ButtonClass
+    {
+        get
+        {
+            var layout = Collapsed ? "justify-center px-2" : "gap-3 px-3";
+            var state = _routeActive ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground";
+            return $"flex w-full items-center rounded-md py-2 text-sm transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 {layout} {state}";
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+        _routeActive = IsRouteActive();
+        _expanded = Expanded || _routeActive;
+        _lastExpandedParam = Expanded;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Expanded != _lastExpandedParam) _expanded = Expanded;
+        _lastExpandedParam = Expanded;
+    }
+
+    private bool IsRouteActive() => Href is not null && NavMatcher.IsActive(Nav, Href, NavLinkMatch.Prefix);
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        var active = IsRouteActive();
+        if (active == _routeActive) return;
+        _routeActive = active;
+        if (active) _expanded = true; // open when navigating into the section; never auto-close
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ToggleAsync()
+    {
+        _expanded = !_expanded;
+        await ExpandedChanged.InvokeAsync(_expanded);
+    }
+
+    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
+}

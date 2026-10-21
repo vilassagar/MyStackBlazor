@@ -1,0 +1,114 @@
+@namespace MyStackBlazor.Components.Data
+@typeparam TItem
+@attribute [CascadingTypeParameter(nameof(TItem))]
+
+<CascadingValue Value="this" IsFixed="true">
+    <div class="@Class" @attributes="AdditionalAttributes">
+        @ChildContent
+    </div>
+</CascadingValue>
+<span class="sr-only" role="status" aria-live="polite">@_announcement</span>
+
+@code {
+    /// <summary>
+    /// Drag items between <see cref="StackDropZone{TItem}"/>s (kanban boards, assigning to buckets) — MudDropContainer equivalent.
+    /// The container never changes your data: handle <see cref="ItemDropped"/> and update the item (e.g. its status and order).
+    /// Keyboard: focus an item and press Alt+← / Alt+→ to move it to the previous/next zone.
+    /// </summary>
+    [Parameter, EditorRequired] public IEnumerable<TItem> Items { get; set; } = [];
+
+    /// <summary>Which zone an item belongs to: <c>(item, zoneId) =&gt; item.Status == zoneId</c>.</summary>
+    [Parameter, EditorRequired] public Func<TItem, string, bool> ItemsSelector { get; set; } = (_, _) => false;
+
+    /// <summary>How each item is drawn. Zones can override it with their own <c>ItemTemplate</c>.</summary>
+    [Parameter] public RenderFragment<TItem>? ItemTemplate { get; set; }
+
+    /// <summary>Raised when an item is dropped: the item, the target zone and the index it was dropped at within that zone.</summary>
+    [Parameter] public EventCallback<DropItemEventArgs<TItem>> ItemDropped { get; set; }
+
+    /// <summary>Return false to refuse a drop (the zone shows a "not allowed" state).</summary>
+    [Parameter] public Func<TItem, string, bool>? CanDrop { get; set; }
+
+    /// <summary>Return false to make an item fixed (not draggable).</summary>
+    [Parameter] public Func<TItem, bool>? CanDrag { get; set; }
+
+    /// <summary>Text for the screen-reader announcement after a move, e.g. "{0} moved to {1}".</summary>
+    [Parameter] public string MovedAnnouncement { get; set; } = "{0} moved to {1}";
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private readonly List<StackDropZone<TItem>> _zones = [];
+    private string _announcement = "";
+
+    internal TItem? Dragging { get; private set; }
+    internal bool IsDragging { get; private set; }
+
+    internal void RegisterZone(StackDropZone<TItem> zone)
+    {
+        if (!_zones.Contains(zone)) _zones.Add(zone);
+    }
+
+    internal void UnregisterZone(StackDropZone<TItem> zone) => _zones.Remove(zone);
+
+    internal IEnumerable<TItem> ItemsFor(string zoneId) => Items.Where(i => ItemsSelector(i, zoneId));
+
+    internal bool AllowsDrag(TItem item) => CanDrag?.Invoke(item) ?? true;
+
+    internal bool AllowsDrop(string zoneId) =>
+        IsDragging && Dragging is not null && (CanDrop?.Invoke(Dragging, zoneId) ?? true);
+
+    internal void StartDrag(TItem item)
+    {
+        Dragging = item;
+        IsDragging = true;
+        RefreshZones();
+    }
+
+    internal void EndDrag()
+    {
+        if (!IsDragging) return;
+        Dragging = default;
+        IsDragging = false;
+        RefreshZones();
+    }
+
+    internal async Task DropAsync(string zoneId, int index)
+    {
+        if (!AllowsDrop(zoneId)) { EndDrag(); return; }
+        var item = Dragging!;
+        EndDrag();
+        await CompleteMoveAsync(item, zoneId, index);
+    }
+
+    /// <summary>Keyboard move to the neighbouring zone (direction -1 / +1).</summary>
+    internal async Task MoveToNeighbourAsync(TItem item, string fromZone, int direction)
+    {
+        var from = _zones.FindIndex(z => z.Identifier == fromZone);
+        if (from < 0) return;
+        for (var i = from + direction; i >= 0 && i < _zones.Count; i += direction)
+        {
+            var target = _zones[i].Identifier;
+            if (CanDrop?.Invoke(item, target) ?? true)
+            {
+                await CompleteMoveAsync(item, target, ItemsFor(target).Count());
+                return;
+            }
+        }
+    }
+
+    private async Task CompleteMoveAsync(TItem item, string zoneId, int index)
+    {
+        await ItemDropped.InvokeAsync(new DropItemEventArgs<TItem>(item, zoneId, index));
+        var zoneTitle = _zones.FirstOrDefault(z => z.Identifier == zoneId)?.Title ?? zoneId;
+        _announcement = string.Format(MovedAnnouncement, item, zoneTitle);
+        StateHasChanged();
+        RefreshZones();
+    }
+
+    private void RefreshZones()
+    {
+        foreach (var z in _zones) z.Refresh();
+    }
+}

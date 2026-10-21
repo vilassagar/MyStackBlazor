@@ -1,21 +1,100 @@
 @namespace MyStackBlazor.Components.Data
 
-<div role="progressbar"
-     aria-valuemin="0"
-     aria-valuemax="@Max"
-     aria-valuenow="@Value"
-     class="@($"relative h-4 w-full overflow-hidden rounded-full bg-secondary {Class}".Trim())"
-     @attributes="AdditionalAttributes">
-    <div class="h-full bg-primary transition-all duration-300 ease-in-out"
-         style="width: @(Percent)%">
+@if (Variant == "circular")
+{
+    <div role="progressbar"
+         aria-valuemin="@(Indeterminate ? null : "0")"
+         aria-valuemax="@(Indeterminate ? null : Max.ToString(System.Globalization.CultureInfo.InvariantCulture))"
+         aria-valuenow="@(Indeterminate ? null : Value.ToString(System.Globalization.CultureInfo.InvariantCulture))"
+         aria-label="@AriaLabel"
+         class="@($"relative inline-flex items-center justify-center {ColorTextClass} {Class}".Trim())"
+         style="@($"width:{CircleSize}px;height:{CircleSize}px")"
+         @attributes="AdditionalAttributes">
+        <svg viewBox="0 0 44 44" class="@($"h-full w-full -rotate-90 {(Indeterminate ? "animate-spin" : "")}")" aria-hidden="true">
+            <circle cx="22" cy="22" r="@F(R)" fill="none" stroke="currentColor" stroke-opacity="0.15" stroke-width="@F(Thickness)" />
+            <circle cx="22" cy="22" r="@F(R)" fill="none" stroke="currentColor" stroke-width="@F(Thickness)" stroke-linecap="round"
+                    stroke-dasharray="@F(Circumference)"
+                    stroke-dashoffset="@F(Indeterminate ? Circumference * 0.7 : Circumference * (1 - Percent / 100))"
+                    style="transition: stroke-dashoffset .3s ease" />
+        </svg>
+        @if (ShowLabel && !Indeterminate)
+        {
+            <span class="absolute text-xs font-medium tabular-nums text-foreground">@($"{Math.Round(Percent)}%")</span>
+        }
+        @ChildContent
     </div>
-</div>
+}
+else
+{
+    <div role="progressbar"
+         aria-valuemin="@(Indeterminate ? null : "0")"
+         aria-valuemax="@(Indeterminate ? null : Max.ToString(System.Globalization.CultureInfo.InvariantCulture))"
+         aria-valuenow="@(Indeterminate ? null : Value.ToString(System.Globalization.CultureInfo.InvariantCulture))"
+         aria-label="@AriaLabel"
+         class="@($"relative {BarHeight} w-full overflow-hidden rounded-full bg-secondary {Class}".Trim())"
+         @attributes="AdditionalAttributes">
+        @if (Indeterminate)
+        {
+            <div class="@($"msb-progress-indeterminate absolute inset-y-0 w-2/5 rounded-full {ColorBgClass}")"></div>
+            <style>
+                @@keyframes msb-progress-slide { 0% { left: -40% } 100% { left: 100% } }
+                .msb-progress-indeterminate { animation: msb-progress-slide 1.2s ease-in-out infinite; }
+                @@media (prefers-reduced-motion: reduce) { .msb-progress-indeterminate { animation-duration: 3s; } }
+            </style>
+        }
+        else
+        {
+            <div class="@($"h-full {ColorBgClass} transition-all duration-300 ease-in-out")"
+                 style="width: @(F(Percent))%">
+            </div>
+        }
+    </div>
+}
 
 @code {
     [Parameter] public double Value { get; set; }
     [Parameter] public double Max { get; set; } = 100;
+
+    /// <summary>"linear" (default bar) or "circular" (ring).</summary>
+    [Parameter] public string Variant { get; set; } = "linear";
+    /// <summary>Unknown duration: animated bar/ring instead of a value.</summary>
+    [Parameter] public bool Indeterminate { get; set; }
+    /// <summary>"primary" (default), "success", "warning", "destructive".</summary>
+    [Parameter] public string Color { get; set; } = "primary";
+    /// <summary>Linear: "sm" (h-2), "default" (h-4), "lg" (h-6). Circular: "sm" (24px), "default" (40px), "lg" (64px).</summary>
+    [Parameter] public string Size { get; set; } = "default";
+    /// <summary>Ring stroke width in a 44-unit box (circular only).</summary>
+    [Parameter] public double Thickness { get; set; } = 4;
+    /// <summary>Show the percentage inside the ring (circular only).</summary>
+    [Parameter] public bool ShowLabel { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
+    /// <summary>Custom content inside the ring (circular only).</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public string? Class { get; set; }
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
 
     private double Percent => Max > 0 ? Math.Clamp(Value / Max * 100, 0, 100) : 0;
+
+    private double R => 22 - Thickness / 2;
+    private double Circumference => 2 * Math.PI * R;
+    private int CircleSize => Size switch { "sm" => 24, "lg" => 64, _ => 40 };
+    private string BarHeight => Size switch { "sm" => "h-2", "lg" => "h-6", _ => "h-4" };
+
+    private string ColorBgClass => Color switch
+    {
+        "success"     => "bg-green-600",
+        "warning"     => "bg-amber-500",
+        "destructive" => "bg-destructive",
+        _             => "bg-primary",
+    };
+
+    private string ColorTextClass => Color switch
+    {
+        "success"     => "text-green-600",
+        "warning"     => "text-amber-500",
+        "destructive" => "text-destructive",
+        _             => "text-primary",
+    };
+
+    private static string F(double v) => v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 }

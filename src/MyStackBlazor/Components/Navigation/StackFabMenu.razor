@@ -1,0 +1,92 @@
+@namespace MyStackBlazor.Components.Navigation
+
+<CascadingValue Value="this" IsFixed="true">
+    <div class="@($"fixed z-50 flex {DirectionClass} items-center gap-3 {PositionClass} {Class}".Trim())"
+         @onkeydown="OnKeyDown" @attributes="AdditionalAttributes">
+        @if (_open)
+        {
+            <div class="fixed inset-0 -z-10" @onclick="CloseAsync" aria-hidden="true"></div>
+            <ul id="@_menuId" role="menu" aria-label="@Label" class="@($"flex {DirectionClass} items-center gap-3")">
+                @ChildContent
+            </ul>
+        }
+        <button type="button"
+                class="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="@Label"
+                aria-haspopup="menu"
+                aria-expanded="@(_open ? "true" : "false")"
+                aria-controls="@(_open ? _menuId : null)"
+                @onclick="ToggleAsync">
+            <StackLucideIcon Name="@(_open ? OpenIconName : Icon)" Size="lg"
+                             Class="@($"transition-transform duration-200 {(_open && OpenIcon is null ? "rotate-45" : "")}")" />
+        </button>
+    </div>
+</CascadingValue>
+
+@code {
+    /// <summary>Speed-dial: a floating action button that expands into several actions (MudFabMenu equivalent). Add <c>StackFabMenuItem</c>s.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string Label { get; set; } = "Actions";
+    /// <summary>Lucide icon when closed. With the default "plus" the icon rotates into an ×.</summary>
+    [Parameter] public string Icon { get; set; } = "plus";
+    /// <summary>Lucide icon when open. Default: same icon, rotated.</summary>
+    [Parameter] public string? OpenIcon { get; set; }
+    /// <summary>bottom-right | bottom-left | top-right | top-left</summary>
+    [Parameter] public string Position { get; set; } = "bottom-right";
+    /// <summary>Which way the actions open: "up" (default), "down", "left", "right".</summary>
+    [Parameter] public string Direction { get; set; } = "up";
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+    /// <summary>Close after an action is clicked.</summary>
+    [Parameter] public bool CloseOnItemClick { get; set; } = true;
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private readonly string _menuId = $"msb-fab-{Guid.NewGuid():N}";
+    private bool _open;
+    private bool _lastOpen;
+
+    private string OpenIconName => OpenIcon ?? Icon;
+
+    private string DirectionClass => Direction switch
+    {
+        "down"  => "flex-col",
+        "left"  => "flex-row-reverse",
+        "right" => "flex-row",
+        _       => "flex-col-reverse",
+    };
+
+    private string PositionClass => Position switch
+    {
+        "bottom-left" => "bottom-6 left-6",
+        "top-right"   => "top-6 right-6",
+        "top-left"    => "top-6 left-6",
+        _             => "bottom-6 right-6",
+    };
+
+    /// <summary>Tooltip side for items, facing away from the screen edge.</summary>
+    internal string LabelSide => Direction is "left" or "right" ? "top" : Position.EndsWith("left") ? "right" : "left";
+
+    protected override void OnParametersSet()
+    {
+        if (Open != _lastOpen) _open = Open;
+        _lastOpen = Open;
+    }
+
+    private Task ToggleAsync() => SetOpenAsync(!_open);
+
+    internal Task CloseAsync() => SetOpenAsync(false);
+
+    internal Task ItemClickedAsync() => CloseOnItemClick ? CloseAsync() : Task.CompletedTask;
+
+    private async Task SetOpenAsync(bool open)
+    {
+        if (_open == open) return;
+        _open = open;
+        _lastOpen = open;
+        await OpenChanged.InvokeAsync(open);
+        StateHasChanged();
+    }
+
+    private Task OnKeyDown(KeyboardEventArgs e) => e.Key == "Escape" ? CloseAsync() : Task.CompletedTask;
+}

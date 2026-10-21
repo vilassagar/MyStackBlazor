@@ -22,3 +22,14 @@ public record ChartPointSeries(
     string Name,
     IReadOnlyList<ChartPoint> Points,
     string? Color = null);
+
+/// <summary>A point on a <c>StackTimeSeriesChart</c>. A null <see cref="Value"/> leaves a gap in the line.</summary>
+public record TimePoint(DateTime Time, double? Value);
+
+public record TimeSeries(
+    string Name,
+    IReadOnlyList<TimePoint> Points,
+    string? Color = null);
+
+/// <summary>A flow of <see cref="Value"/> from node <see cref="Source"/> to node <see cref="Target"/> in a <c>StackSankeyChart</c>.</summary>
+public record SankeyLink(string Source, string Target, double Value);

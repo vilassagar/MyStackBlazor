@@ -1,0 +1,48 @@
+@namespace MyStackBlazor.Components.Navigation
+
+<li role="none" class="@($"relative flex items-center animate-fade-in {Class}".Trim())">
+    @if (ShowLabel)
+    {
+        <span class="@LabelClass" aria-hidden="true">@Label</span>
+    }
+    <button type="button"
+            role="menuitem"
+            class="flex h-11 w-11 items-center justify-center rounded-full border bg-background text-foreground shadow-md transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            aria-label="@Label"
+            disabled="@Disabled"
+            @onclick="ClickAsync">
+        <StackLucideIcon Name="@Icon" />
+    </button>
+</li>
+
+@code {
+    [CascadingParameter] public StackFabMenu? Menu { get; set; }
+
+    [Parameter, EditorRequired] public string Icon { get; set; } = "";
+    /// <summary>Accessible name, also shown as a pill beside the button.</summary>
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter] public bool ShowLabel { get; set; } = true;
+    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private string LabelClass
+    {
+        get
+        {
+            var side = Menu?.LabelSide switch
+            {
+                "right" => "left-full ml-3",
+                "top"   => "bottom-full mb-2 left-1/2 -translate-x-1/2",
+                _       => "right-full mr-3",
+            };
+            return $"pointer-events-none absolute whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs font-medium text-background shadow {side}";
+        }
+    }
+
+    private async Task ClickAsync()
+    {
+        await OnClick.InvokeAsync();
+        if (Menu is not null) await Menu.ItemClickedAsync();
+    }
+}

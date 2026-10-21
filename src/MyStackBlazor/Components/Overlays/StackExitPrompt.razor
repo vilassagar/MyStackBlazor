@@ -1,0 +1,48 @@
+@namespace MyStackBlazor.Components.Overlays
+@using Microsoft.AspNetCore.Components.Routing
+
+<NavigationLock OnBeforeInternalNavigation="OnBeforeInternalNavigationAsync"
+                ConfirmExternalNavigation="@(Enabled && ConfirmExternalNavigation)" />
+
+<StackMessageBox @ref="_box"
+                 Title="@Title"
+                 Message="@Message"
+                 YesText="@LeaveText"
+                 CancelText="@StayText"
+                 Destructive="true" />
+
+@code {
+    /// <summary>
+    /// Warns before leaving the page while <see cref="Enabled"/> is true (e.g. a form has unsaved changes) —
+    /// MudExitPrompt equivalent. In-app links show a styled confirm box; closing/reloading the tab or following
+    /// an external link shows the browser's own "Leave site?" prompt.
+    /// </summary>
+    [Parameter] public bool Enabled { get; set; }
+
+    [Parameter] public string Title { get; set; } = "Leave this page?";
+    [Parameter] public string Message { get; set; } = "You have unsaved changes. If you leave, they will be lost.";
+    [Parameter] public string LeaveText { get; set; } = "Leave";
+    [Parameter] public string StayText { get; set; } = "Stay";
+
+    /// <summary>Also prompt on reload, tab close and external links (browser dialog; its text can't be customised).</summary>
+    [Parameter] public bool ConfirmExternalNavigation { get; set; } = true;
+
+    /// <summary>
+    /// Optional custom decision instead of the built-in box: return true to allow leaving.
+    /// Receives the target URL.
+    /// </summary>
+    [Parameter] public Func<string, Task<bool>>? ConfirmAsync { get; set; }
+
+    private StackMessageBox? _box;
+
+    private async Task OnBeforeInternalNavigationAsync(LocationChangingContext context)
+    {
+        if (!Enabled) return;
+
+        var allow = ConfirmAsync is not null
+            ? await ConfirmAsync(context.TargetLocation)
+            : _box is not null && await _box.ShowAsync() == true;
+
+        if (!allow) context.PreventNavigation();
+    }
+}

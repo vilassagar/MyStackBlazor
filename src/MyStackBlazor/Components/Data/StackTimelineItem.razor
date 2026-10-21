@@ -1,0 +1,115 @@
+@namespace MyStackBlazor.Components.Data
+
+@if (Timeline?.IsHorizontal == true)
+{
+    <li class="@($"relative flex min-w-[10rem] flex-1 flex-col pr-6 {Class}".Trim())">
+        <div class="mb-3 flex items-center">
+            @Dot
+            <div class="ml-2 h-px flex-1 bg-border" aria-hidden="true"></div>
+        </div>
+        @Body
+    </li>
+}
+else if (Timeline?.IsAlternate == true)
+{
+    var right = _index % 2 == 1;
+    <li class="@($"relative grid grid-cols-[auto_1fr] gap-x-4 pb-8 last:pb-0 md:grid-cols-[1fr_auto_1fr] {Class}".Trim())">
+        <div class="@($"hidden md:block {(right ? "" : "text-right")}")">
+            @if (!right) { @Body } else { @OppositeBody }
+        </div>
+        <div class="relative flex flex-col items-center">
+            @Dot
+            <div class="w-px flex-1 bg-border" aria-hidden="true"></div>
+        </div>
+        <div>
+            <div class="md:hidden">@Body</div>
+            <div class="hidden md:block">@if (right) { @Body } else { @OppositeBody }</div>
+        </div>
+    </li>
+}
+else
+{
+    <li class="@($"relative flex gap-4 pb-8 last:pb-0 {Class}".Trim())">
+        <div class="relative flex flex-col items-center">
+            @Dot
+            <div class="w-px flex-1 bg-border" aria-hidden="true"></div>
+        </div>
+        <div class="min-w-0 flex-1 pb-1">@Body</div>
+    </li>
+}
+
+@code {
+    [CascadingParameter] public StackTimeline? Timeline { get; set; }
+
+    [Parameter] public string? Title { get; set; }
+    /// <summary>Date/time text, e.g. "Oct 21, 09:30" or "2 hours ago".</summary>
+    [Parameter] public string? Time { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    /// <summary>Lucide icon inside the dot.</summary>
+    [Parameter] public string? Icon { get; set; }
+    /// <summary>"primary" (default), "success", "warning", "destructive", "muted".</summary>
+    [Parameter] public string Color { get; set; } = "primary";
+    /// <summary>Custom dot (replaces the coloured circle).</summary>
+    [Parameter] public RenderFragment? DotContent { get; set; }
+    /// <summary>Content for the other side of the line in an <c>Alternate</c> timeline (e.g. the date).</summary>
+    [Parameter] public RenderFragment? OppositeContent { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private int _index;
+
+    protected override void OnInitialized() => _index = Timeline?.NextIndex() ?? 0;
+
+    private string DotColor => Color switch
+    {
+        "success"     => "bg-green-600 text-white",
+        "warning"     => "bg-amber-500 text-white",
+        "destructive" => "bg-destructive text-destructive-foreground",
+        "muted"       => "bg-muted text-muted-foreground border",
+        _             => "bg-primary text-primary-foreground",
+    };
+
+    private RenderFragment Dot => __b =>
+    {
+        if (DotContent is not null) { __b.AddContent(0, DotContent); return; }
+        __b.OpenElement(1, "span");
+        __b.AddAttribute(2, "class", Icon is null
+            ? $"mt-1.5 h-3 w-3 shrink-0 rounded-full ring-4 ring-background {DotColor}"
+            : $"flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-4 ring-background {DotColor}");
+        __b.AddAttribute(3, "aria-hidden", "true");
+        if (Icon is not null)
+        {
+            __b.OpenComponent<MyStackBlazor.Components.Common.StackLucideIcon>(4);
+            __b.AddAttribute(5, "Name", Icon);
+            __b.AddAttribute(6, "Size", "sm");
+            __b.CloseComponent();
+        }
+        __b.CloseElement();
+    };
+
+    private RenderFragment Body => __b =>
+    {
+        if (Time is not null)
+        {
+            __b.OpenElement(0, "time");
+            __b.AddAttribute(1, "class", "block text-xs text-muted-foreground");
+            __b.AddContent(2, Time);
+            __b.CloseElement();
+        }
+        if (Title is not null)
+        {
+            __b.OpenElement(3, "p");
+            __b.AddAttribute(4, "class", "text-sm font-semibold text-foreground");
+            __b.AddContent(5, Title);
+            __b.CloseElement();
+        }
+        if (ChildContent is not null)
+        {
+            __b.OpenElement(6, "div");
+            __b.AddAttribute(7, "class", "mt-1 text-sm text-muted-foreground");
+            __b.AddContent(8, ChildContent);
+            __b.CloseElement();
+        }
+    };
+
+    private RenderFragment OppositeBody => __b => __b.AddContent(0, OppositeContent);
+}

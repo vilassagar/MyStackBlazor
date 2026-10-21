@@ -1,0 +1,146 @@
+@namespace MyStackBlazor.Components.Charts
+@using System.Globalization
+
+<div class="@($"flex flex-col gap-2 {Class}".Trim())" @attributes="AdditionalAttributes">
+    @{ var layout = Layout(); }
+    <svg viewBox="@($"0 0 {F(Width)} {F(Height)}")" role="img" aria-label="@(Title ?? "Sankey chart")" class="h-auto w-full">
+        <title>@(Title ?? "Sankey chart")</title>
+
+        @foreach (var l in layout.Links)
+        {
+            var mid = (l.X0 + l.X1) / 2;
+            <path d="@($"M {F(l.X0)} {F(l.Y0)} C {F(mid)} {F(l.Y0)}, {F(mid)} {F(l.Y1)}, {F(l.X1)} {F(l.Y1)}")"
+                  fill="none" stroke="@l.Color" stroke-opacity="0.35" stroke-width="@F(Math.Max(1, l.Width))">
+                <title>@($"{l.Link.Source} → {l.Link.Target}: {l.Link.Value.ToString(ValueFormat, CultureInfo.CurrentCulture)}")</title>
+            </path>
+        }
+
+        @foreach (var n in layout.Nodes)
+        {
+            <rect x="@F(n.X)" y="@F(n.Y)" width="@F(NodeWidth)" height="@F(Math.Max(1, n.H))" rx="2" fill="@n.Color">
+                <title>@($"{n.Name}: {n.Value.ToString(ValueFormat, CultureInfo.CurrentCulture)}")</title>
+            </rect>
+            var right = n.Layer < layout.LayerCount - 1;
+            @((MarkupString)ChartHelpers.SvgText(right ? n.X + NodeWidth + 6 : n.X - 6, n.Y + n.H / 2 + 4, right ? "start" : "end", 11, "var(--color-foreground)",
+                ShowValues ? $"{n.Name} ({n.Value.ToString(ValueFormat, CultureInfo.CurrentCulture)})" : n.Name))
+        }
+    </svg>
+</div>
+
+@code {
+    /// <summary>
+    /// Flows between stages, with band widths proportional to value (MudBlazor Sankey equivalent) — e.g. budget
+    /// → departments → costs, or a sales funnel. Nodes are placed in columns by their distance from the sources.
+    /// Links that would form a cycle are ignored.
+    /// </summary>
+    [EditorRequired, Parameter] public IReadOnlyList<SankeyLink> Links { get; set; } = [];
+    [Parameter] public string? Title { get; set; }
+    /// <summary>Colours per node name; others use the chart palette.</summary>
+    [Parameter] public IReadOnlyDictionary<string, string>? NodeColors { get; set; }
+    [Parameter] public bool ShowValues { get; set; } = true;
+    [Parameter] public string ValueFormat { get; set; } = "0.##";
+    [Parameter] public double Height { get; set; } = 320;
+    [Parameter] public double NodeWidth { get; set; } = 14;
+    [Parameter] public double NodePadding { get; set; } = 12;
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private const double Width = 560, MX = 110, MY = 10;
+
+    internal sealed class Node
+    {
+        public required string Name { get; init; }
+        public int Layer;
+        public double Value, X, Y, H, OutOffset, InOffset;
+        public string Color = "";
+    }
+
+    internal sealed record LinkShape(SankeyLink Link, double X0, double Y0, double X1, double Y1, double Width, string Color);
+
+    internal sealed record SankeyLayout(IReadOnlyList<Node> Nodes, IReadOnlyList<LinkShape> Links, int LayerCount);
+
+    internal SankeyLayout Layout()
+    {
+        var links = Links.Where(l => l.Value > 0 && l.Source != l.Target).ToList();
+        var nodes = new Dictionary<string, Node>();
+        foreach (var l in links)
+        {
+            nodes.TryAdd(l.Source, new Node { Name = l.Source });
+            nodes.TryAdd(l.Target, new Node { Name = l.Target });
+        }
+        if (nodes.Count == 0) return new([], [], 0);
+
+        // Layers: longest path from a source, ignoring links that would close a cycle.
+        var accepted = new List<SankeyLink>();
+        var outgoing = new Dictionary<string, List<string>>();
+        foreach (var l in links)
+        {
+            if (Reaches(outgoing, l.Target, l.Source)) continue;
+            accepted.Add(l);
+            (outgoing.TryGetValue(l.Source, out var list) ? list : outgoing[l.Source] = []).Add(l.Target);
+        }
+        for (var changed = true; changed;)
+        {
+            changed = false;
+            foreach (var l in accepted)
+                if (nodes[l.Target].Layer < nodes[l.Source].Layer + 1) { nodes[l.Target].Layer = nodes[l.Source].Layer + 1; changed = true; }
+        }
+        // Pull pure sinks to the last column so endpoints line up.
+        var layerCount = nodes.Values.Max(n => n.Layer) + 1;
+        foreach (var n in nodes.Values.Where(n => !outgoing.ContainsKey(n.Name))) n.Layer = layerCount - 1;
+
+        foreach (var n in nodes.Values)
+            n.Value = Math.Max(accepted.Where(l => l.Target == n.Name).Sum(l => l.Value),
+                               accepted.Where(l => l.Source == n.Name).Sum(l => l.Value));
+
+        var layers = nodes.Values.GroupBy(n => n.Layer).OrderBy(g => g.Key).Select(g => g.ToList()).ToList();
+        var plotH = Height - 2 * MY;
+        var scale = layers.Min(g => (plotH - NodePadding * (g.Count - 1)) / Math.Max(g.Sum(n => n.Value), 1e-9));
+        var colStep = layerCount > 1 ? (Width - 2 * MX - NodeWidth) / (layerCount - 1) : 0;
+
+        var i = 0;
+        foreach (var g in layers)
+        {
+            var total = g.Sum(n => n.Value) * scale + NodePadding * (g.Count - 1);
+            var y = MY + (plotH - total) / 2;
+            foreach (var n in g)
+            {
+                n.X = MX + n.Layer * colStep;
+                n.Y = y;
+                n.H = n.Value * scale;
+                n.Color = NodeColors?.GetValueOrDefault(n.Name) ?? ChartHelpers.Palette[i++ % ChartHelpers.Palette.Length];
+                y += n.H + NodePadding;
+            }
+        }
+
+        // Stack link ends top-to-bottom in the order of the node on the other end, so bands don't cross needlessly.
+        var shapes = new List<LinkShape>();
+        foreach (var l in accepted.OrderBy(l => nodes[l.Source].Y).ThenBy(l => nodes[l.Target].Y))
+        {
+            var s = nodes[l.Source];
+            var t = nodes[l.Target];
+            var w = l.Value * scale;
+            shapes.Add(new LinkShape(l, s.X + NodeWidth, s.Y + s.OutOffset + w / 2, t.X, t.Y + t.InOffset + w / 2, w, s.Color));
+            s.OutOffset += w;
+            t.InOffset += w;
+        }
+
+        return new(nodes.Values.ToList(), shapes, layerCount);
+    }
+
+    private static bool Reaches(Dictionary<string, List<string>> graph, string from, string to)
+    {
+        var seen = new HashSet<string>();
+        var stack = new Stack<string>([from]);
+        while (stack.Count > 0)
+        {
+            var n = stack.Pop();
+            if (n == to) return true;
+            if (!seen.Add(n) || !graph.TryGetValue(n, out var next)) continue;
+            foreach (var m in next) stack.Push(m);
+        }
+        return false;
+    }
+
+    private static string F(double v) => v.ToString("0.#", CultureInfo.InvariantCulture);
+}

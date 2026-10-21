@@ -1,0 +1,72 @@
+@namespace MyStackBlazor.Components.Layout
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div @ref="_el" class="@($"touch-pan-y {Class}".Trim())" @attributes="AdditionalAttributes">
+    @ChildContent
+</div>
+
+@code {
+    /// <summary>
+    /// Detects swipe gestures on its content (MudSwipeArea equivalent): e.g. swipe a list row to reveal actions,
+    /// or swipe between pages/images.
+    /// </summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    /// <summary>Any swipe, with direction and distance in pixels (signed: negative = left/up).</summary>
+    [Parameter] public EventCallback<SwipeEventArgs> OnSwipe { get; set; }
+    [Parameter] public EventCallback OnSwipeLeft { get; set; }
+    [Parameter] public EventCallback OnSwipeRight { get; set; }
+    [Parameter] public EventCallback OnSwipeUp { get; set; }
+    [Parameter] public EventCallback OnSwipeDown { get; set; }
+    /// <summary>Minimum distance in pixels.</summary>
+    [Parameter] public int Threshold { get; set; } = 50;
+    /// <summary>Also detect mouse/pen drags (desktop). Default: touch only.</summary>
+    [Parameter] public bool AllowMouse { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private ElementReference _el;
+    private IJSObjectReference? _module;
+    private DotNetObjectReference<StackSwipeArea>? _ref;
+    private int _id;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/MyStackBlazor/js/interactions.js");
+            _ref = DotNetObjectReference.Create(this);
+            _id = await _module.InvokeAsync<int>("watchSwipe", _el, _ref, new { threshold = Threshold, mouse = AllowMouse });
+        }
+        catch (JSDisconnectedException) { }
+    }
+
+    [JSInvokable]
+    public async Task HandleSwipe(string direction, double distance)
+    {
+        if (!Enum.TryParse<SwipeDirection>(direction, out var dir)) return;
+        await OnSwipe.InvokeAsync(new SwipeEventArgs(dir, distance));
+        await (dir switch
+        {
+            SwipeDirection.Left  => OnSwipeLeft.InvokeAsync(),
+            SwipeDirection.Right => OnSwipeRight.InvokeAsync(),
+            SwipeDirection.Up    => OnSwipeUp.InvokeAsync(),
+            _                    => OnSwipeDown.InvokeAsync(),
+        });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_module is not null)
+            {
+                if (_id != 0) await _module.InvokeVoidAsync("dispose", _id);
+                await _module.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException) { }
+        _ref?.Dispose();
+    }
+}

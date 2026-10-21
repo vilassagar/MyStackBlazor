@@ -1,0 +1,70 @@
+@namespace MyStackBlazor.Components.Common
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@code {
+    /// <summary>
+    /// Keyboard shortcut (MudHotkey equivalent). Renders nothing. Examples: <c>"ctrl+k"</c>, <c>"mod+s"</c>
+    /// (⌘ on Mac, Ctrl elsewhere), <c>"shift+?"</c>, <c>"escape"</c>, or a sequence such as <c>"g i"</c>.
+    /// </summary>
+    [Parameter, EditorRequired] public string Keys { get; set; } = "";
+    [Parameter] public EventCallback OnPressed { get; set; }
+    /// <summary>Also fire while typing in inputs/textareas. Default false (so "/" or "g" don't trigger mid-sentence).</summary>
+    [Parameter] public bool AllowInInputs { get; set; }
+    /// <summary>Stop the browser's own action for the combo (e.g. Ctrl+S "save page"). Default true.</summary>
+    [Parameter] public bool PreventDefault { get; set; } = true;
+    [Parameter] public bool Disabled { get; set; }
+
+    private IJSObjectReference? _module;
+    private DotNetObjectReference<StackHotkey>? _ref;
+    private int _id;
+    private string? _registered;
+    private bool _rendered;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        _rendered = true;
+        await SyncAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_rendered) await SyncAsync();
+    }
+
+    private async Task SyncAsync()
+    {
+        var want = Disabled || string.IsNullOrWhiteSpace(Keys) ? null : $"{Keys}|{AllowInInputs}|{PreventDefault}";
+        if (want == _registered) return;
+        try
+        {
+            _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/MyStackBlazor/js/interactions.js");
+            if (_id != 0) { await _module.InvokeVoidAsync("dispose", _id); _id = 0; }
+            if (want is not null)
+            {
+                _ref ??= DotNetObjectReference.Create(this);
+                _id = await _module.InvokeAsync<int>("registerHotkey", _ref, Keys,
+                    new { allowInInputs = AllowInInputs, preventDefault = PreventDefault });
+            }
+            _registered = want;
+        }
+        catch (JSDisconnectedException) { }
+    }
+
+    [JSInvokable]
+    public Task OnHotkey() => OnPressed.InvokeAsync();
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_module is not null)
+            {
+                if (_id != 0) await _module.InvokeVoidAsync("dispose", _id);
+                await _module.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException) { }
+        _ref?.Dispose();
+    }
+}

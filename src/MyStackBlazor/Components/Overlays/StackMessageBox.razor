@@ -1,0 +1,112 @@
+@namespace MyStackBlazor.Components.Overlays
+
+@if (_open)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4" @onkeydown="OnKeyDown">
+        <div class="fixed inset-0 bg-black/80 animate-fade-in" @onclick="OnBackdropClick"></div>
+        <div role="alertdialog"
+             aria-modal="true"
+             aria-labelledby="@(Title is not null ? _titleId : null)"
+             tabindex="-1"
+             class="@($"relative z-50 grid w-full max-w-lg gap-4 border bg-background p-6 shadow-lg animate-fade-in sm:rounded-lg {Class}".Trim())"
+             @attributes="AdditionalAttributes">
+            @if (Title is not null || Message is not null)
+            {
+                <div class="flex flex-col space-y-2 text-center sm:text-left">
+                    @if (Title is not null)
+                    {
+                        <h2 id="@_titleId" class="text-lg font-semibold">@Title</h2>
+                    }
+                    @if (Message is not null)
+                    {
+                        <p class="text-sm text-muted-foreground">@Message</p>
+                    }
+                </div>
+            }
+            @ChildContent
+            <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                @if (!string.IsNullOrEmpty(CancelText))
+                {
+                    <button type="button" class="@SecondaryBtn" @onclick="() => CloseAsync(null)">@CancelText</button>
+                }
+                @if (!string.IsNullOrEmpty(NoText))
+                {
+                    <button type="button" class="@SecondaryBtn" @onclick="() => CloseAsync(false)">@NoText</button>
+                }
+                <button type="button" class="@PrimaryBtn" @onclick="() => CloseAsync(true)">@YesText</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>Show the box. Use <c>@bind-IsOpen</c>, or call <see cref="ShowAsync"/> and await the answer.</summary>
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Message { get; set; }
+    /// <summary>Custom body, shown under the message.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Primary button. Result: <c>true</c>.</summary>
+    [Parameter] public string YesText { get; set; } = "OK";
+    /// <summary>Optional second answer, e.g. "Don't save". Result: <c>false</c>.</summary>
+    [Parameter] public string? NoText { get; set; }
+    /// <summary>Optional dismiss button. Result: <c>null</c> (also Escape and, when enabled, backdrop click).</summary>
+    [Parameter] public string? CancelText { get; set; }
+
+    /// <summary>Style the primary button as destructive (red), e.g. for "Delete".</summary>
+    [Parameter] public bool Destructive { get; set; }
+    [Parameter] public bool CloseOnBackdropClick { get; set; }
+    [Parameter] public bool CloseOnEscape { get; set; } = true;
+
+    /// <summary>Raised with true / false / null when the box closes.</summary>
+    [Parameter] public EventCallback<bool?> OnResult { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private const string SecondaryBtn =
+        "inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground";
+
+    private string PrimaryBtn => Destructive
+        ? "inline-flex h-10 items-center justify-center rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90"
+        : "inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90";
+
+    private readonly string _titleId = $"msb-mb-{Guid.NewGuid():N}";
+    private bool _open;
+    private bool _lastIsOpen;
+    private TaskCompletionSource<bool?>? _tcs;
+
+    protected override void OnParametersSet()
+    {
+        if (IsOpen != _lastIsOpen) _open = IsOpen;
+        _lastIsOpen = IsOpen;
+    }
+
+    /// <summary>Opens the box and completes with true (yes), false (no) or null (cancel/dismiss).</summary>
+    public Task<bool?> ShowAsync()
+    {
+        _tcs?.TrySetResult(null);
+        _tcs = new TaskCompletionSource<bool?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _open = true;
+        StateHasChanged();
+        return _tcs.Task;
+    }
+
+    private async Task CloseAsync(bool? result)
+    {
+        _open = false;
+        _lastIsOpen = false;
+        if (IsOpen) await IsOpenChanged.InvokeAsync(false);
+        _tcs?.TrySetResult(result);
+        _tcs = null;
+        await OnResult.InvokeAsync(result);
+    }
+
+    private Task OnBackdropClick() => CloseOnBackdropClick ? CloseAsync(null) : Task.CompletedTask;
+
+    private Task OnKeyDown(KeyboardEventArgs e) =>
+        CloseOnEscape && e.Key == "Escape" ? CloseAsync(null) : Task.CompletedTask;
+}

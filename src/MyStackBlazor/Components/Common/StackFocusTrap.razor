@@ -1,0 +1,58 @@
+@namespace MyStackBlazor.Components.Common
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div @ref="_el" class="@Class" @attributes="AdditionalAttributes">
+    @ChildContent
+</div>
+
+@code {
+    /// <summary>
+    /// Keeps Tab / Shift+Tab inside its content while <see cref="Enabled"/> (MudFocusTrap equivalent) — for custom
+    /// popups, side panels and in-page editors. Focus moves to the first focusable element when the trap starts and
+    /// returns to where it was when it ends. Uses the <c>MyStackBlazor.Accessibility</c> focus manager.
+    /// </summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public bool Enabled { get; set; } = true;
+    /// <summary>Move focus back to the previously focused element when the trap is released.</summary>
+    [Parameter] public bool RestoreFocus { get; set; } = true;
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private ElementReference _el;
+    private IJSObjectReference? _module;
+    private bool _trapped;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Enabled == _trapped) return;
+        try
+        {
+            _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/MyStackBlazor.Accessibility/js/focus-manager.js");
+            if (Enabled) await _module.InvokeVoidAsync("trapFocus", _el);
+            else await ReleaseAsync();
+            _trapped = Enabled;
+        }
+        catch (JSDisconnectedException) { }
+    }
+
+    private async Task ReleaseAsync()
+    {
+        if (_module is null) return;
+        await _module.InvokeVoidAsync("releaseFocus", _el);
+        if (RestoreFocus) await _module.InvokeVoidAsync("returnFocus");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_module is not null)
+            {
+                if (_trapped) await ReleaseAsync();
+                await _module.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException) { }
+    }
+}

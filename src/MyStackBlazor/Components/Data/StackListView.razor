@@ -3,23 +3,42 @@
 
 <div class="overflow-auto rounded-md border @Class"
      style="@(Height is not null ? $"height:{Height}" : "")"
+     role="@(GroupBy is not null ? "list" : null)"
      @attributes="AdditionalAttributes">
-    @if (Items is not null)
+    @if (Items is not null && Items.Any())
     {
-        @foreach (var item in Items)
+        @if (GroupBy is null)
         {
-            var current = item;
-            <div class="@ItemClass @(OnItemClick.HasDelegate ? "cursor-pointer" : "") @(IsSelected(current) ? "bg-primary/10 border-l-2 border-primary" : "")"
-                 @onclick="() => ClickItem(current)">
-                @if (ItemTemplate is not null)
-                {
-                    @ItemTemplate(current)
-                }
-                else
-                {
-                    <div class="px-4 py-3 text-sm">@current?.ToString()</div>
-                }
-            </div>
+            @foreach (var item in Items)
+            {
+                @RenderItem(item)
+            }
+        }
+        else
+        {
+            @foreach (var group in Groups)
+            {
+                <div role="group" aria-label="@group.Key?.ToString()">
+                    @if (GroupHeaderTemplate is not null)
+                    {
+                        <div class="@SubheaderClass">@GroupHeaderTemplate(group)</div>
+                    }
+                    else
+                    {
+                        <StackListSubheader Sticky="StickyGroupHeaders">
+                            @group.Key
+                            @if (ShowGroupCount)
+                            {
+                                <span class="ml-1 font-normal opacity-70">(@group.Items.Count)</span>
+                            }
+                        </StackListSubheader>
+                    }
+                    @foreach (var item in group.Items)
+                    {
+                        @RenderItem(item)
+                    }
+                </div>
+            }
         }
     }
     else
@@ -40,7 +59,48 @@
     [Parameter] public string EmptyText { get; set; } = "No items.";
     [Parameter] public string ItemClass { get; set; } = "border-b last:border-0 transition-colors hover:bg-muted/50";
     [Parameter] public string? Class { get; set; }
+
+    /// <summary>Groups items under subheaders by this key (e.g. <c>c =&gt; c.Name[0]</c>). Groups keep first-seen order unless <see cref="SortGroups"/>.</summary>
+    [Parameter] public Func<TItem, object?>? GroupBy { get; set; }
+    /// <summary>Custom subheader content per group.</summary>
+    [Parameter] public RenderFragment<ListGroup<TItem>>? GroupHeaderTemplate { get; set; }
+    /// <summary>Order groups by key (numbers/dates by value, text alphabetically).</summary>
+    [Parameter] public bool SortGroups { get; set; }
+    [Parameter] public bool StickyGroupHeaders { get; set; } = true;
+    [Parameter] public bool ShowGroupCount { get; set; }
+
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string SubheaderClass => StackListSubheader.BaseClass + (StickyGroupHeaders ? " sticky top-0 z-10" : "");
+
+    private IEnumerable<ListGroup<TItem>> Groups
+    {
+        get
+        {
+            var groups = Items!.GroupBy(i => GroupBy!(i)).Select(g => new ListGroup<TItem>(g.Key, g.ToList()));
+            return SortGroups ? groups.OrderBy(g => g.Key, TypedValueComparer.Instance) : groups;
+        }
+    }
+
+    private RenderFragment RenderItem(TItem item) => __b =>
+    {
+        __b.OpenElement(0, "div");
+        __b.AddAttribute(1, "class", $"{ItemClass} {(OnItemClick.HasDelegate ? "cursor-pointer" : "")} {(IsSelected(item) ? "bg-primary/10 border-l-2 border-primary" : "")}");
+        if (GroupBy is not null) __b.AddAttribute(2, "role", "listitem");
+        __b.AddAttribute(3, "onclick", EventCallback.Factory.Create(this, () => ClickItem(item)));
+        if (ItemTemplate is not null)
+        {
+            __b.AddContent(4, ItemTemplate(item));
+        }
+        else
+        {
+            __b.OpenElement(5, "div");
+            __b.AddAttribute(6, "class", "px-4 py-3 text-sm");
+            __b.AddContent(7, item?.ToString());
+            __b.CloseElement();
+        }
+        __b.CloseElement();
+    };
 
     private bool IsSelected(TItem item)
     {

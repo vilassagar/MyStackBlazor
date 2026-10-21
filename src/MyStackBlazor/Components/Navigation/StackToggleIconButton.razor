@@ -1,0 +1,53 @@
+@namespace MyStackBlazor.Components.Navigation
+
+<button type="button"
+        class="@ComputedClass"
+        aria-pressed="@(Toggled ? "true" : "false")"
+        aria-label="@(Toggled ? ToggledLabel ?? Label : Label)"
+        title="@(Toggled ? ToggledLabel ?? Label : Label)"
+        disabled="@Disabled"
+        @onclick="ToggleAsync"
+        @attributes="AdditionalAttributes">
+    <StackLucideIcon Name="@(Toggled ? ToggledIcon ?? Icon : Icon)" Size="@IconSize"
+                     Class="@(Toggled ? ToggledColorClass : null)" />
+</button>
+
+@code {
+    /// <summary>Icon-only on/off button with a different Lucide icon per state (e.g. "heart" / "heart" filled red, "bell" / "bell-off").</summary>
+    [Parameter, EditorRequired] public string Icon { get; set; } = "";
+    /// <summary>Icon when on. Default: same as <see cref="Icon"/>.</summary>
+    [Parameter] public string? ToggledIcon { get; set; }
+
+    [Parameter] public bool Toggled { get; set; }
+    [Parameter] public EventCallback<bool> ToggledChanged { get; set; }
+
+    /// <summary>Accessible label (also the tooltip). Required for icon-only buttons.</summary>
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    /// <summary>Label when on, e.g. "Unmute". Default: <see cref="Label"/>.</summary>
+    [Parameter] public string? ToggledLabel { get; set; }
+
+    /// <summary>Icon colour classes when on, e.g. "text-red-500 fill-red-500".</summary>
+    [Parameter] public string? ToggledColorClass { get; set; } = "text-primary";
+    /// <summary>"sm", "default" or "lg".</summary>
+    [Parameter] public string Size { get; set; } = "default";
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string IconSize => Size switch { "sm" => "sm", "lg" => "lg", _ => "default" };
+
+    private string ComputedClass
+    {
+        get
+        {
+            var size = Size switch { "sm" => "h-8 w-8", "lg" => "h-12 w-12", _ => "h-10 w-10" };
+            return $"inline-flex {size} items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 {Class}".Trim();
+        }
+    }
+
+    private async Task ToggleAsync()
+    {
+        Toggled = !Toggled;
+        await ToggledChanged.InvokeAsync(Toggled);
+    }
+}

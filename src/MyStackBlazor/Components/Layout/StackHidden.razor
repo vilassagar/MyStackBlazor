@@ -1,0 +1,69 @@
+@namespace MyStackBlazor.Components.Layout
+@inject BreakpointService Breakpoints
+@implements IDisposable
+
+@if (!_hidden)
+{
+    @ChildContent
+}
+
+@code {
+    /// <summary>
+    /// Removes its content from the page at chosen screen sizes (MudHidden equivalent). Unlike Tailwind's
+    /// <c>md:hidden</c>, hidden content is not rendered at all, so heavy components don't load on screens that don't show them.
+    /// Example: <c>&lt;StackHidden Below="Breakpoint.Md"&gt;</c> = desktop-only content.
+    /// </summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Hide on screens smaller than this breakpoint.</summary>
+    [Parameter] public Breakpoint? Below { get; set; }
+    /// <summary>Hide on screens of this breakpoint and larger.</summary>
+    [Parameter] public Breakpoint? From { get; set; }
+    /// <summary>Show only where it would otherwise be hidden.</summary>
+    [Parameter] public bool Invert { get; set; }
+
+    /// <summary>What to do before the breakpoint is known (prerendering / first render): render the content (default) or not.</summary>
+    [Parameter] public bool RenderUntilKnown { get; set; } = true;
+
+    /// <summary>Raised with true when the content becomes hidden, false when shown.</summary>
+    [Parameter] public EventCallback<bool> HiddenChanged { get; set; }
+
+    private bool _hidden;
+
+    protected override void OnInitialized()
+    {
+        Breakpoints.Changed += OnChanged;
+        _hidden = Breakpoints.IsKnown ? Compute(Breakpoints.Current) : !RenderUntilKnown;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Breakpoints.IsKnown) _hidden = Compute(Breakpoints.Current);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        var bp = await Breakpoints.GetAsync();
+        if (Breakpoints.IsKnown) await ApplyAsync(bp);
+    }
+
+    internal bool Compute(Breakpoint bp)
+    {
+        var hide = (Below is { } b && bp < b) || (From is { } f && bp >= f);
+        return Invert ? !hide : hide;
+    }
+
+    private void OnChanged(Breakpoint bp) => _ = InvokeAsync(() => ApplyAsync(bp));
+
+    private async Task ApplyAsync(Breakpoint bp)
+    {
+        var hidden = Compute(bp);
+        if (hidden == _hidden) return;
+        _hidden = hidden;
+        await HiddenChanged.InvokeAsync(hidden);
+        StateHasChanged();
+    }
+
+    public void Dispose() => Breakpoints.Changed -= OnChanged;
+}

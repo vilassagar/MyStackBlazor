@@ -1,0 +1,86 @@
+@namespace MyStackBlazor.Components.Navigation
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@if (_visible)
+{
+    <button type="button"
+            class="@ComputedClass"
+            aria-label="@AriaLabel"
+            title="@AriaLabel"
+            @onclick="ScrollAsync"
+            @attributes="AdditionalAttributes">
+        @if (ChildContent is not null)
+        {
+            @ChildContent
+        }
+        else
+        {
+            <StackLucideIcon Name="arrow-up" />
+        }
+    </button>
+}
+
+@code {
+    /// <summary>Floating button that appears after the user scrolls down and jumps back to the top (MudScrollToTop equivalent).</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    /// <summary>Pixels scrolled before the button appears.</summary>
+    [Parameter] public int Threshold { get; set; } = 400;
+    /// <summary>CSS selector of a scrolling container. Null = the page.</summary>
+    [Parameter] public string? Selector { get; set; }
+    [Parameter] public bool Smooth { get; set; } = true;
+    /// <summary>bottom-right | bottom-left</summary>
+    [Parameter] public string Position { get; set; } = "bottom-right";
+    [Parameter] public string AriaLabel { get; set; } = "Back to top";
+    [Parameter] public EventCallback OnScrolledToTop { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private IJSObjectReference? _module;
+    private DotNetObjectReference<StackScrollToTop>? _ref;
+    private int _id;
+    private bool _visible;
+
+    private string ComputedClass =>
+        $"fixed z-40 {(Position == "bottom-left" ? "bottom-6 left-6" : "bottom-6 right-6")} inline-flex h-11 w-11 items-center justify-center rounded-full border bg-background text-foreground shadow-lg transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring animate-fade-in {Class}".Trim();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/MyStackBlazor/js/interactions.js");
+            _ref = DotNetObjectReference.Create(this);
+            _id = await _module.InvokeAsync<int>("watchScroll", _ref, Selector, Threshold);
+        }
+        catch (JSDisconnectedException) { }
+    }
+
+    [JSInvokable]
+    public void OnVisibilityChanged(bool visible)
+    {
+        if (_visible == visible) return;
+        _visible = visible;
+        StateHasChanged();
+    }
+
+    private async Task ScrollAsync()
+    {
+        if (_module is not null) await _module.InvokeVoidAsync("scrollToTop", Selector, Smooth);
+        await OnScrolledToTop.InvokeAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_module is not null)
+            {
+                if (_id != 0) await _module.InvokeVoidAsync("dispose", _id);
+                await _module.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException) { }
+        _ref?.Dispose();
+    }
+}

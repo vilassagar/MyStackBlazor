@@ -1,0 +1,67 @@
+@namespace MyStackBlazor.Components.Overlays
+
+@if (Visible)
+{
+    <div class="@ComputedClass"
+         style="@(ZIndex is null ? null : $"z-index:{ZIndex}")"
+         aria-busy="@(ShowLoader ? "true" : null)"
+         @onclick="OnClickAsync"
+         @attributes="AdditionalAttributes">
+        @if (ShowLoader)
+        {
+            <div class="flex flex-col items-center gap-3" role="status">
+                <span class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-white/30 border-t-white" aria-hidden="true"></span>
+                <span class="@(string.IsNullOrEmpty(LoaderText) ? "sr-only" : "text-sm font-medium")">@(LoaderText ?? "Loading…")</span>
+            </div>
+        }
+        @ChildContent
+    </div>
+}
+
+@code {
+    /// <summary>Backdrop over the page — or, with <see cref="Absolute"/>, over its nearest <c>relative</c> parent (e.g. a card that is reloading).</summary>
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+
+    /// <summary>Cover only the nearest positioned (<c>relative</c>) parent instead of the whole viewport.</summary>
+    [Parameter] public bool Absolute { get; set; }
+    /// <summary>"dark" (default), "light" or "transparent".</summary>
+    [Parameter] public string Background { get; set; } = "dark";
+    /// <summary>Blur what's behind the overlay.</summary>
+    [Parameter] public bool Blur { get; set; }
+    /// <summary>Hide the overlay when it's clicked (sets <see cref="Visible"/> false through <see cref="VisibleChanged"/>).</summary>
+    [Parameter] public bool AutoClose { get; set; }
+    /// <summary>Show a centred spinner (with <see cref="LoaderText"/>).</summary>
+    [Parameter] public bool ShowLoader { get; set; }
+    [Parameter] public string? LoaderText { get; set; }
+    [Parameter] public int? ZIndex { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    /// <summary>Centred content, e.g. a message or a custom loader.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string ComputedClass
+    {
+        get
+        {
+            var bg = Background switch
+            {
+                "light"       => "bg-background/70 text-foreground",
+                "transparent" => "bg-transparent",
+                _             => "bg-black/60 text-white",
+            };
+            var pos = Absolute ? "absolute rounded-[inherit]" : "fixed";
+            var z = ZIndex is null ? (Absolute ? "z-10" : "z-40") : "";
+            return $"{pos} inset-0 {z} flex items-center justify-center animate-fade-in {bg} {(Blur ? "backdrop-blur-sm" : "")} {Class}".Trim();
+        }
+    }
+
+    private async Task OnClickAsync(MouseEventArgs e)
+    {
+        await OnClick.InvokeAsync(e);
+        if (!AutoClose) return;
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+    }
+}

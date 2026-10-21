@@ -1,0 +1,47 @@
+@namespace MyStackBlazor.Components.Common
+@using System.Text.RegularExpressions
+
+<span class="@Class" @attributes="AdditionalAttributes">@foreach (var (part, hit) in Split()){if (hit){<mark class="@MarkClass">@part</mark>}else{@part}}</span>
+
+@code {
+    /// <summary>Text with the search term(s) marked (MudHighlighter equivalent) — for search results and suggestion lists.</summary>
+    [Parameter, EditorRequired] public string? Text { get; set; }
+    /// <summary>Term to mark. With <see cref="UntilNextBoundary"/> false, every occurrence is marked.</summary>
+    [Parameter] public string? HighlightedText { get; set; }
+    /// <summary>Several terms at once (e.g. the words of a query).</summary>
+    [Parameter] public IEnumerable<string>? HighlightedTexts { get; set; }
+    [Parameter] public bool CaseSensitive { get; set; }
+    /// <summary>Extend each mark to the end of the word ("pro" marks "products").</summary>
+    [Parameter] public bool UntilNextBoundary { get; set; }
+    [Parameter] public string MarkClass { get; set; } = "rounded-sm bg-yellow-200 px-0.5 text-inherit dark:bg-yellow-500/40";
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    internal IEnumerable<(string Part, bool Hit)> Split()
+    {
+        if (string.IsNullOrEmpty(Text)) yield break;
+
+        var terms = (HighlightedTexts ?? [])
+            .Append(HighlightedText)
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .Select(t => t!.Trim())
+            .Distinct()
+            .OrderByDescending(t => t.Length) // longest first so "new york" wins over "new"
+            .Select(Regex.Escape)
+            .ToList();
+
+        if (terms.Count == 0) { yield return (Text, false); yield break; }
+
+        var pattern = $"({string.Join("|", terms)}){(UntilNextBoundary ? @"\w*" : "")}";
+        var options = CaseSensitive ? RegexOptions.None : RegexOptions.IgnoreCase | RegexOptions.CultureInvariant;
+        var last = 0;
+        foreach (Match m in Regex.Matches(Text, pattern, options, TimeSpan.FromMilliseconds(100)))
+        {
+            if (m.Length == 0) continue;
+            if (m.Index > last) yield return (Text[last..m.Index], false);
+            yield return (m.Value, true);
+            last = m.Index + m.Length;
+        }
+        if (last < Text.Length) yield return (Text[last..], false);
+    }
+}

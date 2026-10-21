@@ -21,6 +21,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ToastService>();
         services.AddScoped<DialogService>();
         services.AddScoped<MsStyleLoader>();
+        services.AddScoped<BreakpointService>();
         return services;
     }
 }
