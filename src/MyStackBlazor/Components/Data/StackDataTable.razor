@@ -223,8 +223,8 @@
                 if (col?.Value is not null)
                 {
                     items = _sortAscending
-                        ? items.OrderBy(i => col.Value(i)?.ToString())
-                        : items.OrderByDescending(i => col.Value(i)?.ToString());
+                        ? items.OrderBy(i => col.Value(i), TypedValueComparer.Instance)
+                        : items.OrderByDescending(i => col.Value(i), TypedValueComparer.Instance);
                 }
             }
 

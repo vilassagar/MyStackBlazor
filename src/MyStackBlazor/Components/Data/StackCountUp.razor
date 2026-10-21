@@ -1,0 +1,90 @@
+@namespace MyStackBlazor.Components.Data
+@using System.Globalization
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<span class="@($"tabular-nums {Class}".Trim())" @attributes="AdditionalAttributes">
+    @* The visible number is owned by JS once animating; Blazor only renders its initial text so the two never fight over the DOM. *@
+    <span @ref="_el" aria-hidden="true">@_initialText</span>
+    <span class="sr-only">@FinalText</span>
+</span>
+
+@code {
+    /// <summary>The number to show. Changing it animates from the previous value.</summary>
+    [Parameter] public decimal Value { get; set; }
+
+    /// <summary>Value the first animation starts from. Null renders <see cref="Value"/> immediately with no initial animation.</summary>
+    [Parameter] public decimal? StartValue { get; set; } = 0;
+
+    /// <summary>Animation length in milliseconds. Users with "reduce motion" see the final value immediately.</summary>
+    [Parameter] public int Duration { get; set; } = 1000;
+
+    /// <summary>.NET format for the final value, e.g. "N0", "C2", "P1". Default "N{Decimals}".</summary>
+    [Parameter] public string? Format { get; set; }
+
+    /// <summary>Decimal places shown while animating (and in the default format).</summary>
+    [Parameter] public int Decimals { get; set; }
+
+    [Parameter] public string? Prefix { get; set; }
+    [Parameter] public string? Suffix { get; set; }
+    [Parameter] public CultureInfo? Culture { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private ElementReference _el;
+    private IJSObjectReference? _module;
+    private string _initialText = "";
+    private decimal _shown;
+    private bool _rendered;
+    private bool _pending;
+
+    private CultureInfo Cult => Culture ?? CultureInfo.CurrentCulture;
+    private string FinalText => $"{Prefix}{Value.ToString(Format ?? $"N{Decimals}", Cult)}{Suffix}";
+
+    protected override void OnInitialized()
+    {
+        // Static/prerendered output shows the final value (no JS to animate it); interactive output starts at StartValue.
+        _shown = StartValue ?? Value;
+        _initialText = RendererInfo.IsInteractive
+            ? $"{Prefix}{_shown.ToString($"N{Decimals}", Cult)}{Suffix}"
+            : FinalText;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (_rendered && Value != _shown) _pending = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _rendered = true;
+            _pending = _shown != Value;
+        }
+        if (!_pending) return;
+        _pending = false;
+
+        var from = _shown;
+        _shown = Value;
+        try
+        {
+            _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/MyStackBlazor/js/count-up.js");
+            await _module.InvokeVoidAsync("animate", _el, (double)from, (double)Value, Duration, Decimals,
+                Cult.Name, Prefix ?? "", Suffix ?? "", FinalText);
+        }
+        catch (JSDisconnectedException) { }
+        catch (InvalidOperationException) { } // prerendering / no JS runtime
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_module is null) return;
+        try
+        {
+            await _module.InvokeVoidAsync("cancel", _el);
+            await _module.DisposeAsync();
+        }
+        catch (JSDisconnectedException) { }
+    }
+}

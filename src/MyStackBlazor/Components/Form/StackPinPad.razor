@@ -1,0 +1,200 @@
+@namespace MyStackBlazor.Components.Form
+
+<div class="@($"inline-flex flex-col items-center gap-6 outline-none {Class}".Trim())"
+     tabindex="0"
+     role="group"
+     aria-label="@AriaLabel"
+     @onkeydown="OnKeyDown"
+     @attributes="AdditionalAttributes">
+
+    @* ── Entered digits ── *@
+    <div class="@($"flex items-center gap-3 {(_shake ? "msb-pin-shake" : "")}")"
+         role="status" aria-live="polite"
+         aria-label="@($"{_value.Length} of {Length} digits entered")">
+        @for (var i = 0; i < Length; i++)
+        {
+            var filled = i < _value.Length;
+            @if (Masked)
+            {
+                <span class="@($"h-3.5 w-3.5 rounded-full border-2 transition-colors {(HasError ? "border-destructive" : "border-primary")} {(filled ? (HasError ? "bg-destructive" : "bg-primary") : "bg-transparent")}")"
+                      aria-hidden="true"></span>
+            }
+            else
+            {
+                <span class="@($"flex h-11 w-9 items-center justify-center rounded-md border text-lg font-semibold tabular-nums {(HasError ? "border-destructive" : "border-input")}")"
+                      aria-hidden="true">@(filled ? _value[i].ToString() : "")</span>
+            }
+        }
+    </div>
+
+    @if (HasError)
+    {
+        <p class="-mt-3 text-sm text-destructive" role="alert">@Error</p>
+    }
+
+    @* ── Keypad ── *@
+    <div class="grid grid-cols-3 gap-3">
+        @foreach (var d in _digits.Take(9))
+        {
+            var digit = d;
+            <button type="button" class="@KeyClass" disabled="@Disabled" aria-label="@digit.ToString()"
+                    @onclick="() => PressAsync(digit)">@digit</button>
+        }
+
+        @if (LeftKey is not null)
+        {
+            <div class="flex h-16 w-16 items-center justify-center">@LeftKey</div>
+        }
+        else
+        {
+            <span aria-hidden="true"></span>
+        }
+
+        <button type="button" class="@KeyClass" disabled="@Disabled" aria-label="@_digits[9].ToString()"
+                @onclick="() => PressAsync(_digits[9])">@_digits[9]</button>
+
+        <button type="button"
+                class="flex h-16 w-16 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
+                disabled="@(Disabled || _value.Length == 0)"
+                aria-label="@DeleteLabel"
+                @onclick="BackspaceAsync">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M18 9l-6 6M12 9l6 6" />
+            </svg>
+        </button>
+    </div>
+</div>
+
+<style>
+    @@keyframes msb-pin-shake { 0%,100% { transform: translateX(0) } 20%,60% { transform: translateX(-8px) } 40%,80% { transform: translateX(8px) } }
+    .msb-pin-shake { animation: msb-pin-shake .4s ease-in-out; }
+    @@media (prefers-reduced-motion: reduce) { .msb-pin-shake { animation: none; } }
+</style>
+
+@code {
+    /// <summary>Number of digits. <see cref="OnComplete"/> fires when this many are entered.</summary>
+    [Parameter] public int Length { get; set; } = 4;
+
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>Fires with the full PIN once <see cref="Length"/> digits are entered.</summary>
+    [Parameter] public EventCallback<string> OnComplete { get; set; }
+
+    /// <summary>Clear the entry automatically after <see cref="OnComplete"/> runs.</summary>
+    [Parameter] public bool ClearOnComplete { get; set; }
+
+    /// <summary>Error message (e.g. "Wrong PIN"). Setting a new non-empty value shakes the dots and clears the entry.</summary>
+    [Parameter] public string? Error { get; set; }
+
+    /// <summary>Show dots instead of the digits.</summary>
+    [Parameter] public bool Masked { get; set; } = true;
+
+    /// <summary>Randomize the digit layout (shoulder-surfing protection).</summary>
+    [Parameter] public bool Shuffle { get; set; }
+
+    /// <summary>Content for the bottom-left key, e.g. a biometric/"Forgot PIN" button.</summary>
+    [Parameter] public RenderFragment? LeftKey { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string AriaLabel { get; set; } = "PIN pad";
+    [Parameter] public string DeleteLabel { get; set; } = "Delete";
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private const string KeyClass =
+        "flex h-16 w-16 items-center justify-center rounded-full border border-input bg-background text-2xl font-medium tabular-nums " +
+        "transition-colors hover:bg-accent active:bg-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40";
+
+    private string _value = "";
+    private string? _lastValueParam;
+    private string? _lastError;
+    private bool _shake;
+    private int[] _digits = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
+    private bool _shuffled;
+
+    private bool HasError => !string.IsNullOrEmpty(Error);
+
+    protected override void OnParametersSet()
+    {
+        if (Value != _lastValueParam)
+        {
+            _value = new string((Value ?? "").Where(char.IsAsciiDigit).Take(Length).ToArray());
+            _lastValueParam = Value;
+        }
+
+        if (Error != _lastError)
+        {
+            if (!string.IsNullOrEmpty(Error))
+            {
+                _shake = true;
+                _value = "";
+                _ = StopShakeAsync();
+            }
+            _lastError = Error;
+        }
+
+        if (Shuffle && !_shuffled)
+        {
+            _digits = [.. _digits.OrderBy(_ => Random.Shared.Next())];
+            _shuffled = true;
+        }
+        else if (!Shuffle && _shuffled)
+        {
+            _digits = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
+            _shuffled = false;
+        }
+    }
+
+    private async Task StopShakeAsync()
+    {
+        await Task.Delay(450);
+        _shake = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>Shakes the dots and clears the entry — call after a wrong PIN (works even when <see cref="Error"/> text is unchanged).</summary>
+    public async Task RejectAsync()
+    {
+        _shake = true;
+        await ClearAsync();
+        _ = StopShakeAsync();
+    }
+
+    /// <summary>Clears the entered digits.</summary>
+    public async Task ClearAsync()
+    {
+        _value = "";
+        await ValueChanged.InvokeAsync(_value);
+        StateHasChanged();
+    }
+
+    private async Task PressAsync(int digit)
+    {
+        if (Disabled || _value.Length >= Length) return;
+        _value += (char)('0' + digit);
+        await ValueChanged.InvokeAsync(_value);
+
+        if (_value.Length == Length)
+        {
+            var pin = _value;
+            await OnComplete.InvokeAsync(pin);
+            if (ClearOnComplete && _value == pin) await ClearAsync();
+        }
+    }
+
+    private async Task BackspaceAsync()
+    {
+        if (Disabled || _value.Length == 0) return;
+        _value = _value[..^1];
+        await ValueChanged.InvokeAsync(_value);
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key.Length == 1 && char.IsAsciiDigit(e.Key[0])) await PressAsync(e.Key[0] - '0');
+        else if (e.Key is "Backspace" or "Delete") await BackspaceAsync();
+        else if (e.Key == "Escape") await ClearAsync();
+    }
+}

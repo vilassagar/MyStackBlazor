@@ -1,0 +1,252 @@
+@namespace MyStackBlazor.Components.Form
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div class="@($"relative flex w-full items-center {Class}".Trim())" @attributes="AdditionalAttributes">
+    <input type="text"
+           id="@Id"
+           class="@($"flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-11 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 {InputClass}".Trim())"
+           placeholder="@Placeholder"
+           aria-label="@AriaLabel"
+           autocomplete="off"
+           autocapitalize="off"
+           spellcheck="false"
+           inputmode="@InputMode"
+           disabled="@Disabled"
+           value="@_text"
+           @oninput="OnInput"
+           @onkeydown="OnKeyDown" />
+
+    @if (ShowCameraButton)
+    {
+        <button type="button"
+                class="absolute right-1 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
+                aria-label="@CameraButtonLabel"
+                title="@(_supported == false ? UnsupportedText : CameraButtonLabel)"
+                disabled="@(Disabled || _supported == false)"
+                @onclick="OpenCameraAsync">
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 8v8M10.5 8v8M14 8v8M17 8v8" />
+            </svg>
+        </button>
+    }
+</div>
+
+@if (_cameraOpen)
+{
+    <div class="fixed inset-0 z-50 flex flex-col bg-black/90" role="dialog" aria-modal="true" aria-label="@ScanDialogTitle"
+         @onkeydown="OnDialogKeyDown" tabindex="-1">
+        <div class="flex items-center justify-between px-4 py-3 text-white">
+            <span class="text-sm font-medium">@ScanDialogTitle</span>
+            <div class="flex items-center gap-2">
+                <button type="button" class="rounded-md px-3 py-1.5 text-sm text-white/90 hover:bg-white/10"
+                        aria-pressed="@(_torchOn ? "true" : "false")" @onclick="ToggleTorchAsync">
+                    @(_torchOn ? "Light off" : "Light")
+                </button>
+                <button type="button" class="rounded-md px-3 py-1.5 text-sm text-white hover:bg-white/10"
+                        @onclick="CloseCameraAsync">@CancelText</button>
+            </div>
+        </div>
+        <div class="relative flex flex-1 items-center justify-center overflow-hidden">
+            <video @ref="_video" class="h-full w-full object-cover" playsinline muted aria-hidden="true"></video>
+            <div class="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
+                <div class="h-1/3 w-4/5 max-w-md rounded-xl border-2 border-white/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]"></div>
+            </div>
+        </div>
+        <p class="px-4 py-4 text-center text-sm text-white/80" role="status" aria-live="polite">
+            @(_cameraError ?? HintText)
+        </p>
+    </div>
+}
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    /// <summary>
+    /// Fires with the scanned code — from the camera, or when Enter is pressed in the box
+    /// (hardware/USB/Bluetooth scanners type the code followed by Enter).
+    /// </summary>
+    [Parameter] public EventCallback<string> OnScan { get; set; }
+
+    /// <summary>Camera or permission problem: "NotAllowedError" (denied), "NotFoundError" (no camera), "unsupported", ….</summary>
+    [Parameter] public EventCallback<string> OnError { get; set; }
+
+    /// <summary>
+    /// BarcodeDetector formats to look for, e.g. "qr_code", "ean_13", "code_128", "upc_a". Null = all the browser supports.
+    /// </summary>
+    [Parameter] public IReadOnlyList<string>? Formats { get; set; }
+
+    /// <summary>
+    /// URL of an ES module that defines <c>globalThis.BarcodeDetector</c>, loaded only when the browser has no native one
+    /// (Windows Chrome/Edge, Firefox, iOS Safari). E.g. a self-hosted build of the "barcode-detector" npm package's polyfill.
+    /// </summary>
+    [Parameter] public string? PolyfillUrl { get; set; }
+
+    /// <summary>Keep the camera open and raise <see cref="OnScan"/> for every new code.</summary>
+    [Parameter] public bool ContinuousScan { get; set; }
+    /// <summary>Empty the box after each scan (typical for "scan the next item" flows).</summary>
+    [Parameter] public bool ClearAfterScan { get; set; }
+    /// <summary>Vibrate on a successful camera read (mobile).</summary>
+    [Parameter] public bool Vibrate { get; set; } = true;
+    /// <summary>"environment" (rear, default) or "user" (front).</summary>
+    [Parameter] public string FacingMode { get; set; } = "environment";
+
+    [Parameter] public bool ShowCameraButton { get; set; } = true;
+    [Parameter] public string? Placeholder { get; set; } = "Scan or type a code";
+    [Parameter] public string AriaLabel { get; set; } = "Barcode";
+    [Parameter] public string CameraButtonLabel { get; set; } = "Scan with camera";
+    [Parameter] public string ScanDialogTitle { get; set; } = "Scan barcode";
+    [Parameter] public string HintText { get; set; } = "Point the camera at a barcode";
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    [Parameter] public string UnsupportedText { get; set; } = "Camera scanning isn't available in this browser";
+    /// <summary>Virtual keyboard hint, e.g. "numeric" for EAN/UPC-only flows. Default "text".</summary>
+    [Parameter] public string InputMode { get; set; } = "text";
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? InputClass { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private IJSObjectReference? _module;
+    private DotNetObjectReference<StackBarcodeScanInput>? _ref;
+    private ElementReference _video;
+    private string? _text;
+    private string? _lastValue;
+    private bool? _supported;
+    private bool _cameraOpen;
+    private bool _startPending;
+    private bool _torchOn;
+    private string? _cameraError;
+    private int _sessionId;
+
+    protected override void OnParametersSet()
+    {
+        if (Value != _lastValue) { _text = Value; _lastValue = Value; }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender && ShowCameraButton)
+            {
+                _module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/MyStackBlazor/js/barcode-scanner.js");
+                _supported = await _module.InvokeAsync<bool>("isSupported", PolyfillUrl);
+                StateHasChanged();
+            }
+
+            if (_startPending && _module is not null)
+            {
+                _startPending = false;
+                _ref ??= DotNetObjectReference.Create(this);
+                _sessionId = await _module.InvokeAsync<int>("start", _video, _ref, new
+                {
+                    formats = Formats,
+                    polyfillUrl = PolyfillUrl,
+                    continuous = ContinuousScan,
+                    vibrate = Vibrate,
+                    facingMode = FacingMode,
+                });
+            }
+        }
+        catch (JSDisconnectedException) { }
+    }
+
+    private void OpenCameraAsync()
+    {
+        if (_module is null || _supported != true || Disabled) return;
+        _cameraError = null;
+        _torchOn = false;
+        _cameraOpen = true;
+        _startPending = true; // the <video> element exists after this render
+    }
+
+    /// <summary>Closes the camera overlay and releases the camera.</summary>
+    public async Task CloseCameraAsync()
+    {
+        if (_module is not null && _sessionId != 0)
+        {
+            try { await _module.InvokeVoidAsync("stop", _sessionId); } catch (JSDisconnectedException) { }
+        }
+        _sessionId = 0;
+        _cameraOpen = false;
+        StateHasChanged();
+    }
+
+    private async Task ToggleTorchAsync()
+    {
+        if (_module is null || _sessionId == 0) return;
+        var ok = await _module.InvokeAsync<bool>("setTorch", _sessionId, !_torchOn);
+        if (ok) _torchOn = !_torchOn;
+    }
+
+    [JSInvokable]
+    public async Task HandleDetected(string code, string format)
+    {
+        if (!ContinuousScan)
+        {
+            _sessionId = 0; // JS already stopped the camera
+            _cameraOpen = false;
+        }
+        await SubmitAsync(code);
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task HandleError(string error)
+    {
+        _cameraError = error switch
+        {
+            "NotAllowedError" => "Camera permission was denied.",
+            "NotFoundError"   => "No camera was found.",
+            "NotReadableError" => "The camera is in use by another app.",
+            "unsupported"     => UnsupportedText,
+            _                 => "The camera couldn't be started.",
+        };
+        _sessionId = 0;
+        await OnError.InvokeAsync(error);
+        StateHasChanged();
+    }
+
+    private async Task SubmitAsync(string code)
+    {
+        code = code.Trim();
+        if (code.Length == 0) return;
+        _text = ClearAfterScan ? "" : code;
+        _lastValue = _text;
+        await ValueChanged.InvokeAsync(_text);
+        await OnScan.InvokeAsync(code);
+    }
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        _text = e.Value?.ToString();
+        _lastValue = _text;
+        await ValueChanged.InvokeAsync(_text);
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_text)) await SubmitAsync(_text);
+    }
+
+    private async Task OnDialogKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") await CloseCameraAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_module is not null)
+            {
+                if (_sessionId != 0) await _module.InvokeVoidAsync("stop", _sessionId);
+                await _module.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException) { }
+        _ref?.Dispose();
+    }
+}

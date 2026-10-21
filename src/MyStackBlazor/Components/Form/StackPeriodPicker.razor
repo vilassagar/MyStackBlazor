@@ -1,0 +1,171 @@
+@namespace MyStackBlazor.Components.Form
+@using System.Globalization
+
+<div class="@($"inline-flex flex-wrap items-center gap-2 {Class}".Trim())"
+     role="group" aria-label="@AriaLabel" @attributes="AdditionalAttributes">
+
+    @if (PeriodTypes.Count > 1 || AllowCustom)
+    {
+        <div class="inline-flex rounded-md border border-input bg-muted/40 p-0.5" role="tablist" aria-label="Period type">
+            @foreach (var t in TypeOptions)
+            {
+                var type = t;
+                var selected = Current.Type == type;
+                <button type="button" role="tab"
+                        aria-selected="@(selected ? "true" : "false")"
+                        disabled="@Disabled"
+                        class="@($"rounded px-3 py-1 text-sm transition-colors disabled:opacity-50 {(selected ? "bg-background text-foreground shadow-sm font-medium" : "text-muted-foreground hover:text-foreground")}")"
+                        @onclick="() => SelectType(type)">@TypeLabel(type)</button>
+            }
+        </div>
+    }
+
+    @if (Current.Type == PeriodType.Custom)
+    {
+        <div class="inline-flex items-center gap-1.5">
+            <input type="date" class="@InputClass" aria-label="Start date" disabled="@Disabled"
+                   min="@Iso(Min)" max="@Iso(Max)"
+                   value="@Iso(Current.Start)" @onchange="e => SetCustom(e.Value, isStart: true)" />
+            <span class="text-muted-foreground" aria-hidden="true">–</span>
+            <input type="date" class="@InputClass" aria-label="End date" disabled="@Disabled"
+                   min="@Iso(Min)" max="@Iso(Max)"
+                   value="@Iso(Current.End)" @onchange="e => SetCustom(e.Value, isStart: false)" />
+        </div>
+    }
+    else
+    {
+        <div class="inline-flex items-center rounded-md border border-input bg-background">
+            <button type="button" class="@NavBtnClass" aria-label="Previous period"
+                    disabled="@(Disabled || !CanShift(-1))" @onclick="() => ShiftAsync(-1)">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+            </button>
+            <span class="min-w-[9rem] px-2 text-center text-sm font-medium tabular-nums" aria-live="polite">@Current.ToDisplayString(Culture, FiscalYearStartMonth)</span>
+            <button type="button" class="@NavBtnClass" aria-label="Next period"
+                    disabled="@(Disabled || !CanShift(1))" @onclick="() => ShiftAsync(1)">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+            </button>
+        </div>
+    }
+
+    @if (ShowPresets && EffectivePresets.Count > 0)
+    {
+        <select @key="_presetKey" class="@($"{InputClass} pr-7")" aria-label="Quick select period" disabled="@Disabled"
+                @onchange="OnPresetSelected">
+            <option value="" disabled selected hidden>@PresetsPlaceholder</option>
+            @for (var i = 0; i < EffectivePresets.Count; i++)
+            {
+                <option value="@i">@EffectivePresets[i].Label</option>
+            }
+        </select>
+    }
+</div>
+
+@code {
+    /// <summary>Selected period. When null the picker shows the current period of the first <see cref="PeriodTypes"/> entry.</summary>
+    [Parameter] public DatePeriod? Value { get; set; }
+    [Parameter] public EventCallback<DatePeriod?> ValueChanged { get; set; }
+
+    /// <summary>Period types the user can switch between. Default: Week, Month, Quarter, Year.</summary>
+    [Parameter] public IReadOnlyList<PeriodType> PeriodTypes { get; set; } = [PeriodType.Week, PeriodType.Month, PeriodType.Quarter, PeriodType.Year];
+
+    /// <summary>Adds a "Custom" tab with start/end date inputs.</summary>
+    [Parameter] public bool AllowCustom { get; set; }
+
+    /// <summary>First day of a week. Null uses the culture's first day.</summary>
+    [Parameter] public DayOfWeek? FirstDayOfWeek { get; set; }
+
+    /// <summary>Month (1–12) quarters and years start from. 4 = April–March fiscal year (labels become "Q1 FY2027").</summary>
+    [Parameter] public int FiscalYearStartMonth { get; set; } = 1;
+
+    [Parameter] public bool ShowPresets { get; set; } = true;
+    /// <summary>Quick-select list. Default: <see cref="PeriodPreset.Defaults"/>.</summary>
+    [Parameter] public IReadOnlyList<PeriodPreset>? Presets { get; set; }
+    [Parameter] public string PresetsPlaceholder { get; set; } = "Quick select…";
+
+    /// <summary>Earliest/latest selectable date. Prev/next is disabled when the whole period lies outside.</summary>
+    [Parameter] public DateTime? Min { get; set; }
+    [Parameter] public DateTime? Max { get; set; }
+
+    /// <summary>"Today" used for the initial period and presets. Default: <see cref="DateTime.Today"/>.</summary>
+    [Parameter] public DateTime? Today { get; set; }
+
+    /// <summary>Tab labels per type. Missing entries use the English defaults.</summary>
+    [Parameter] public IReadOnlyDictionary<PeriodType, string>? TypeLabels { get; set; }
+
+    [Parameter] public CultureInfo? Culture { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string AriaLabel { get; set; } = "Period";
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private const string NavBtnClass =
+        "inline-flex h-8 w-8 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40";
+    private const string InputClass =
+        "h-8 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
+
+    private DatePeriod? _internal;
+    private DatePeriod? _lastValue;
+    private int _presetKey;
+
+    protected override void OnParametersSet()
+    {
+        if (Value != _lastValue) _internal = Value;
+        _lastValue = Value;
+    }
+
+    private DateTime TodayDate => (Today ?? DateTime.Today).Date;
+    private DayOfWeek WeekStart => FirstDayOfWeek ?? (Culture ?? CultureInfo.CurrentCulture).DateTimeFormat.FirstDayOfWeek;
+    private DatePeriod Current => _internal ?? Make(PeriodTypes.Count > 0 ? PeriodTypes[0] : PeriodType.Month, TodayDate);
+
+    private IReadOnlyList<PeriodPreset> EffectivePresets => Presets ?? PeriodPreset.Defaults(WeekStart, FiscalYearStartMonth);
+
+    private IEnumerable<PeriodType> TypeOptions =>
+        AllowCustom && !PeriodTypes.Contains(PeriodType.Custom) ? PeriodTypes.Append(PeriodType.Custom) : PeriodTypes;
+
+    private DatePeriod Make(PeriodType type, DateTime anchor) => DatePeriod.Create(type, anchor, WeekStart, FiscalYearStartMonth);
+
+    private string TypeLabel(PeriodType t) =>
+        TypeLabels is not null && TypeLabels.TryGetValue(t, out var l) ? l : t.ToString();
+
+    private static string? Iso(DateTime? d) => d?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    private bool CanShift(int dir)
+    {
+        var next = Current.Shift(dir);
+        if (Min is { } min && next.End < min.Date) return false;
+        if (Max is { } max && next.Start > max.Date) return false;
+        return true;
+    }
+
+    private Task SelectType(PeriodType type)
+    {
+        if (type == Current.Type) return Task.CompletedTask;
+        if (type == PeriodType.Custom) return SetAsync(DatePeriod.Custom(Current.Start, Current.End));
+        // Keep the user's place in time: anchor on today if it's inside the current period, otherwise on its start.
+        var anchor = Current.Contains(TodayDate) ? TodayDate : Current.Start;
+        return SetAsync(Make(type, anchor));
+    }
+
+    private Task ShiftAsync(int dir) => CanShift(dir) ? SetAsync(Current.Shift(dir)) : Task.CompletedTask;
+
+    private Task SetCustom(object? raw, bool isStart)
+    {
+        if (!DateTime.TryParseExact(raw?.ToString(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d))
+            return Task.CompletedTask;
+        var p = isStart ? DatePeriod.Custom(d, Current.End) : DatePeriod.Custom(Current.Start, d);
+        return SetAsync(p);
+    }
+
+    private Task OnPresetSelected(ChangeEventArgs e)
+    {
+        _presetKey++;
+        if (!int.TryParse(e.Value?.ToString(), out var i) || i < 0 || i >= EffectivePresets.Count) return Task.CompletedTask;
+        return SetAsync(EffectivePresets[i].Resolve(TodayDate));
+    }
+
+    private async Task SetAsync(DatePeriod p)
+    {
+        _internal = p;
+        await ValueChanged.InvokeAsync(p);
+    }
+}

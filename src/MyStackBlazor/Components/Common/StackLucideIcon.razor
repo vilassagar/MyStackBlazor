@@ -1,0 +1,70 @@
+@namespace MyStackBlazor.Components.Common
+
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 24 24"
+     width="@PixelSize"
+     height="@PixelSize"
+     fill="none"
+     stroke="currentColor"
+     stroke-width="@StrokeWidth.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+     stroke-linecap="round"
+     stroke-linejoin="round"
+     class="@ComputedClass"
+     focusable="false"
+     role="@(Title is not null ? "img" : null)"
+     aria-label="@Title"
+     aria-hidden="@(Title is null ? "true" : null)"
+     data-icon="@(_resolved ?? Name)"
+     data-missing="@(_resolved is null ? "true" : null)"
+     @attributes="AdditionalAttributes">
+    @if (Title is not null)
+    {
+        <title>@Title</title>
+    }
+    @if (_resolved is not null)
+    {
+        <use href="@($"{SpriteUrl}#{_resolved}")"></use>
+    }
+</svg>
+
+@code {
+    /// <summary>
+    /// Lucide icon name: kebab-case ("chevron-down"), PascalCase ("ChevronDown") or a legacy name ("home", "alert-triangle").
+    /// See <see cref="LucideIcons.Names"/> or https://lucide.dev/icons.
+    /// </summary>
+    [Parameter, EditorRequired] public string Name { get; set; } = "";
+
+    /// <summary>Predefined size: xs (12px), sm (16px), default (20px), lg (24px), xl (32px), 2xl (40px). Ignored when <see cref="PixelSize"/> is set.</summary>
+    [Parameter] public string Size { get; set; } = "default";
+
+    /// <summary>Exact size in pixels (sets width and height), e.g. 18. Overrides <see cref="Size"/>.</summary>
+    [Parameter] public int? PixelSize { get; set; }
+
+    /// <summary>Stroke width in 24-unit icon space. Lucide default is 2.</summary>
+    [Parameter] public double StrokeWidth { get; set; } = 2;
+
+    /// <summary>When set, the icon is announced (role="img" + label). Leave null for decorative icons.</summary>
+    [Parameter] public string? Title { get; set; }
+
+    /// <summary>Sprite location. Override to self-host a different Lucide build or a trimmed sprite.</summary>
+    [Parameter] public string SpriteUrl { get; set; } = LucideIcons.DefaultSpriteUrl;
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string? _resolved;
+
+    protected override void OnParametersSet() => _resolved = LucideIcons.Resolve(Name);
+
+    private string ComputedClass => $"shrink-0 {(PixelSize is null ? SizeClass : "")} {Class}".Trim();
+
+    private string SizeClass => Size switch
+    {
+        "xs"  => "h-3 w-3",
+        "sm"  => "h-4 w-4",
+        "lg"  => "h-6 w-6",
+        "xl"  => "h-8 w-8",
+        "2xl" => "h-10 w-10",
+        _     => "h-5 w-5",
+    };
+}

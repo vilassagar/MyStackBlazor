@@ -54,6 +54,64 @@
                       aria-label="Loading" role="status"></span>
             }
 
+            @* Saved views *@
+            @if (ViewsMenuVisible)
+            {
+                <div class="relative">
+                    <button class="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
+                            aria-label="Saved views" aria-haspopup="dialog" aria-expanded="@_showViewsMenu"
+                            @onclick="ToggleViewsMenu">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                        </svg>
+                        @(_activeViewName ?? Labels.ViewsText)
+                    </button>
+                    @if (_showViewsMenu)
+                    {
+                        <div class="fixed inset-0 z-40" @onclick="() => _showViewsMenu = false"></div>
+                        <div class="absolute right-0 top-full z-50 mt-1 w-64 rounded-md border border-border bg-background shadow-lg"
+                             role="dialog" aria-label="Saved views">
+                            <div class="p-1 max-h-60 overflow-y-auto">
+                                @if (Views is null || Views.Count == 0)
+                                {
+                                    <p class="px-3 py-2 text-xs text-muted-foreground">@Labels.NoSavedViewsText</p>
+                                }
+                                else
+                                {
+                                    @foreach (var view in Views)
+                                    {
+                                        var v = view;
+                                        <div class="group flex items-center gap-1 rounded hover:bg-muted">
+                                            <button class="flex-1 truncate px-3 py-1.5 text-left text-sm @(v.Name == _activeViewName ? "font-semibold text-primary" : "")"
+                                                    @onclick="() => ApplyViewAsync(v)">@v.Name</button>
+                                            @if (ViewsChanged.HasDelegate)
+                                            {
+                                                <button class="px-2 py-1 text-muted-foreground opacity-60 hover:text-destructive hover:opacity-100"
+                                                        aria-label="@($"Delete view {v.Name}")"
+                                                        @onclick="() => DeleteView(v)">×</button>
+                                            }
+                                        </div>
+                                    }
+                                }
+                            </div>
+                            @if (ViewsChanged.HasDelegate)
+                            {
+                                <div class="flex gap-2 border-t border-border p-2">
+                                    <input class="min-w-0 flex-1 rounded border border-input bg-background px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                           placeholder="@Labels.ViewNamePlaceholder"
+                                           aria-label="@Labels.ViewNamePlaceholder"
+                                           @bind="_newViewName" @bind:event="oninput"
+                                           @onkeydown="OnNewViewKeyDown" />
+                                    <button class="rounded bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                                            disabled="@string.IsNullOrWhiteSpace(_newViewName)"
+                                            @onclick="SaveCurrentView">@Labels.SaveViewText</button>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
             @* Column chooser *@
             @if (_columns.Count > 0)
             {
@@ -92,7 +150,7 @@
             @* Export dropdown *@
             <div class="relative">
                 <button class="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
-                        aria-label="Export options" disabled="@(_isLoading || DataProvider is null)"
+                        aria-label="Export options" disabled="@(_isLoading || Provider is null)"
                         @onclick="ToggleExportMenu">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -328,7 +386,7 @@
         }
     </div>
 
-        @if (DataProvider is not null)
+        @if (Provider is not null)
         {
             @if (Pageable || _activeGroups.Count > 0)
             {
@@ -410,9 +468,22 @@
         </span>
         @if (Pageable && _activeGroups.Count == 0 && _totalCount > 0)
         {
-            <div class="flex items-center gap-1" role="navigation" aria-label="Pagination">
-                <button class="@PagerBtnBase" disabled="@(_currentPage == 0)" @onclick="() => GoToPage(0)">«</button>
-                <button class="@PagerBtnBase" disabled="@(_currentPage == 0)" @onclick="() => GoToPage(_currentPage - 1)">‹</button>
+            <div class="flex flex-wrap items-center gap-1" role="navigation" aria-label="Pagination">
+                @if (PageSizes is { Count: > 0 })
+                {
+                    <label class="mr-3 inline-flex items-center gap-2 text-xs">
+                        @Labels.RowsPerPageText
+                        <select class="rounded border border-input bg-background px-1.5 py-1 text-xs text-foreground"
+                                value="@_pageSize" @onchange="OnPageSizeSelected">
+                            @foreach (var size in PageSizes.Append(_pageSize).Distinct().Order())
+                            {
+                                <option value="@size">@size</option>
+                            }
+                        </select>
+                    </label>
+                }
+                <button class="@PagerBtnBase" aria-label="First page" disabled="@(_currentPage == 0)" @onclick="() => GoToPage(0)">«</button>
+                <button class="@PagerBtnBase" aria-label="Previous page" disabled="@(_currentPage == 0)" @onclick="() => GoToPage(_currentPage - 1)">‹</button>
                 @foreach (var pg in PageNumbers)
                 {
                     var p = pg;
@@ -420,8 +491,8 @@
                             aria-current="@(_currentPage == p ? "page" : null)"
                             @onclick="() => GoToPage(p)">@(p + 1)</button>
                 }
-                <button class="@PagerBtnBase" disabled="@(_currentPage >= _lastPage)" @onclick="() => GoToPage(_currentPage + 1)">›</button>
-                <button class="@PagerBtnBase" disabled="@(_currentPage >= _lastPage)" @onclick="() => GoToPage(_lastPage)">»</button>
+                <button class="@PagerBtnBase" aria-label="Next page" disabled="@(_currentPage >= _lastPage)" @onclick="() => GoToPage(_currentPage + 1)">›</button>
+                <button class="@PagerBtnBase" aria-label="Last page" disabled="@(_currentPage >= _lastPage)" @onclick="() => GoToPage(_lastPage)">»</button>
                 <span class="ml-2 text-xs">Page @(_currentPage + 1) of @(_lastPage + 1)</span>
             </div>
         }
@@ -487,6 +558,26 @@
     [Parameter] public RenderFragment<TItem>? DetailTemplate { get; set; }
     [Parameter] public GridLabels Labels { get; set; } = GridLabels.Default;
 
+    /// <summary>
+    /// In-memory rows. Used when <see cref="DataProvider"/> is null: the grid wraps them in an
+    /// <see cref="InMemoryGridDataProvider{TItem}"/> that sorts/filters on the real typed values
+    /// (using each column's <c>ValueSelector</c>, else the property named by <c>Field</c>).
+    /// Assign a new collection instance to refresh.
+    /// </summary>
+    [Parameter] public IEnumerable<TItem>? Items { get; set; }
+
+    /// <summary>Choices for the "Rows per page" selector in the pager, e.g. <c>[10, 25, 50, 100]</c>. Null hides the selector.</summary>
+    [Parameter] public IReadOnlyList<int>? PageSizes { get; set; }
+    [Parameter] public EventCallback<int> PageSizeChanged { get; set; }
+
+    /// <summary>Saved views shown in the toolbar "Views" menu. Bind with <c>@bind-Views</c> to let users save/delete views; persist the list yourself.</summary>
+    [Parameter] public IReadOnlyList<GridView>? Views { get; set; }
+    [Parameter] public EventCallback<IReadOnlyList<GridView>> ViewsChanged { get; set; }
+    /// <summary>Show the "Views" menu. Default: shown when <see cref="Views"/> is set or <see cref="ViewsChanged"/> is bound.</summary>
+    [Parameter] public bool? ShowViewsMenu { get; set; }
+    /// <summary>Raised after a view is applied (from the menu or <see cref="ApplyViewAsync"/>).</summary>
+    [Parameter] public EventCallback<GridView> OnViewApplied { get; set; }
+
     // ── Internal types ────────────────────────────────────────────────────
     private sealed class DisplayItem
     {
@@ -519,6 +610,19 @@
     private bool _allSelected;
     private int _currentPage;
     private int _lastPage;
+    private int _pageSize = 25;
+    private int _lastPageSizeParam = -1;
+
+    // Items → in-memory provider
+    private InMemoryGridDataProvider<TItem>? _itemsProvider;
+    private IEnumerable<TItem>? _lastItems;
+    private IGridDataProvider<TItem>? Provider => DataProvider ?? _itemsProvider;
+
+    // Saved views
+    private bool _showViewsMenu;
+    private string _newViewName = "";
+    private string? _activeViewName;
+    private bool ViewsMenuVisible => ShowViewsMenu ?? (Views is not null || ViewsChanged.HasDelegate);
 
     // Detail view (expandable rows) — follows the same reference/value-equality assumption as _selectedItems
     private readonly HashSet<TItem> _expandedRows = [];
@@ -685,8 +789,8 @@
 
     private async Task RefreshSummaryDataAsync()
     {
-        if (DataProvider is null) { _summaryItems = []; return; }
-        var result = await DataProvider.GetDataAsync(new GridRequest(
+        if (Provider is null) { _summaryItems = []; return; }
+        var result = await Provider.GetDataAsync(new GridRequest(
             new PageDescriptor(0, int.MaxValue),
             _state.Sort, _state.Filters, _state.SearchTerm));
         _summaryItems = result.Items.ToList();
@@ -1046,8 +1150,8 @@
     }
 
     // ── Column visibility ─────────────────────────────────────────────────
-    private void ToggleColumnChooser() { _showColumnChooser = !_showColumnChooser; _showExportMenu = false; }
-    private void ToggleExportMenu()    { _showExportMenu = !_showExportMenu; _showColumnChooser = false; }
+    private void ToggleColumnChooser() { _showColumnChooser = !_showColumnChooser; _showExportMenu = false; _showViewsMenu = false; }
+    private void ToggleExportMenu()    { _showExportMenu = !_showExportMenu; _showColumnChooser = false; _showViewsMenu = false; }
 
     private void ToggleColumnVisibility(MsDataGridColumn<TItem> col, bool visible)
     {
@@ -1244,7 +1348,7 @@
         var colTitle = _columns.FirstOrDefault(c => c.Field == groupField)?.Title ?? groupField;
         var grouped = _allItems
             .GroupBy(item => _columns.FirstOrDefault(c => c.Field == groupField)?.GetValue(item))
-            .OrderBy(g => g.Key?.ToString());
+            .OrderBy(g => g.Key, InMemoryGridDataProvider<TItem>.ValueComparer.Instance);
 
         foreach (var g in grouped)
         {
@@ -1378,12 +1482,12 @@
 
     private async ValueTask<ItemsProviderResult<TItem>> LoadServerRowsAsync(ItemsProviderRequest request)
     {
-        if (DataProvider is null) return new([], 0);
+        if (Provider is null) return new([], 0);
         _isLoading = true;
         StateHasChanged();
         try
         {
-            var result = await DataProvider.GetDataAsync(new GridRequest(
+            var result = await Provider.GetDataAsync(new GridRequest(
                 new PageDescriptor(request.StartIndex, request.Count),
                 _state.Sort, _state.Filters, _state.SearchTerm), request.CancellationToken);
 
@@ -1400,17 +1504,44 @@
         }
     }
 
+    protected override void OnParametersSet()
+    {
+        var needsRefresh = false;
+
+        if (PageSize != _lastPageSizeParam)
+        {
+            needsRefresh = _lastPageSizeParam != -1 && PageSize != _pageSize;
+            _pageSize = PageSize > 0 ? PageSize : 25;
+            _lastPageSizeParam = PageSize;
+        }
+
+        if (DataProvider is null && Items is not null)
+        {
+            _itemsProvider ??= new InMemoryGridDataProvider<TItem>(
+                () => Items ?? [],
+                field => _columns.FirstOrDefault(c => c.Field == field)?.ValueSelector);
+            if (_lastItems is not null && !ReferenceEquals(Items, _lastItems)) needsRefresh = true;
+        }
+        _lastItems = Items;
+
+        if (needsRefresh && _hasData)
+        {
+            _currentPage = 0;
+            RefreshData();
+        }
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && (Pageable || _activeGroups.Count > 0) && DataProvider is not null && !_hasData)
+        if (firstRender && (Pageable || _activeGroups.Count > 0) && Provider is not null && !_hasData)
             await LoadPageAsync();
-        if (firstRender && HasSummaryColumns && DataProvider is not null)
+        if (firstRender && HasSummaryColumns && Provider is not null)
             await RefreshSummaryDataAsync();
     }
 
     private async Task LoadPageAsync()
     {
-        if (DataProvider is null) return;
+        if (Provider is null) return;
         _hasData = true;
         _isLoading = true;
         StateHasChanged();
@@ -1418,7 +1549,7 @@
         {
             if (_activeGroups.Count > 0)
             {
-                var result = await DataProvider.GetDataAsync(new GridRequest(
+                var result = await Provider.GetDataAsync(new GridRequest(
                     new PageDescriptor(0, 10_000),
                     _state.Sort, _state.Filters, _state.SearchTerm));
                 _allItems = result.Items.ToList();
@@ -1427,11 +1558,11 @@
             }
             else
             {
-                var result = await DataProvider.GetDataAsync(new GridRequest(
-                    new PageDescriptor(_currentPage * PageSize, PageSize),
+                var result = await Provider.GetDataAsync(new GridRequest(
+                    new PageDescriptor(_currentPage * _pageSize, _pageSize),
                     _state.Sort, _state.Filters, _state.SearchTerm));
                 _totalCount = result.TotalCount;
-                _lastPage = _totalCount > 0 ? (_totalCount - 1) / PageSize : 0;
+                _lastPage = _totalCount > 0 ? (_totalCount - 1) / _pageSize : 0;
                 _displayRows.Clear();
                 foreach (var item in result.Items) _displayRows.Add(DisplayItem.FromData(item));
                 SyncAllSelectedState();
@@ -1448,6 +1579,105 @@
     {
         _currentPage = Math.Clamp(page, 0, _lastPage);
         await LoadPageAsync();
+    }
+
+    private async Task OnPageSizeSelected(ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out var size) || size <= 0 || size == _pageSize) return;
+        // Keep the first visible row on screen after the size change.
+        var firstRow = _currentPage * _pageSize;
+        _pageSize = size;
+        _currentPage = firstRow / size;
+        await PageSizeChanged.InvokeAsync(size);
+        await LoadPageAsync();
+    }
+
+    // ── Saved views ───────────────────────────────────────────────────────
+
+    /// <summary>Captures the current sort, filters, search, hidden columns, grouping and page size as a <see cref="GridView"/>.</summary>
+    public GridView CaptureView(string name) => new()
+    {
+        Name = name,
+        Sort = _state.Sort.ToList(),
+        FilterRow = new Dictionary<string, string>(_filterInputs),
+        MenuFilters = _menuFilters
+            .Where(kv => !string.IsNullOrEmpty(kv.Value.Value) || IsNullOp(kv.Value.OperatorKey))
+            .ToDictionary(kv => kv.Key, kv => new GridViewFilter(kv.Value.OperatorKey, kv.Value.Value)),
+        SearchTerm = _state.SearchTerm,
+        HiddenColumns = _hiddenColumns.ToList(),
+        Groups = _activeGroups.ToList(),
+        PageSize = Pageable ? _pageSize : null,
+    };
+
+    /// <summary>Restores a previously captured view and reloads the data.</summary>
+    public async Task ApplyViewAsync(GridView view)
+    {
+        ArgumentNullException.ThrowIfNull(view);
+
+        _filterInputs.Clear();
+        foreach (var (k, v) in view.FilterRow) _filterInputs[k] = v;
+
+        _menuFilters.Clear();
+        foreach (var (k, f) in view.MenuFilters)
+            _menuFilters[k] = new MenuFilter { OperatorKey = f.Operator, Value = f.Value };
+
+        _hiddenColumns.Clear();
+        foreach (var c in view.HiddenColumns) _hiddenColumns.Add(c);
+
+        _activeGroups.Clear();
+        _activeGroups.AddRange(view.Groups);
+
+        if (view.PageSize is > 0 && view.PageSize != _pageSize)
+        {
+            _pageSize = view.PageSize.Value;
+            await PageSizeChanged.InvokeAsync(_pageSize);
+        }
+
+        _state = _state.WithSort(view.Sort.ToList()).WithSearch(view.SearchTerm);
+        ApplyAllFilters();
+        _currentPage = 0;
+        _activeViewName = view.Name;
+        _showViewsMenu = false;
+        _filterMenuField = null;
+
+        if (Pageable || _activeGroups.Count > 0) await LoadPageAsync();
+        else if (_virtualizeRef is not null) await _virtualizeRef.RefreshDataAsync();
+        if (HasSummaryColumns) await RefreshSummaryDataAsync();
+
+        await OnViewApplied.InvokeAsync(view);
+        StateHasChanged();
+    }
+
+    private void ToggleViewsMenu()
+    {
+        _showViewsMenu = !_showViewsMenu;
+        _showColumnChooser = false;
+        _showExportMenu = false;
+    }
+
+    private async Task SaveCurrentView()
+    {
+        var name = _newViewName.Trim();
+        if (name.Length == 0) return;
+        var view = CaptureView(name);
+        // Saving under an existing name overwrites that view.
+        var list = (Views ?? []).Where(v => !string.Equals(v.Name, name, StringComparison.OrdinalIgnoreCase)).ToList();
+        list.Add(view);
+        _newViewName = "";
+        _activeViewName = name;
+        await ViewsChanged.InvokeAsync(list);
+    }
+
+    private async Task DeleteView(GridView view)
+    {
+        var list = (Views ?? []).Where(v => !ReferenceEquals(v, view)).ToList();
+        if (_activeViewName == view.Name) _activeViewName = null;
+        await ViewsChanged.InvokeAsync(list);
+    }
+
+    private async Task OnNewViewKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await SaveCurrentView();
     }
 
     public Task RefreshAsync()
@@ -1468,8 +1698,8 @@
 
     private async Task ExportData(ExportFormat format)
     {
-        if (DataProvider is null) return;
-        var result = await DataProvider.GetDataAsync(new GridRequest(
+        if (Provider is null) return;
+        var result = await Provider.GetDataAsync(new GridRequest(
             new PageDescriptor(0, int.MaxValue),
             _state.Sort, _state.Filters, _state.SearchTerm));
 

@@ -8,6 +8,7 @@
 @source "../**/*.razor";
 @source "../**/*.html";
 @source "../../MyStackBlazor.Calendar/**/*.razor";
+@source "../../MyStackBlazor.DataGrid/**/*.razor";
 @source "../../../samples/**/*.razor";
 @source "../../../samples/**/*.html";
 

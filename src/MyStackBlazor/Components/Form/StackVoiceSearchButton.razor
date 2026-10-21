@@ -1,0 +1,158 @@
+@namespace MyStackBlazor.Components.Form
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@if (_supported != false || !HideWhenUnsupported)
+{
+    <button type="button"
+            class="@ComputedClass"
+            disabled="@(Disabled || _supported == false)"
+            aria-label="@(_listening ? StopLabel : AriaLabel)"
+            aria-pressed="@(_listening ? "true" : "false")"
+            title="@(_supported == false ? UnsupportedText : null)"
+            @onclick="ToggleAsync"
+            @attributes="AdditionalAttributes">
+        @if (ChildContent is not null)
+        {
+            @ChildContent(_listening)
+        }
+        else
+        {
+            <span class="relative inline-flex">
+                @if (_listening)
+                {
+                    <span class="absolute inset-0 animate-ping rounded-full bg-destructive/40" aria-hidden="true"></span>
+                }
+                <svg class="relative h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3" />
+                </svg>
+            </span>
+        }
+    </button>
+    @if (_listening)
+    {
+        <span class="sr-only" role="status">@ListeningText</span>
+    }
+}
+
+@code {
+    /// <summary>Final recognized text. Typically you set your search box to this and run the search.</summary>
+    [Parameter] public EventCallback<string> OnResult { get; set; }
+
+    /// <summary>Partial text while the user is still speaking (requires <see cref="InterimResults"/>).</summary>
+    [Parameter] public EventCallback<string> OnInterim { get; set; }
+
+    /// <summary>Error code from the browser, e.g. "not-allowed" (mic permission denied), "no-speech", "network".</summary>
+    [Parameter] public EventCallback<string> OnError { get; set; }
+
+    [Parameter] public EventCallback<bool> ListeningChanged { get; set; }
+
+    /// <summary>BCP-47 language, e.g. "en-US", "hi-IN". Default: the browser language.</summary>
+    [Parameter] public string? Lang { get; set; }
+    [Parameter] public bool InterimResults { get; set; } = true;
+    /// <summary>Keep listening across pauses until the button is pressed again.</summary>
+    [Parameter] public bool Continuous { get; set; }
+
+    /// <summary>Don't render anything in browsers without speech recognition (default). False renders a disabled button.</summary>
+    [Parameter] public bool HideWhenUnsupported { get; set; } = true;
+
+    [Parameter] public bool Disabled { get; set; }
+    /// <summary>"ghost" (default), "outline" or "default".</summary>
+    [Parameter] public string Variant { get; set; } = "ghost";
+    [Parameter] public string AriaLabel { get; set; } = "Search by voice";
+    [Parameter] public string StopLabel { get; set; } = "Stop listening";
+    [Parameter] public string ListeningText { get; set; } = "Listening…";
+    [Parameter] public string UnsupportedText { get; set; } = "Voice search isn't supported in this browser";
+    /// <summary>Custom button content; receives true while listening.</summary>
+    [Parameter] public RenderFragment<bool>? ChildContent { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private IJSObjectReference? _module;
+    private DotNetObjectReference<StackVoiceSearchButton>? _ref;
+    private bool? _supported;
+    private bool _listening;
+    private int _sessionId;
+
+    /// <summary>True while the microphone is listening.</summary>
+    public bool IsListening => _listening;
+
+    private string ComputedClass
+    {
+        get
+        {
+            var variant = _listening
+                ? "bg-destructive/10 text-destructive"
+                : Variant switch
+                {
+                    "outline" => "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+                    "default" => "bg-primary text-primary-foreground hover:bg-primary/90",
+                    _         => "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                };
+            return $"inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 {variant} {Class}".Trim();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/MyStackBlazor/js/speech.js");
+            _supported = await _module.InvokeAsync<bool>("isSupported");
+        }
+        catch (JSDisconnectedException) { _supported = false; }
+        StateHasChanged();
+    }
+
+    /// <summary>Starts listening, or stops if already listening.</summary>
+    public async Task ToggleAsync()
+    {
+        if (_module is null || _supported != true || Disabled) return;
+        if (_listening)
+        {
+            await _module.InvokeVoidAsync("stop", _sessionId);
+            return;
+        }
+
+        _ref ??= DotNetObjectReference.Create(this);
+        _sessionId = await _module.InvokeAsync<int>("start", _ref, new
+        {
+            lang = Lang,
+            interimResults = InterimResults,
+            continuous = Continuous,
+        });
+        if (_sessionId != 0) await SetListening(true);
+    }
+
+    [JSInvokable] public Task HandleInterim(string text) => OnInterim.InvokeAsync(text);
+
+    [JSInvokable] public Task HandleFinal(string text) => OnResult.InvokeAsync(text);
+
+    [JSInvokable] public Task HandleError(string error) => OnError.InvokeAsync(error);
+
+    [JSInvokable] public Task HandleEnded() => SetListening(false);
+
+    private async Task SetListening(bool value)
+    {
+        if (_listening == value) return;
+        _listening = value;
+        await ListeningChanged.InvokeAsync(value);
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_module is not null)
+            {
+                if (_listening) await _module.InvokeVoidAsync("abort", _sessionId);
+                await _module.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException) { }
+        _ref?.Dispose();
+    }
+}

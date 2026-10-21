@@ -1,8 +1,11 @@
 @namespace MyStackBlazor.Components.Navigation
+@using Microsoft.AspNetCore.Components.Routing
+@inject NavigationManager Nav
+@implements IDisposable
 
 <a href="@Href"
    class="@ComputedClass"
-   aria-current="@(Active ? "page" : null)"
+   aria-current="@(IsActive ? "page" : null)"
    @onclick="HandleClick"
    @attributes="AdditionalAttributes">
     @ChildContent
@@ -13,9 +16,34 @@
     [Parameter] public string? Href { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public string Size { get; set; } = "md";
+    /// <summary>Manually marks the link active. Ignored when <see cref="Match"/> is set.</summary>
     [Parameter] public bool Active { get; set; }
+    /// <summary>When set, the link follows the current URL (like Blazor's <c>NavLink</c>) instead of using <see cref="Active"/>.</summary>
+    [Parameter] public NavLinkMatch? Match { get; set; }
     [Parameter] public string? Class { get; set; }
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool _urlActive;
+
+    private bool IsActive => Match is null ? Active : _urlActive;
+
+    protected override void OnInitialized() => Nav.LocationChanged += OnLocationChanged;
+
+    protected override void OnParametersSet()
+    {
+        if (Match is { } m) _urlActive = NavMatcher.IsActive(Nav, Href, m);
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        if (Match is not { } m) return;
+        var active = NavMatcher.IsActive(Nav, Href, m);
+        if (active == _urlActive) return;
+        _urlActive = active;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
 
     private string ComputedClass
     {
@@ -27,7 +55,7 @@
                 "lg" => "px-5 py-3 text-base",
                 _    => "px-4 py-2 text-sm",
             };
-            var activeClass = Active
+            var activeClass = IsActive
                 ? "bg-accent text-accent-foreground"
                 : "hover:bg-accent hover:text-accent-foreground";
             return $"block select-none rounded-md leading-none no-underline outline-none transition-colors focus:bg-accent focus:text-accent-foreground {sizeClass} {activeClass} {Class}".Trim();

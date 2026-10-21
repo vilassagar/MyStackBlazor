@@ -1,0 +1,10 @@
+<Project>
+  <!-- NuGet links shared by every package under src/. nuget.org shows these in the package sidebar. -->
+  <PropertyGroup>
+    <!-- "Project website" link: the live demo -->
+    <PackageProjectUrl>https://vilassagar.github.io/MyStackBlazor/</PackageProjectUrl>
+    <!-- "Source repository" link -->
+    <RepositoryUrl>https://github.com/vilassagar/MyStackBlazor</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+</Project>

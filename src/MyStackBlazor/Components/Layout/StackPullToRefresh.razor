@@ -1,0 +1,106 @@
+@namespace MyStackBlazor.Components.Layout
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div @ref="_root" class="@($"relative overscroll-y-contain {Class}".Trim())" data-ptr-state="idle" @attributes="AdditionalAttributes">
+    <div @ref="_indicator" class="flex items-end justify-center overflow-hidden text-muted-foreground" style="height:0" aria-hidden="true">
+        <div class="flex items-center gap-2 pb-3 text-xs">
+            @if (_refreshing)
+            {
+                <span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-primary"></span>
+            }
+            else
+            {
+                <svg data-ptr-icon class="h-4 w-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m0 0l-6-6m6 6l6-6" />
+                </svg>
+            }
+            <span @ref="_label">@PullText</span>
+        </div>
+    </div>
+    @if (_refreshing)
+    {
+        <span class="sr-only" role="status">@RefreshingText</span>
+    }
+    @ChildContent
+</div>
+
+@code {
+    /// <summary>Called when the user pulls down past <see cref="Threshold"/> and releases. The spinner shows until it completes.</summary>
+    [Parameter] public EventCallback OnRefresh { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Pull distance in pixels needed to trigger a refresh.</summary>
+    [Parameter] public int Threshold { get; set; } = 70;
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string PullText { get; set; } = "Pull to refresh";
+    [Parameter] public string ReleaseText { get; set; } = "Release to refresh";
+    [Parameter] public string RefreshingText { get; set; } = "Refreshing…";
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private ElementReference _root, _indicator, _label;
+    private IJSObjectReference? _module;
+    private DotNetObjectReference<StackPullToRefresh>? _ref;
+    private bool _refreshing;
+    private bool? _lastDisabled;
+
+    /// <summary>True while <see cref="OnRefresh"/> is running.</summary>
+    public bool IsRefreshing => _refreshing;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                _ref = DotNetObjectReference.Create(this);
+                _module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/MyStackBlazor/js/pull-to-refresh.js");
+                await _module.InvokeVoidAsync("init", _root, _indicator, _label, _ref, new
+                {
+                    threshold = Threshold,
+                    disabled = Disabled,
+                    pullText = PullText,
+                    releaseText = ReleaseText,
+                    refreshingText = RefreshingText,
+                });
+                _lastDisabled = Disabled;
+            }
+            else if (_module is not null && _lastDisabled != Disabled)
+            {
+                _lastDisabled = Disabled;
+                await _module.InvokeVoidAsync("setDisabled", _root, Disabled);
+            }
+        }
+        catch (JSDisconnectedException) { }
+    }
+
+    [JSInvokable]
+    public async Task OnPulledAsync()
+    {
+        _refreshing = true;
+        StateHasChanged();
+        try { await OnRefresh.InvokeAsync(); }
+        finally
+        {
+            _refreshing = false;
+            StateHasChanged();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_module is not null)
+            {
+                await _module.InvokeVoidAsync("dispose", _root);
+                await _module.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException) { }
+        _ref?.Dispose();
+    }
+}

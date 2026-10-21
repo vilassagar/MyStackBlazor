@@ -39,6 +39,7 @@
 | ✅ | **ThemeProvider** | `Components/Common/ThemeProvider.razor` | Light / dark / system theme root |
 | ✅ | **ThemeToggle** | `Components/Common/ThemeToggle.razor` | Theme switch button |
 | ✅ | **Typography** | `Components/Common/Typography.razor` | h1–h4, p, blockquote, code, lead, muted |
+| 🆕 | **StackLucideIcon** | `Components/Common/StackLucideIcon.razor` | Full Lucide set (1,858 icons + 264 legacy names like `home`, `alert-triangle`) via a cached SVG sprite; kebab or PascalCase names, `PixelSize`, `StrokeWidth`. `LucideIcons.Resolve/Exists/Names` |
 
 ---
 
@@ -66,6 +67,8 @@
 | ✅ | **TreeView** | `Components/Data/TreeView.razor` | Collapsible tree with `TreeViewNode` |
 | 🆕 | **Wizard** | `Components/Navigation/Wizard.razor` | Tab-style wizard with free navigation |
 | 🆕 | **WizardStep** | `Components/Navigation/WizardStep.razor` | Content panel per wizard step |
+| 🆕 | **StackNavLink** | `Components/Navigation/StackNavLink.razor` | Styled sidebar link that follows the current URL like Blazor `NavLink` (`Match` Prefix/All), optional Lucide `Icon`, `Badge`, `Collapsed` icon-only mode |
+| 🆕 | **StackNavigationMenuLink `Match`** | `Components/Navigation/StackNavigationMenuLink.razor` | Set `Match` to make the link track the current page automatically; manual `Active` still works when `Match` is unset |
 
 ---
 
@@ -100,6 +103,10 @@
 | ✅ | **TimePicker** | `Components/Form/TimePicker.razor` | Hour / minute / AM-PM selector |
 | 🆕 | **ValidationSummary** | `Components/Form/ValidationSummary.razor` | Aggregated `EditContext` error list; Tailwind alert styling |
 | 🆕 | **ValidationMessage** | `Components/Form/ValidationMessage.razor` | Standalone per-field error message (generic, works outside `FormField`) |
+| 🆕 | **StackPeriodPicker** | `Components/Form/StackPeriodPicker.razor` | Week / Month / Quarter / Year (+ optional Custom) with prev/next and quick-select presets; fiscal year start month; value is `DatePeriod` (`Start`, `End`, `EndExclusive`) |
+| 🆕 | **StackPinPad** | `Components/Form/StackPinPad.razor` | On-screen PIN keypad: dots, `OnComplete`, `Error` + shake, `RejectAsync()`, physical keyboard, `Shuffle`, `LeftKey` slot (e.g. biometrics) |
+| 🆕 | **StackBarcodeScanInput** | `Components/Form/StackBarcodeScanInput.razor` | Text box + camera scanner (BarcodeDetector; optional `PolyfillUrl`), hardware scanners via Enter, `ContinuousScan`, torch, `Formats` |
+| 🆕 | **StackVoiceSearchButton** | `Components/Form/StackVoiceSearchButton.razor` | Mic button using the Web Speech API: `OnResult`, `OnInterim`, `Lang`, `Continuous`; hidden where unsupported |
 
 ---
 
@@ -120,6 +127,7 @@
 | ✅ | **ScrollArea** | `Components/Layout/ScrollArea.razor` | Custom scrollbar container |
 | 🆕 | **StackLayout** | `Components/Layout/StackLayout.razor` | Flex stack with `Orientation`, `Align`, `Justify` |
 | 🆕 | **Splitter** | `Components/Layout/Splitter.razor` | Resizable split panes with `SplitterPane` |
+| 🆕 | **StackPullToRefresh** | `Components/Layout/StackPullToRefresh.razor` | Touch pull-down gesture with threshold, `OnRefresh` awaited while the spinner shows |
 
 ---
 
@@ -139,6 +147,8 @@
 | ✅ | **TreeList** | `Components/Data/TreeList.razor` | Hierarchical data table with expand/collapse rows and `aria-treegrid` semantics |
 | ✅ | **TreeView** | `Components/Data/TreeView.razor` | Recursive collapsible tree with `TreeViewNode` |
 | ✅ | **VirtualList** | `Components/Data/MsVirtualList.razor` | Virtualized list powered by Blazor's `Virtualize` component |
+| 🆕 | **StackCountUp** | `Components/Data/StackCountUp.razor` | Animated number (eases from the previous value), .NET `Format`, prefix/suffix, honours reduced motion |
+| 🆕 | **StackDataTable typed sort** | `Components/Data/StackDataTable.razor` | Sorting now compares real numbers/dates (`TypedValueComparer`) instead of text |
 
 ---
 
@@ -196,6 +206,9 @@ Installed separately — see [Modular Packages](#modular-packages) in README.
 | ✅ | **MsDataGrid** | `MyStackBlazor.DataGrid` | Virtualized enterprise grid, server-side sort/filter/search, Excel export (ClosedXML) |
 | ✅ | **MsDataGridColumn** | `MyStackBlazor.DataGrid` | Non-rendering column definition child component |
 | ✅ | **GridExporter** | `MyStackBlazor.DataGrid` | `ExportToExcel()` → `byte[]` download |
+| 🆕 | **MsDataGrid: rows per page** | `MyStackBlazor.DataGrid` | `PageSizes="[10, 25, 50, 100]"` adds a selector to the pager; `PageSizeChanged` |
+| 🆕 | **MsDataGrid: saved views** | `MyStackBlazor.DataGrid` | `@bind-Views` adds a Views menu (save / apply / delete); `CaptureView()` / `ApplyViewAsync()`; `GridView` is JSON-serializable |
+| 🆕 | **MsDataGrid: `Items` + InMemoryGridDataProvider** | `MyStackBlazor.DataGrid` | Pass `Items` instead of a provider; sorting/filtering use real typed values (numbers, dates, enums, nested `A.B` paths) |
 | ✅ | **MsStore / MsStoreConsumer** | `MyStackBlazor.Core` | Lightweight Fluxor-style state management |
 | ✅ | **IHtmlSanitizer / DefaultHtmlSanitizer** | `MyStackBlazor.Security` | XSS sanitization via HtmlSanitizer 9 |
 | ✅ | **ITokenProvider** | `MyStackBlazor.Security` | Auth token abstraction (In-memory / LocalStorage) |
@@ -219,6 +232,7 @@ Installed separately — see [Modular Packages](#modular-packages) in README.
 | ✅ | **Toaster** | `Components/Overlays/Toaster.razor` | Toast notification system |
 | ✅ | **Tooltip** | `Components/Overlays/Tooltip.razor` | Hover tooltip, 4 sides |
 | 🆕 | **Window** | `Components/Overlays/Window.razor` | Floating window with title bar, footer, size variants |
+| 🆕 | **StackCelebration** | `Components/Overlays/StackCelebration.razor` | Confetti burst + optional message card for goals/achievements; `Active` or `CelebrateAsync()`, honours reduced motion |
 
 ---
 
