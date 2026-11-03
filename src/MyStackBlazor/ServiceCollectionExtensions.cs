@@ -17,7 +17,7 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddMyStackBlazor(this IServiceCollection services)
     {
-        services.AddSingleton<ThemeService>();
+        services.AddScoped<ThemeService>();
         services.AddScoped<ToastService>();
         services.AddScoped<DialogService>();
         services.AddScoped<MsStyleLoader>();

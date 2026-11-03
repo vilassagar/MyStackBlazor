@@ -6,79 +6,131 @@ on:
   push:
     branches: [main, master]
     tags: ['v*.*.*']
+  workflow_call:
+    inputs:
+      release_tag:
+        description: Exact release tag to validate and publish
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  CI: 'true'
 
 jobs:
   build-and-test:
-    name: Build & Test (.NET ${{ matrix.dotnet }})
+    name: Build, Test & Pack
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        dotnet: ['10.0.x']
-
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: ${{ matrix.dotnet }}
+          ref: ${{ inputs.release_tag || github.sha }}
+
+      - name: Resolve package version
+        id: version
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag || (startsWith(github.ref, 'refs/tags/') && github.ref_name) || '' }}
+        run: |
+          version=0.0.0-ci
+          if [[ -n "$RELEASE_TAG" ]]; then
+            [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || exit 1
+            version="${RELEASE_TAG#v}"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: src/MyStackBlazor/package-lock.json
+
+      - name: Build CSS from locked dependencies
+        working-directory: src/MyStackBlazor
+        run: |
+          npm ci
+          npm run build:css
 
       - name: Restore
         run: dotnet restore MyStackBlazor.slnx
 
       - name: Build
-        run: dotnet build MyStackBlazor.slnx --no-restore -c Release
+        run: dotnet build MyStackBlazor.slnx --no-restore -c Release /p:Version=${{ steps.version.outputs.version }}
 
       - name: Test
-        run: dotnet test MyStackBlazor.slnx --no-build -c Release --logger trx --results-directory TestResults
-        env:
-          CI: true
+        run: |
+          dotnet test tests/MyStackBlazor.UnitTests/MyStackBlazor.UnitTests.csproj --no-build -c Release --logger trx --results-directory TestResults
+          dotnet test tests/MyStackBlazor.Security.Tests/MyStackBlazor.Security.Tests.csproj --no-build -c Release --logger trx --results-directory TestResults
+
+      - name: Install Chromium
+        shell: pwsh
+        run: tests/MyStackBlazor.E2ETests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+
+      - name: Start demo and run browser regressions
+        shell: bash
+        run: |
+          dotnet run --project samples/MyStackBlazor.Demo --no-build -c Release --no-launch-profile --urls http://127.0.0.1:5080 > /tmp/mystack-demo.log 2>&1 &
+          demo_pid=$!
+          trap 'kill "$demo_pid" || true' EXIT
+          ready=false
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:5080/ > /dev/null; then ready=true; break; fi
+            sleep 1
+          done
+          if [[ "$ready" != true ]]; then cat /tmp/mystack-demo.log; exit 1; fi
+          dotnet test tests/MyStackBlazor.E2ETests/MyStackBlazor.E2ETests.csproj --no-build -c Release --logger trx --results-directory TestResults
+
+      - name: Pack all libraries
+        shell: bash
+        run: |
+          for proj in src/*/*.csproj; do
+            dotnet pack "$proj" --no-build -c Release -o nupkgs /p:Version=${{ steps.version.outputs.version }}
+          done
+          python3 scripts/verify-packages.py nupkgs "${{ steps.version.outputs.version }}"
+          python3 scripts/smoke-packages.py nupkgs "${{ steps.version.outputs.version }}"
+
+      - name: Upload validated packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: validated-packages
+          path: nupkgs/*.nupkg
+          if-no-files-found: error
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results-${{ matrix.dotnet }}
+          name: test-results
           path: TestResults/**/*.trx
 
   publish:
-    name: Pack & Publish NuGet
+    name: Publish validated NuGet packages
     needs: build-and-test
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: inputs.release_tag != '' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    concurrency:
+      group: nuget-${{ needs.build-and-test.outputs.version }}
+      cancel-in-progress: false
     permissions:
       contents: read
-      id-token: write  # required for NuGet Trusted Publishing (OIDC)
-
+      id-token: write
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
 
-      - name: Restore
-        run: dotnet restore MyStackBlazor.slnx
-
-      - name: Extract version from tag
-        id: version
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
-
-      - name: Pack all packages
-        run: |
-          for proj in \
-            src/MyStackBlazor/MyStackBlazor.csproj \
-            src/MyStackBlazor.Core/MyStackBlazor.Core.csproj \
-            src/MyStackBlazor.Security/MyStackBlazor.Security.csproj \
-            src/MyStackBlazor.Accessibility/MyStackBlazor.Accessibility.csproj \
-            src/MyStackBlazor.Calendar/MyStackBlazor.Calendar.csproj \
-            src/MyStackBlazor.DataGrid/MyStackBlazor.DataGrid.csproj \
-            src/MyStackBlazor.Localization/MyStackBlazor.Localization.csproj; do
-            dotnet pack $proj -c Release -o nupkgs /p:Version=${{ steps.version.outputs.VERSION }}
-          done
-        env:
-          CI: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: validated-packages
+          path: nupkgs
 
       - name: NuGet login (Trusted Publishing)
         uses: NuGet/login@v1
@@ -87,8 +139,10 @@ jobs:
           user: vilassagar89
 
       - name: Push to NuGet.org
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
         run: |
-          dotnet nuget push nupkgs/*.nupkg \
-            --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY }} \
+          dotnet nuget push "nupkgs/*.nupkg" \
+            --api-key "$NUGET_API_KEY" \
             --source https://api.nuget.org/v3/index.json \
             --skip-duplicate

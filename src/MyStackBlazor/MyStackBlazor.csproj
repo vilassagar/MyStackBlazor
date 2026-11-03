@@ -11,7 +11,7 @@
     <Authors>Vilas Sagar</Authors>
     <Company>MyStackBlazor</Company>
     <Product>MyStackBlazor Component Library</Product>
-    <Description>A modern Blazor component library styled with Tailwind CSS v4. Includes 70+ components: buttons, forms, navigation, overlays, data display, theme support (light/dark/system), and more. Works with Blazor WASM, Blazor Server, and .NET MAUI Blazor Hybrid.</Description>
+    <Description>A modern Blazor component library styled with Tailwind CSS v4. Includes reusable components: buttons, forms, navigation, overlays, data display, theme support (light/dark/system), and more. Works with Blazor WASM, Blazor Server, and .NET MAUI Blazor Hybrid.</Description>
     <PackageTags>blazor;components;tailwindcss;ui;razor;dotnet;dark-mode;maui;advanced data components</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -58,7 +58,7 @@
   <Target Name="BuildTailwind" BeforeTargets="Build" Condition="'$(CI)' != 'true'">
     <Exec Command="npx @tailwindcss/cli -i ./tailwind/input.css -o ./wwwroot/css/mystackblazor.css --minify"
           WorkingDirectory="$(MSBuildProjectDirectory)"
-          ContinueOnError="true" />
+          ContinueOnError="false" />
   </Target>
 
   <ItemGroup>

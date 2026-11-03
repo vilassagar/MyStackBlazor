@@ -7,6 +7,18 @@
 <h1 class="text-3xl font-bold mb-1">Overlays</h1>
 <p class="text-muted-foreground mb-8">Sheet, drawer, popover, tooltip, hover card, window, and popup.</p>
 
+<DemoSection Title="Dialog" Description="Keyboard focus stays inside the modal and returns to its trigger when closed.">
+    <button id="dialog-trigger" type="button" class="rounded border px-3 py-2" @onclick="() => _dialogOpen = true">Open dialog</button>
+    <StackDialog @bind-IsOpen="_dialogOpen" AriaLabelledBy="dialog-title">
+        <StackDialogTitle id="dialog-title">Edit details</StackDialogTitle>
+        <label>Name <input id="dialog-name" class="rounded border" /></label>
+        <button id="nested-trigger" type="button" @onclick="() => _nestedOpen = true">Open nested dialog</button>
+        <StackDialog @bind-IsOpen="_nestedOpen" AriaLabel="Nested confirmation">
+            <p>Press Escape to return to Edit details.</p>
+        </StackDialog>
+    </StackDialog>
+</DemoSection>
+
 <!-- Tooltip -->
 <DemoSection Title="Tooltip"
              Description="Appears on hover. Use Text for simple labels, Content for rich markup. Side controls placement."
@@ -346,6 +358,8 @@
 </DemoSection>
 
 @code {
+    private bool _dialogOpen;
+    private bool _nestedOpen;
     private bool _sheetRight;
     private bool _sheetLeft;
     private bool _sheetBottom;

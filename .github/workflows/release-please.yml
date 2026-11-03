@@ -24,53 +24,12 @@ jobs:
             version.txt
 
   publish:
-    name: Pack & Publish NuGet
+    name: Validate and publish release
     needs: release-please
-    if: ${{ needs.release-please.outputs.release_created }}
-    runs-on: ubuntu-latest
+    if: needs.release-please.outputs.release_created == 'true'
+    uses: ./.github/workflows/ci.yml
+    with:
+      release_tag: ${{ needs.release-please.outputs.tag_name }}
     permissions:
       contents: read
-      id-token: write  # required for NuGet Trusted Publishing (OIDC)
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Restore
-        run: dotnet restore MyStackBlazor.slnx
-
-      - name: Extract version from tag
-        id: version
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
-        env:
-          GITHUB_REF_NAME: ${{ needs.release-please.outputs.tag_name }}
-
-      - name: Pack all packages
-        run: |
-          for proj in \
-            src/MyStackBlazor/MyStackBlazor.csproj \
-            src/MyStackBlazor.Core/MyStackBlazor.Core.csproj \
-            src/MyStackBlazor.Security/MyStackBlazor.Security.csproj \
-            src/MyStackBlazor.Accessibility/MyStackBlazor.Accessibility.csproj \
-            src/MyStackBlazor.Calendar/MyStackBlazor.Calendar.csproj \
-            src/MyStackBlazor.DataGrid/MyStackBlazor.DataGrid.csproj \
-            src/MyStackBlazor.Localization/MyStackBlazor.Localization.csproj; do
-            dotnet pack $proj -c Release -o nupkgs /p:Version=${{ steps.version.outputs.VERSION }}
-          done
-
-      - name: NuGet login (Trusted Publishing)
-        uses: NuGet/login@v1
-        id: nuget-login
-        with:
-          user: vilassagar89
-
-      - name: Push to NuGet.org
-        run: |
-          dotnet nuget push nupkgs/*.nupkg \
-            --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY }} \
-            --source https://api.nuget.org/v3/index.json \
-            --skip-duplicate
+      id-token: write
