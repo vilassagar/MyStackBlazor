@@ -1,4 +1,6 @@
 @namespace MyStackBlazor.Components.Overlays
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 @if (IsOpen)
 {
@@ -6,8 +8,14 @@
         <!-- Backdrop -->
         <div class="fixed inset-0 bg-black/80 animate-fade-in" @onclick="CloseOnBackdrop"></div>
         <!-- Panel -->
-        <div role="dialog"
+        <div @ref="_panel" role="dialog"
+             tabindex="-1"
              aria-modal="true"
+             aria-label="@(AriaLabelledBy is null ? AriaLabel : null)"
+             aria-labelledby="@AriaLabelledBy"
+             aria-describedby="@AriaDescribedBy"
+             @onkeydown="OnKeyDown"
+             @onkeydown:stopPropagation="true"
              class="@ComputedClass"
              @attributes="AdditionalAttributes">
             <button type="button"
@@ -30,6 +38,10 @@
     [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
     [Parameter] public string Side { get; set; } = "right";
     [Parameter] public bool CloseOnBackdropClick { get; set; } = true;
+    [Parameter] public bool CloseOnEscape { get; set; } = true;
+    [Parameter] public string AriaLabel { get; set; } = "Sheet";
+    [Parameter] public string? AriaLabelledBy { get; set; }
+    [Parameter] public string? AriaDescribedBy { get; set; }
     [Parameter] public string? Class { get; set; }
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
 
@@ -40,6 +52,46 @@
         "bottom" => $"fixed bottom-0 inset-x-0 w-full border-t bg-background p-6 shadow-lg animate-slide-in-from-bottom {Class}".Trim(),
         _        => $"fixed right-0 inset-y-0 h-full w-3/4 sm:max-w-sm border-l bg-background p-6 shadow-lg animate-slide-in-from-right {Class}".Trim(),
     };
+
+    private ElementReference _panel;
+    private IJSObjectReference? _module;
+    private readonly string _focusId = Guid.NewGuid().ToString("N");
+    private bool _active;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsOpen == _active) return;
+        try
+        {
+            _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/MyStackBlazor/js/dialog.js");
+            if (IsOpen) await _module.InvokeVoidAsync("activate", _focusId, _panel);
+            else await _module.InvokeVoidAsync("deactivate", _focusId);
+            _active = IsOpen;
+        }
+        catch (JSDisconnectedException) { }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape" && CloseOnEscape)
+        {
+            // Only the topmost modal handles Escape (including nested dialogs).
+            if (_module is not null && await _module.InvokeAsync<bool>("isTop", _focusId)) await Close();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_module is not null)
+            {
+                await _module.InvokeVoidAsync("deactivate", _focusId);
+                await _module.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException) { }
+    }
 
     private async Task Close()
     {

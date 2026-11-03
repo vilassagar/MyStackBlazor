@@ -44,4 +44,24 @@ public class DialogTests : PageTest
         await Expect(Page.GetByRole(AriaRole.Dialog, new() { Name = "Edit details", Exact = true })).ToBeVisibleAsync();
         await Expect(nestedTrigger).ToBeFocusedAsync();
     }
+
+    [TestCase("Open right sheet", "Edit settings")]
+    [TestCase("Open drawer", "Quick actions")]
+    public async Task Sheet_And_Drawer_Trap_Focus_And_Restore_On_Escape(string triggerName, string title)
+    {
+        await Page.GotoAsync(Environment.GetEnvironmentVariable("DEMO_BASE_URL") ?? "http://127.0.0.1:5080/overlays");
+        var trigger = Page.GetByRole(AriaRole.Button, new() { Name = triggerName, Exact = true });
+        await trigger.ClickAsync();
+        var modal = Page.GetByRole(AriaRole.Dialog, new() { Name = title, Exact = true });
+        await Expect(modal).ToBeVisibleAsync();
+        var buttons = modal.GetByRole(AriaRole.Button);
+        await Expect(buttons.First).ToBeFocusedAsync();
+        await Page.Keyboard.PressAsync("Shift+Tab");
+        await Expect(buttons.Last).ToBeFocusedAsync();
+        await Page.Keyboard.PressAsync("Tab");
+        await Expect(buttons.First).ToBeFocusedAsync();
+        await Page.Keyboard.PressAsync("Escape");
+        await Expect(modal).ToHaveCountAsync(0);
+        await Expect(trigger).ToBeFocusedAsync();
+    }
 }

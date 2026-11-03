@@ -1,4 +1,7 @@
 @namespace MyStackBlazor.Components.Form
+@using System.Globalization
+@using System.Linq.Expressions
+@implements IDisposable
 
 <div class="@ContainerClass">
     <span class="flex items-center pl-3 text-sm text-muted-foreground select-none">@CurrencySymbol</span>
@@ -7,6 +10,8 @@
            id="@Id"
            value="@DisplayValue"
            disabled="@Disabled"
+           readonly="@ReadOnly"
+           aria-invalid="@(IsInvalid ? "true" : null)"
            placeholder="@Placeholder"
            class="flex h-full w-full rounded-md bg-transparent px-2 py-2 text-sm placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
            @oninput="OnInputChanged"
@@ -18,17 +23,19 @@
         <div class="flex flex-col border-l-2 border-input">
             <button type="button"
                     class="flex flex-1 items-center justify-center px-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+                    aria-label="@IncrementLabel"
                     disabled="@IsIncrementDisabled"
                     @onclick="Increment">
-                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg aria-hidden="true" focusable="false" class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <polyline points="18 15 12 9 6 15"></polyline>
                 </svg>
             </button>
             <button type="button"
                     class="flex flex-1 items-center justify-center border-t-2 border-input px-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+                    aria-label="@DecrementLabel"
                     disabled="@IsDecrementDisabled"
                     @onclick="Decrement">
-                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg aria-hidden="true" focusable="false" class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
             </button>
@@ -51,59 +58,150 @@
     [Parameter] public int DecimalPlaces { get; set; } = 2;
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
 
-    private bool _focused;
 
-    private bool IsIncrementDisabled => Disabled || (Max.HasValue && Value.HasValue && Value >= Max);
-    private bool IsDecrementDisabled => Disabled || (Min.HasValue && Value.HasValue && Value <= Min);
+    [Parameter] public Expression<Func<decimal?>>? ValueExpression { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public string IncrementLabel { get; set; } = "Increase value";
+    [Parameter] public string DecrementLabel { get; set; } = "Decrease value";
+    [Parameter] public string ParsingErrorMessage { get; set; } = "Enter a valid number.";
+    [Parameter] public CultureInfo? Culture { get; set; }
+    [CascadingParameter] private EditContext? EditContext { get; set; }
+
+    private EditContext? _validationContext;
+    private FieldIdentifier? _field;
+    private ValidationMessageStore? _messages;
+    private string? _inputText;
+    private bool _parseError;
+    private decimal? _lastValue;
+    private bool _focused;
+    private CultureInfo ActiveCulture => Culture ?? CultureInfo.CurrentCulture;
+
+    private bool IsInvalid => _parseError ||
+        (_field is { } field && _validationContext?.GetValidationMessages(field).Any() == true);
+    private bool IsIncrementDisabled => Disabled || ReadOnly || (Max.HasValue && Value.HasValue && Value >= Max);
+    private bool IsDecrementDisabled => Disabled || ReadOnly || (Min.HasValue && Value.HasValue && Value <= Min);
 
     private string ContainerClass =>
         $"relative flex h-10 w-full items-stretch overflow-hidden rounded-md border-2 border-input bg-background ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 {Class}".Trim();
 
-    // While focused, show the raw editable number (no thousands separators) so the caret
-    // position/parsing stays predictable; once blurred, show the fully formatted value.
-    private string? DisplayValue => _focused
-        ? Value?.ToString($"F{DecimalPlaces}")
-        : Value.HasValue
-            ? Value.Value.ToString($"N{DecimalPlaces}")
-            : null;
+    private string? DisplayValue => _inputText ?? Value?.ToString(_focused ? $"F{DecimalPlaces}" : $"N{DecimalPlaces}", ActiveCulture);
 
-    private void OnFocus() => _focused = true;
-    private void OnBlur() => _focused = false;
+    protected override void OnParametersSet()
+    {
+        if (Min.HasValue && Max.HasValue && Min > Max)
+            throw new ArgumentException("Min cannot be greater than Max.");
+        if (Step <= 0)
+            throw new ArgumentOutOfRangeException(nameof(Step), "Numeric settings must be finite and Step must be positive.");
+        if (DecimalPlaces is < 0 or > 28) throw new ArgumentOutOfRangeException(nameof(DecimalPlaces));
+
+        FieldIdentifier? nextField = ValueExpression is null ? null : FieldIdentifier.Create(ValueExpression);
+        if (!ReferenceEquals(EditContext, _validationContext) || !Nullable.Equals(nextField, _field))
+        {
+            DetachValidation();
+            _validationContext = EditContext;
+            _field = nextField;
+            if (_validationContext is not null)
+            {
+                _validationContext.OnValidationStateChanged += OnValidationStateChanged;
+                _messages = new ValidationMessageStore(_validationContext);
+                if (_parseError && _field is { } invalidField) _messages.Add(invalidField, ParsingErrorMessage);
+            }
+        }
+        if (Value != _lastValue)
+        {
+            _lastValue = Value;
+            _inputText = null;
+            SetParsingError(false);
+        }
+    }
+
+    private void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs args) =>
+        _ = InvokeAsync(StateHasChanged);
+
+    private void SetParsingError(bool invalid)
+    {
+        _parseError = invalid;
+        _messages?.Clear();
+        if (invalid && _field is { } field) _messages?.Add(field, ParsingErrorMessage);
+        _validationContext?.NotifyValidationStateChanged();
+    }
+
+    private void OnFocus()
+    {
+        _focused = true;
+        _inputText ??= Value?.ToString($"F{DecimalPlaces}", ActiveCulture);
+    }
+    private void OnBlur()
+    {
+        _focused = false;
+        if (!_parseError) _inputText = null;
+    }
 
     private async Task OnInputChanged(ChangeEventArgs e)
     {
+        if (Disabled || ReadOnly) return;
         var raw = e.Value?.ToString();
+        _inputText = raw;
         if (string.IsNullOrWhiteSpace(raw))
         {
-            Value = null;
-            await ValueChanged.InvokeAsync(null);
+            await SetValueAsync(null, preserveText: true);
             return;
         }
-
-        var cleaned = raw.Replace(CurrencySymbol, "").Replace(",", "").Trim();
-        if (decimal.TryParse(cleaned, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var v))
+        // Parsing and formatting use the same culture, including decimal/group separators.
+        var parseCulture = (CultureInfo)ActiveCulture.Clone();
+        parseCulture.NumberFormat.CurrencySymbol = CurrencySymbol;
+        var valid = decimal.TryParse(raw, NumberStyles.Currency, parseCulture, out var parsed);
+        if (valid) await SetValueAsync(Clamp(parsed), preserveText: true);
+        else
         {
-            Value = Clamp(v);
-            await ValueChanged.InvokeAsync(Value);
+            SetParsingError(true);
+            if (_field is { } field) _validationContext?.NotifyFieldChanged(field);
         }
+    }
+
+    private async Task SetValueAsync(decimal? value, bool preserveText = false)
+    {
+        SetParsingError(false);
+        Value = value;
+        _lastValue = value;
+        if (!preserveText) _inputText = null;
+        await ValueChanged.InvokeAsync(value);
+        if (_field is { } field) _validationContext?.NotifyFieldChanged(field);
     }
 
     private async Task Increment()
     {
-        Value = Clamp((Value ?? 0) + Step);
-        await ValueChanged.InvokeAsync(Value);
+        if (IsIncrementDisabled) return;
+        decimal next;
+        try { next = (Value ?? 0) + Step; }
+        catch (OverflowException) { next = decimal.MaxValue; }
+        await SetValueAsync(Clamp(next));
     }
 
     private async Task Decrement()
     {
-        Value = Clamp((Value ?? 0) - Step);
-        await ValueChanged.InvokeAsync(Value);
+        if (IsDecrementDisabled) return;
+        decimal next;
+        try { next = (Value ?? 0) - Step; }
+        catch (OverflowException) { next = decimal.MinValue; }
+        await SetValueAsync(Clamp(next));
     }
 
-    private decimal Clamp(decimal v)
+    private decimal Clamp(decimal value)
     {
-        if (Min.HasValue && v < Min.Value) return Min.Value;
-        if (Max.HasValue && v > Max.Value) return Max.Value;
-        return v;
+        if (Min.HasValue && value < Min.Value) return Min.Value;
+        if (Max.HasValue && value > Max.Value) return Max.Value;
+        return value;
     }
+
+    private void DetachValidation()
+    {
+        if (_validationContext is null) return;
+        _validationContext.OnValidationStateChanged -= OnValidationStateChanged;
+        _messages?.Clear();
+        _validationContext.NotifyValidationStateChanged();
+        _messages = null;
+    }
+
+    public void Dispose() => DetachValidation();
 }

@@ -134,9 +134,9 @@
         <StackButton Variant="outline" OnClick="@(() => _sheetBottom = true)">Open bottom sheet</StackButton>
     </div>
 
-    <StackSheet @bind-IsOpen="_sheetRight" Side="right">
+    <StackSheet @bind-IsOpen="_sheetRight" Side="right" AriaLabelledBy="sheet-right-title">
         <div class="p-6 space-y-4">
-            <h3 class="text-lg font-semibold">Edit settings</h3>
+            <h3 class="text-lg font-semibold" id="sheet-right-title">Edit settings</h3>
             <p class="text-sm text-muted-foreground">Make changes to your account here.</p>
             <div class="space-y-3">
                 <StackFormField Label="Display name" For="sh-name">
@@ -186,9 +186,9 @@
              Code="@_drawerCode">
     <StackButton Variant="outline" OnClick="@(() => _drawerOpen = true)">Open drawer</StackButton>
 
-    <StackDrawer @bind-IsOpen="_drawerOpen">
+    <StackDrawer @bind-IsOpen="_drawerOpen" AriaLabelledBy="drawer-title">
         <div class="p-6 space-y-4">
-            <h3 class="text-lg font-semibold">Quick actions</h3>
+            <h3 class="text-lg font-semibold" id="drawer-title">Quick actions</h3>
             <div class="grid grid-cols-2 gap-3">
                 @foreach (var action in new[] { ("New item", "default"), ("Duplicate", "outline"), ("Archive", "outline"), ("Delete", "destructive") })
                 {
