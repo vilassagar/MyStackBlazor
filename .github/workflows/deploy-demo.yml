@@ -27,6 +27,18 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: src/MyStackBlazor/package-lock.json
+
+      - name: Build CSS
+        working-directory: src/MyStackBlazor
+        run: |
+          npm ci
+          npm run build:css
+
       - name: Restore
         run: dotnet restore samples/MyStackBlazor.Demo/MyStackBlazor.Demo.csproj
 

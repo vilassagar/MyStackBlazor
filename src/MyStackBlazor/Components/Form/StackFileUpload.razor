@@ -25,6 +25,16 @@
         </label>
     </div>
 
+    @if (_errors.Count > 0)
+    {
+        <ul role="alert" class="text-sm text-destructive">
+            @foreach (var error in _errors)
+            {
+                <li>@error.FileName: @error.Message</li>
+            }
+        </ul>
+    }
+
     @if (Files.Count > 0)
     {
         <ul class="space-y-2">
@@ -77,6 +87,12 @@
 
     [Parameter] public List<UploadFile> Files { get; set; } = [];
     [Parameter] public EventCallback<List<UploadFile>> FilesChanged { get; set; }
+    public sealed record UploadRejection(string FileName, string Message);
+
+    /// <summary>Rejected selections. Server-side validation is still required.</summary>
+    [Parameter] public EventCallback<IReadOnlyList<UploadRejection>> OnRejected { get; set; }
+    private readonly List<UploadRejection> _errors = [];
+
     [Parameter] public bool Multiple { get; set; } = true;
     [Parameter] public string? Accept { get; set; }
     [Parameter] public int MaxFiles { get; set; } = 10;
@@ -104,11 +120,23 @@
     private async Task OnFilesChanged(InputFileChangeEventArgs e)
     {
         _isDragging = false;
-        var incoming = e.GetMultipleFiles(MaxFiles);
-        if (!Multiple) Files.Clear();
+        _errors.Clear();
+        var incoming = e.GetMultipleFiles(int.MaxValue);
+        var accepted = Multiple ? new List<UploadFile>(Files) : [];
+        var limit = Multiple ? Math.Max(0, MaxFiles) : Math.Min(1, Math.Max(0, MaxFiles));
 
         foreach (var file in incoming)
         {
+            if (file.Size > MaxFileSizeBytes)
+            {
+                _errors.Add(new(file.Name, $"Maximum file size is {FormatSize(MaxFileSizeBytes)}."));
+                continue;
+            }
+            if (accepted.Count >= limit)
+            {
+                _errors.Add(new(file.Name, $"Maximum number of files is {limit}."));
+                continue;
+            }
             var uf = new UploadFile
             {
                 Name        = file.Name,
@@ -122,21 +150,25 @@
                 try
                 {
                     var buf = new byte[file.Size];
-                    await file.OpenReadStream(MaxFileSizeBytes).ReadExactlyAsync(buf);
+                    await using var stream = file.OpenReadStream(MaxFileSizeBytes);
+                    await stream.ReadExactlyAsync(buf);
                     uf.PreviewUrl = $"data:{file.ContentType};base64,{Convert.ToBase64String(buf)}";
                 }
                 catch { }
             }
 
-            Files.Add(uf);
+            accepted.Add(uf);
         }
 
+        // Keep the previous single selection if its replacement was rejected.
+        if (Multiple || accepted.Count > 0) Files = accepted;
+        if (_errors.Count > 0) await OnRejected.InvokeAsync(_errors.ToArray());
         await FilesChanged.InvokeAsync(Files);
     }
 
     private async Task RemoveFile(UploadFile file)
     {
-        Files.Remove(file);
+        Files = Files.Where(f => !ReferenceEquals(f, file)).ToList();
         await FilesChanged.InvokeAsync(Files);
     }
 

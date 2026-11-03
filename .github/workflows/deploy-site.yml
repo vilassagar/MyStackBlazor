@@ -25,6 +25,18 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: src/MyStackBlazor/package-lock.json
+
+      - name: Build CSS
+        working-directory: src/MyStackBlazor
+        run: |
+          npm ci
+          npm run build:css
+
       - name: Restore
         run: dotnet restore site/MyStackBlazor.Site/MyStackBlazor.Site.csproj
 
@@ -37,7 +49,7 @@ jobs:
 
       - name: Set base href for GitHub Pages
         run: |
-          sed -i 's|<base href="/" />|<base href="/MyStackBlazor-Site/" />|g' \
+          sed -i 's|<base href="/" />|<base href="/MyStackBlazor/" />|g' \
             publish/wwwroot/index.html
 
       - name: Add .nojekyll (prevents GitHub Pages from skipping _framework)

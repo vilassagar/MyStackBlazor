@@ -37,7 +37,7 @@ dotnet add package MyStackBlazor
 Or manually:
 
 ```xml
-<PackageReference Include="MyStackBlazor" Version="1.2.2" />
+<PackageReference Include="MyStackBlazor" Version="1.4.0" />
 ```
 
 ## Setup
@@ -161,7 +161,7 @@ bool isDark = ThemeService.IsDark;
 
 ### Layout
 
-`StackCard`, `StackAccordion`, `StackCollapsible`, `StackScrollArea`, `StackAspectRatio`, `StackGridLayout`, `StackStackLayout`, `StackSplitter`, `StackCarousel`, `StackPanelBar`, `StackLoader`, `StackAnimationContainer`
+`StackCard`, `StackAccordion`, `StackCollapsible`, `StackScrollArea`, `StackAspectRatio`, `StackGridLayout`, `StackLayout`, `StackSplitter`, `StackCarousel`, `StackPanelBar`, `StackLoader`, `StackAnimationContainer`
 
 ### Navigation
 
@@ -216,6 +216,7 @@ Use the same `_content/MyStackBlazor/...` CSS/JS asset references in your MAUI w
 - `MyStackBlazor` (main package, 192 components)
 - `MyStackBlazor.Core`
 - `MyStackBlazor.DataGrid`
+- `MyStackBlazor.Calendar`
 - `MyStackBlazor.Accessibility`
 - `MyStackBlazor.Localization`
 - `MyStackBlazor.Security`
@@ -225,6 +226,13 @@ Install any add-on package with:
 ```bash
 dotnet add package MyStackBlazor.DataGrid
 ```
+
+## Reliability and security
+
+- Theme state is scoped per Blazor Server circuit. Keep `AddMyStackBlazor()` registrations scoped when customizing DI.
+- `StackDialog` traps keyboard focus, restores focus on close, and closes on Escape by default. Use `AriaLabelledBy` to reference a visible title (or supply `AriaLabel`), and `AriaDescribedBy` for descriptive text. Set `CloseOnEscape="false"` for flows that require an explicit decision.
+- `StackFileUpload` enforces `MaxFileSizeBytes` and the cumulative `MaxFiles` limit. Rejections appear inline and are available through `OnRejected`. Validate size, content, authorization, and storage names on the server as well; `Accept` is a browser hint.
+- CSV exports protect against spreadsheet formulas by default. The three-argument `ExportToCsv(..., spreadsheetSafe: false)` overload is only for trusted machine-to-machine data. JSON exports preserve native numbers, booleans, and nulls.
 
 ## Local Development
 
@@ -242,8 +250,8 @@ dotnet build samples/MyStackBlazor.Demo/MyStackBlazor.Demo.csproj
 Tailwind rebuild from `src/MyStackBlazor`:
 
 ```bash
-npm install
-npx @tailwindcss/cli -i ./tailwind/input.css -o ./wwwroot/css/mystackblazor.css --minify
+npm ci
+npm run build:css
 ```
 
 Pack NuGet:
@@ -251,6 +259,33 @@ Pack NuGet:
 ```powershell
 ./pack.ps1
 ```
+
+## Validation and releases
+
+CI builds CSS from `package-lock.json`, builds the solution, runs unit and Chromium browser tests, and checks the seven packed libraries and their internal dependency versions, and compiles a clean Razor consumer from those packages. Releases reuse this workflow and check out the exact release tag; the publishing job downloads the validated package artifact rather than rebuilding it.
+
+NuGet Trusted Publishing must authorize the `ci.yml` publishing workflow. For the Release Please path, ensure your NuGet publishing policy also permits the reusable-workflow caller (`release-please.yml`) as required by your policy. OIDC authentication is verified when a release runs; no credentials belong in this repository.
+
+The sanitizer tests run in a separate project so bUnit’s DOM parser dependency does not constrain the production sanitizer.
+
+Run unit tests:
+
+```bash
+dotnet test tests/MyStackBlazor.UnitTests -c Release
+dotnet test tests/MyStackBlazor.Security.Tests -c Release
+```
+
+Run browser tests after building the solution (PowerShell is required for browser installation):
+
+```powershell
+./tests/MyStackBlazor.E2ETests/bin/Release/net10.0/playwright.ps1 install chromium
+# Start the demo in a separate terminal:
+dotnet run --project samples/MyStackBlazor.Demo -c Release --no-launch-profile --urls http://127.0.0.1:5080
+# Then:
+dotnet test tests/MyStackBlazor.E2ETests -c Release
+```
+
+The browser tests use `http://127.0.0.1:5080/overlays` by default. Set `DEMO_BASE_URL` to the full overlays page URL to test another host.
 
 ## Contributing
 

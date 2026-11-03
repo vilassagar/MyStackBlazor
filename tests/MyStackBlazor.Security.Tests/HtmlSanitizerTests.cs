@@ -1,6 +1,6 @@
 using MyStackBlazor.Security;
 
-namespace MyStackBlazor.UnitTests.Components;
+namespace MyStackBlazor.Security.Tests;
 
 public class HtmlSanitizerTests
 {

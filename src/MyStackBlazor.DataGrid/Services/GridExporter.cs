@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using ClosedXML.Excel;
@@ -53,16 +54,30 @@ public static class GridExporter
 
     public static byte[] ExportToCsv<TItem>(
         IEnumerable<TItem> data,
-        IEnumerable<ColumnDefinition> columns)
+        IEnumerable<ColumnDefinition> columns) => ExportToCsv(data, columns, spreadsheetSafe: true);
+
+    /// <summary>Export CSV with formula protection enabled by default. Disable only for trusted machine-to-machine data.</summary>
+    public static byte[] ExportToCsv<TItem>(
+        IEnumerable<TItem> data,
+        IEnumerable<ColumnDefinition> columns,
+        bool spreadsheetSafe)
     {
         var colList = columns.ToList();
+        string Escape(string text) => CsvEscape(text, spreadsheetSafe);
+        string FormatValue(object? value) => value switch
+        {
+            // Keep real negative numbers numeric; formula protection applies to untrusted text.
+            byte or sbyte or short or ushort or int or uint or long or ulong or float or double or decimal
+                => CsvEscape(Convert.ToString(value, CultureInfo.InvariantCulture) ?? "", false),
+            _ => Escape(value?.ToString() ?? "")
+        };
         var sb = new StringBuilder();
 
-        sb.AppendLine(string.Join(",", colList.Select(c => CsvEscape(c.Title))));
+        sb.AppendLine(string.Join(",", colList.Select(c => Escape(c.Title))));
 
         foreach (var item in data)
             sb.AppendLine(string.Join(",",
-                colList.Select(c => CsvEscape(c.ValueSelector(item!)?.ToString() ?? ""))));
+                colList.Select(c => FormatValue(c.ValueSelector(item!)))));
 
         return Encoding.UTF8.GetBytes(sb.ToString());
     }
@@ -75,16 +90,21 @@ public static class GridExporter
         var rows = data.Select(item =>
             colList.ToDictionary(
                 c => c.Title,
-                c => (object?)(c.ValueSelector(item!)?.ToString() ?? "")));
+                c => c.ValueSelector(item!)));
 
         var json = JsonSerializer.Serialize(rows,
             new JsonSerializerOptions { WriteIndented = true });
         return Encoding.UTF8.GetBytes(json);
     }
 
-    private static string CsvEscape(string value)
+    private static string CsvEscape(string value, bool spreadsheetSafe)
     {
-        if (value.Contains(',') || value.Contains('"') || value.Contains('\n'))
+        // Quoting alone does not prevent formulas when a CSV is opened in Excel.
+        var trimmed = value.AsSpan().TrimStart();
+        if (spreadsheetSafe && (value.StartsWith('\t') || value.StartsWith('\r') || value.StartsWith('\n') ||
+            (!trimmed.IsEmpty && "=+-@".Contains(trimmed[0]))))
+            value = "'" + value;
+        if (value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r'))
             return $"\"{value.Replace("\"", "\"\"")}\"";
         return value;
     }

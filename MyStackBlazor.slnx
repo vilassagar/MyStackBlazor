@@ -11,6 +11,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/MyStackBlazor.UnitTests/MyStackBlazor.UnitTests.csproj" />
     <Project Path="tests/MyStackBlazor.E2ETests/MyStackBlazor.E2ETests.csproj" />
+    <Project Path="tests/MyStackBlazor.Security.Tests/MyStackBlazor.Security.Tests.csproj" />
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/MyStackBlazor.Demo/MyStackBlazor.Demo.csproj" />

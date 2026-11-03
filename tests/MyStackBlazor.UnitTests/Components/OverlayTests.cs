@@ -8,6 +8,42 @@ namespace MyStackBlazor.UnitTests.Components;
 
 public class DialogTests : TestContext
 {
+    public DialogTests()
+    {
+        var module = JSInterop.SetupModule("./_content/MyStackBlazor/js/dialog.js");
+        module.Mode = JSRuntimeMode.Loose;
+        module.Setup<bool>("isTop", _ => true).SetResult(true);
+    }
+
+    [Fact]
+    public void Dialog_Escape_Closes_And_Releases_Focus()
+    {
+        bool? result = null;
+        var cut = RenderComponent<Dialog>(p => p
+            .Add(d => d.IsOpen, true)
+            .Add(d => d.IsOpenChanged, v => result = v));
+        cut.Find("[role=dialog]").KeyDown(new KeyboardEventArgs { Key = "Escape" });
+        result.Should().BeFalse();
+        JSInterop.Invocations.Count(i => i.Identifier == "deactivate").Should().Be(1);
+    }
+
+    [Fact]
+    public void Dialog_Escape_Can_Be_Disabled_And_Title_Linked()
+    {
+        bool called = false;
+        var cut = RenderComponent<Dialog>(p => p
+            .Add(d => d.IsOpen, true)
+            .Add(d => d.CloseOnEscape, false)
+            .Add(d => d.AriaLabelledBy, "title")
+            .Add(d => d.IsOpenChanged, _ => called = true)
+            .AddChildContent("<h2 id='title'>Confirm</h2>"));
+        var panel = cut.Find("[role=dialog]");
+        panel.GetAttribute("aria-labelledby").Should().Be("title");
+        panel.HasAttribute("aria-label").Should().BeFalse();
+        panel.KeyDown(new KeyboardEventArgs { Key = "Escape" });
+        called.Should().BeFalse();
+    }
+
     [Fact]
     public void Dialog_IsOpen_False_DialogNotRendered()
     {
