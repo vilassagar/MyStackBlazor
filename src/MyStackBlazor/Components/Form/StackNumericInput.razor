@@ -72,7 +72,7 @@
     private double? _lastValue;
 
     private bool IsInvalid => _parseError ||
-        (_field is { } field && _validationContext?.GetValidationMessages(field).Any() == true);
+        (_field is { } fieldId && _validationContext?.GetValidationMessages(fieldId).Any() == true);
     private bool IsIncrementDisabled => Disabled || ReadOnly || (Max.HasValue && Value.HasValue && Value >= Max);
     private bool IsDecrementDisabled => Disabled || ReadOnly || (Min.HasValue && Value.HasValue && Value <= Min);
 
@@ -116,7 +116,7 @@
     {
         _parseError = invalid;
         _messages?.Clear();
-        if (invalid && _field is { } field) _messages?.Add(field, ParsingErrorMessage);
+        if (invalid && _field is { } fieldId) _messages?.Add(fieldId, ParsingErrorMessage);
         _validationContext?.NotifyValidationStateChanged();
     }
 
@@ -142,7 +142,7 @@
         else
         {
             SetParsingError(true);
-            if (_field is { } field) _validationContext?.NotifyFieldChanged(field);
+            if (_field is { } fieldId) _validationContext?.NotifyFieldChanged(fieldId);
         }
     }
 
@@ -153,7 +153,7 @@
         _lastValue = value;
         if (!preserveText) _inputText = null;
         await ValueChanged.InvokeAsync(value);
-        if (_field is { } field) _validationContext?.NotifyFieldChanged(field);
+        if (_field is { } fieldId) _validationContext?.NotifyFieldChanged(fieldId);
     }
 
     private async Task Increment()
