@@ -234,6 +234,21 @@ dotnet add package MyStackBlazor.DataGrid
 - `StackFileUpload` enforces `MaxFileSizeBytes` and the cumulative `MaxFiles` limit. Rejections appear inline and are available through `OnRejected`. Validate size, content, authorization, and storage names on the server as well; `Accept` is a browser hint.
 - CSV exports protect against spreadsheet formulas by default. The three-argument `ExportToCsv(..., spreadsheetSafe: false)` overload is only for trusted machine-to-machine data. JSON exports preserve native numbers, booleans, and nulls.
 
+## Currency, numeric inputs and overlays
+
+`StackCurrencyInput` accepts an explicit `Culture` used for both parsing and formatting. For example, `CultureInfo.GetCultureInfo("en-IN")` displays Indian grouping, while `de-DE` accepts a decimal comma. Set `CurrencySymbol="₹"` separately for rupee amounts.
+
+Both `StackCurrencyInput` and `StackNumericInput` support `ValueExpression`, `EditContext` validation, `ReadOnly`, accessible stepper labels and a configurable `ParsingErrorMessage`. Invalid input stays visible and adds a field validation error without overwriting the last valid model value. Use `ValidationMessage` or `ValidationSummary` in forms to display these errors. HTML number inputs use invariant wire values regardless of the application's culture.
+
+```razor
+<StackCurrencyInput @bind-Value="model.Amount"
+                    Culture="@System.Globalization.CultureInfo.GetCultureInfo("en-IN")"
+                    CurrencySymbol="₹" Min="0" />
+<ValidationMessage For="@(() => model.Amount)" />
+```
+
+Sheets and drawers use the same focus manager as dialogs. Supply `AriaLabelledBy` with a visible title ID, or set `AriaLabel`; use `CloseOnEscape="false"` when dismissal must require an explicit choice.
+
 ## Local Development
 
 ```bash

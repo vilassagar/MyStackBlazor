@@ -1,33 +1,41 @@
 @namespace MyStackBlazor.Components.Form
+@using System.Globalization
+@using System.Linq.Expressions
+@implements IDisposable
 
 <div class="@ContainerClass">
     <input type="number"
            id="@Id"
-           value="@Value"
-           min="@Min"
-           max="@Max"
-           step="@Step"
+           value="@DisplayValue"
+           min="@(Min?.ToString("R", CultureInfo.InvariantCulture))"
+           max="@(Max?.ToString("R", CultureInfo.InvariantCulture))"
+           step="@(Step.ToString("R", CultureInfo.InvariantCulture))"
            disabled="@Disabled"
+           readonly="@ReadOnly"
+           aria-invalid="@(IsInvalid ? "true" : null)"
            placeholder="@Placeholder"
            class="flex h-full w-full rounded-md bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
            @oninput="OnInputChanged"
+           @onblur="OnBlur"
            @attributes="AdditionalAttributes" />
     @if (ShowStepper)
     {
         <div class="flex flex-col border-l-2 border-input">
             <button type="button"
                     class="flex flex-1 items-center justify-center px-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+                    aria-label="@IncrementLabel"
                     disabled="@IsIncrementDisabled"
                     @onclick="Increment">
-                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg aria-hidden="true" focusable="false" class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <polyline points="18 15 12 9 6 15"></polyline>
                 </svg>
             </button>
             <button type="button"
                     class="flex flex-1 items-center justify-center border-t-2 border-input px-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+                    aria-label="@DecrementLabel"
                     disabled="@IsDecrementDisabled"
                     @onclick="Decrement">
-                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg aria-hidden="true" focusable="false" class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
             </button>
@@ -48,43 +56,137 @@
     [Parameter] public string? Class { get; set; }
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
 
-    private bool IsIncrementDisabled => Disabled || (Max.HasValue && Value.HasValue && Value >= Max);
-    private bool IsDecrementDisabled => Disabled || (Min.HasValue && Value.HasValue && Value <= Min);
+
+    [Parameter] public Expression<Func<double?>>? ValueExpression { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public string IncrementLabel { get; set; } = "Increase value";
+    [Parameter] public string DecrementLabel { get; set; } = "Decrease value";
+    [Parameter] public string ParsingErrorMessage { get; set; } = "Enter a valid number.";
+    [CascadingParameter] private EditContext? EditContext { get; set; }
+
+    private EditContext? _validationContext;
+    private FieldIdentifier? _field;
+    private ValidationMessageStore? _messages;
+    private string? _inputText;
+    private bool _parseError;
+    private double? _lastValue;
+
+    private bool IsInvalid => _parseError ||
+        (_field is { } fieldId && _validationContext?.GetValidationMessages(fieldId).Any() == true);
+    private bool IsIncrementDisabled => Disabled || ReadOnly || (Max.HasValue && Value.HasValue && Value >= Max);
+    private bool IsDecrementDisabled => Disabled || ReadOnly || (Min.HasValue && Value.HasValue && Value <= Min);
 
     private string ContainerClass =>
         $"relative flex h-10 w-full overflow-hidden rounded-md border-2 border-input bg-background ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 {Class}".Trim();
 
+    private string? DisplayValue => _inputText ?? Value?.ToString("R", CultureInfo.InvariantCulture);
+
+    protected override void OnParametersSet()
+    {
+        if (Min.HasValue && Max.HasValue && Min > Max)
+            throw new ArgumentException("Min cannot be greater than Max.");
+        if (Step <= 0 || !double.IsFinite(Step) || (Min.HasValue && !double.IsFinite(Min.Value)) || (Max.HasValue && !double.IsFinite(Max.Value)) || (Value.HasValue && !double.IsFinite(Value.Value)))
+            throw new ArgumentOutOfRangeException(nameof(Step), "Numeric settings must be finite and Step must be positive.");
+
+        FieldIdentifier? nextField = ValueExpression is null ? null : FieldIdentifier.Create(ValueExpression);
+        if (!ReferenceEquals(EditContext, _validationContext) || !Nullable.Equals(nextField, _field))
+        {
+            DetachValidation();
+            _validationContext = EditContext;
+            _field = nextField;
+            if (_validationContext is not null)
+            {
+                _validationContext.OnValidationStateChanged += OnValidationStateChanged;
+                _messages = new ValidationMessageStore(_validationContext);
+                if (_parseError && _field is { } invalidField) _messages.Add(invalidField, ParsingErrorMessage);
+            }
+        }
+        if (Value != _lastValue)
+        {
+            _lastValue = Value;
+            _inputText = null;
+            SetParsingError(false);
+        }
+    }
+
+    private void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs args) =>
+        _ = InvokeAsync(StateHasChanged);
+
+    private void SetParsingError(bool invalid)
+    {
+        _parseError = invalid;
+        _messages?.Clear();
+        if (invalid && _field is { } fieldId) _messages?.Add(fieldId, ParsingErrorMessage);
+        _validationContext?.NotifyValidationStateChanged();
+    }
+
+    private void OnBlur()
+    {
+        if (!_parseError) _inputText = null;
+    }
+
     private async Task OnInputChanged(ChangeEventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(e.Value?.ToString()))
+        if (Disabled || ReadOnly) return;
+        var raw = e.Value?.ToString();
+        _inputText = raw;
+        if (string.IsNullOrWhiteSpace(raw))
         {
-            Value = null;
-            await ValueChanged.InvokeAsync(null);
+            await SetValueAsync(null, preserveText: true);
             return;
         }
-        if (double.TryParse(e.Value?.ToString(), out var v))
+        // HTML number inputs always exchange invariant numbers, regardless of UI culture.
+        var valid = double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
+            && double.IsFinite(parsed);
+        if (valid) await SetValueAsync(Clamp(parsed), preserveText: true);
+        else
         {
-            Value = Clamp(v);
-            await ValueChanged.InvokeAsync(Value);
+            SetParsingError(true);
+            if (_field is { } fieldId) _validationContext?.NotifyFieldChanged(fieldId);
         }
+    }
+
+    private async Task SetValueAsync(double? value, bool preserveText = false)
+    {
+        SetParsingError(false);
+        Value = value;
+        _lastValue = value;
+        if (!preserveText) _inputText = null;
+        await ValueChanged.InvokeAsync(value);
+        if (_field is { } fieldId) _validationContext?.NotifyFieldChanged(fieldId);
     }
 
     private async Task Increment()
     {
-        Value = Clamp((Value ?? 0) + Step);
-        await ValueChanged.InvokeAsync(Value);
+        if (IsIncrementDisabled) return;
+        var next = (Value ?? 0) + Step;
+        if (!double.IsFinite(next)) next = double.MaxValue;
+        await SetValueAsync(Clamp(next));
     }
 
     private async Task Decrement()
     {
-        Value = Clamp((Value ?? 0) - Step);
-        await ValueChanged.InvokeAsync(Value);
+        if (IsDecrementDisabled) return;
+        var next = (Value ?? 0) - Step;
+        if (!double.IsFinite(next)) next = double.MinValue;
+        await SetValueAsync(Clamp(next));
     }
 
-    private double Clamp(double v)
+    private double Clamp(double value)
     {
-        if (Min.HasValue && v < Min.Value) return Min.Value;
-        if (Max.HasValue && v > Max.Value) return Max.Value;
-        return v;
+        if (Min.HasValue && value < Min.Value) return Min.Value;
+        if (Max.HasValue && value > Max.Value) return Max.Value;
+        return value;
     }
+
+    private void DetachValidation()
+    {
+        if (_validationContext is null) return;
+        _validationContext.OnValidationStateChanged -= OnValidationStateChanged;
+        _messages?.Clear();
+        _validationContext.NotifyValidationStateChanged();
+        _messages = null;
+    }
+
+    public void Dispose() => DetachValidation();
 }
