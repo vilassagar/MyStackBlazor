@@ -244,8 +244,9 @@
             _htmlView = true;
             return;
         }
+        var html = await JS.InvokeAsync<string>("MyStackBlazor.editorSanitize", _source ?? "");
         _htmlView = false;
-        await OnEditorInput(_source ?? "");
+        await OnEditorInput(html);
         _pushPending = true;
     }
 

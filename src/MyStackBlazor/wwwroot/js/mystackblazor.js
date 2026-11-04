@@ -492,38 +492,61 @@ window.MyStackBlazor = {
     //  Rich-text editor (contenteditable). HTML is sanitized before it enters the editable area:
     //  inline event handlers, scripts and javascript: URLs would otherwise run.
     // ----------------------------------------------------------------
-    _editorSanitize(html) {
-        const doc = new DOMParser().parseFromString(`<body>${html || ''}</body>`, 'text/html');
-        doc.querySelectorAll('script,style,iframe,object,embed,link,meta,base,form,input,button,textarea,select').forEach(n => n.remove());
-        doc.body.querySelectorAll('*').forEach(el => {
-            for (const attr of [...el.attributes]) {
-                const name = attr.name.toLowerCase(), value = attr.value.trim().toLowerCase();
-                if (name.startsWith('on') || name === 'srcdoc') el.removeAttribute(attr.name);
-                else if (['href', 'src', 'xlink:href', 'action', 'formaction'].includes(name)
-                         && (value.startsWith('javascript:') || value.startsWith('vbscript:') || (value.startsWith('data:') && !value.startsWith('data:image/'))))
-                    el.removeAttribute(attr.name);
+    _editorSafeUrl(value, image) {
+        try {
+            const url = new URL(value, document.baseURI);
+            return ['https:', 'http:'].includes(url.protocol) ||
+                (!image && ['mailto:', 'tel:'].includes(url.protocol));
+        } catch {
+            return false;
+        }
+    },
+
+    editorSanitize(html) {
+        const template = document.createElement('template');
+        template.innerHTML = html || '';
+        const tags = new Set('a b blockquote br caption code col colgroup dd del div dl dt em font h1 h2 h3 h4 h5 h6 hr i img li ol p pre s small span strike strong sub sup table tbody td tfoot th thead tr u ul'.split(' '));
+        const attributes = new Set('alt color colspan face height rowspan size start style title width'.split(' '));
+        const styles = new Set('background-color color font-family font-size font-style font-weight max-width text-align text-decoration text-indent vertical-align'.split(' '));
+        for (const el of template.content.querySelectorAll('*')) {
+            if (el.namespaceURI !== 'http://www.w3.org/1999/xhtml' || !tags.has(el.localName)) {
+                el.remove();
+                continue;
             }
-        });
-        return doc.body.innerHTML;
+            for (const { name, value } of [...el.attributes]) {
+                if ((el.localName === 'a' && name === 'href') || (el.localName === 'img' && name === 'src')) {
+                    if (!this._editorSafeUrl(value, name === 'src')) el.removeAttribute(name);
+                } else if (!(el.localName === 'a' && name === 'target' && value === '_blank') && !attributes.has(name)) {
+                    el.removeAttribute(name);
+                }
+            }
+            if (el.getAttribute('target') === '_blank') el.setAttribute('rel', 'noopener noreferrer');
+            if (el.hasAttribute('style')) {
+                for (const property of [...el.style]) {
+                    if (!styles.has(property)) el.style.removeProperty(property);
+                }
+            }
+        }
+        return template.innerHTML;
     },
 
     editorInit(el, dotnet, html, debounce) {
         if (!el || el._msEditor) return;
         const state = el._msEditor = { dotnet, timer: 0, lastState: '' };
-        el.innerHTML = this._editorSanitize(html);
+        el.innerHTML = this.editorSanitize(html);
         try { document.execCommand('styleWithCSS', false, true); } catch { }
         const empty = () => el.classList.toggle('ms-empty', el.textContent.trim() === '' && !el.querySelector('img,table,hr'));
         empty();
         state.publish = () => {
             clearTimeout(state.timer);
-            state.timer = setTimeout(() => dotnet.invokeMethodAsync('OnEditorInput', el.innerHTML), debounce || 0);
+            state.timer = setTimeout(() => dotnet.invokeMethodAsync('OnEditorInput', this.editorSanitize(el.innerHTML)), debounce || 0);
         };
         const onInput = () => { empty(); state.publish(); };
         const onPaste = (e) => {
             const html = e.clipboardData?.getData('text/html');
             if (!html) return;
             e.preventDefault();
-            document.execCommand('insertHTML', false, this._editorSanitize(html));
+            document.execCommand('insertHTML', false, this.editorSanitize(html));
         };
         const report = () => {
             const sel = document.getSelection();
@@ -540,11 +563,16 @@ window.MyStackBlazor = {
         };
         state.onSelection = () => requestAnimationFrame(report);
         el.addEventListener('input', onInput);
+        const onDrop = e => {
+            if (e.dataTransfer?.types.includes('text/html')) e.preventDefault();
+        };
         el.addEventListener('paste', onPaste);
+        el.addEventListener('drop', onDrop);
         document.addEventListener('selectionchange', state.onSelection);
         state.dispose = () => {
             el.removeEventListener('input', onInput);
             el.removeEventListener('paste', onPaste);
+            el.removeEventListener('drop', onDrop);
             document.removeEventListener('selectionchange', state.onSelection);
             clearTimeout(state.timer);
         };
@@ -552,7 +580,7 @@ window.MyStackBlazor = {
 
     editorSetHtml(el, html) {
         if (!el?._msEditor) return;
-        el.innerHTML = this._editorSanitize(html);
+        el.innerHTML = this.editorSanitize(html);
         el.classList.toggle('ms-empty', el.textContent.trim() === '' && !el.querySelector('img,table,hr'));
     },
 
@@ -571,8 +599,9 @@ window.MyStackBlazor = {
             sel.removeAllRanges();
             sel.addRange(state.range);
         }
-        if (command === 'insertHTML') value = this._editorSanitize(value);
-        if (command === 'createLink' && /^\s*(javascript|vbscript):/i.test(value || '')) return;
+        if (command === 'insertHTML') value = this.editorSanitize(value);
+        if ((command === 'createLink' || command === 'insertImage') &&
+            !this._editorSafeUrl(value, command === 'insertImage')) return;
         document.execCommand(command, false, value ?? null);
         el.classList.toggle('ms-empty', el.textContent.trim() === '' && !el.querySelector('img,table,hr'));
         state.publish();

@@ -507,38 +507,40 @@ public class RatingTests : TestContext
 public class NumericInputTests : TestContext
 {
     [Fact]
-    public void NumericInput_Renders_NumberInput()
+    public void NumericInput_Renders_Decimal_Keyboard_Hint()
     {
         var cut = RenderComponent<NumericInput>();
-        cut.Find("input[type=number]").Should().NotBeNull();
+        cut.Find("input[inputmode=decimal]").Should().NotBeNull();
     }
 
     [Fact]
     public void NumericInput_Placeholder_SetOnInput()
     {
         var cut = RenderComponent<NumericInput>(p => p.Add(n => n.Placeholder, "0.00"));
-        cut.Find("input[type=number]").GetAttribute("placeholder").Should().Be("0.00");
+        cut.Find("input[inputmode=decimal]").GetAttribute("placeholder").Should().Be("0.00");
     }
 
     [Fact]
     public void NumericInput_Disabled_SetOnInput()
     {
         var cut = RenderComponent<NumericInput>(p => p.Add(n => n.Disabled, true));
-        cut.Find("input[type=number]").HasAttribute("disabled").Should().BeTrue();
+        cut.Find("input[inputmode=decimal]").HasAttribute("disabled").Should().BeTrue();
     }
 
     [Fact]
     public void NumericInput_Min_SetOnInput()
     {
         var cut = RenderComponent<NumericInput>(p => p.Add(n => n.Min, 0.0));
-        cut.Find("input[type=number]").GetAttribute("min").Should().Be("0");
+        cut.Find("input").Input("-1");
+        cut.Instance.Value.Should().Be(0);
     }
 
     [Fact]
     public void NumericInput_Max_SetOnInput()
     {
         var cut = RenderComponent<NumericInput>(p => p.Add(n => n.Max, 999.0));
-        cut.Find("input[type=number]").GetAttribute("max").Should().Be("999");
+        cut.Find("input").Input("1000");
+        cut.Instance.Value.Should().Be(999);
     }
 
     [Fact]
@@ -557,7 +559,7 @@ public class NumericInputTests : TestContext
                 EventCallback.Factory.Create<double?>(this, v => result = v)));
 
         // Component uses @oninput, so InputAsync triggers ValueChanged
-        await cut.Find("input[type=number]").InputAsync(new ChangeEventArgs { Value = "42" });
+        await cut.Find("input[inputmode=decimal]").InputAsync(new ChangeEventArgs { Value = "42" });
 
         result.Should().Be(42.0);
     }
