@@ -47,7 +47,7 @@
 
     private string ComputedClass => Side switch
     {
-        "left"   => $"fixed left-0 inset-y-0 h-full w-3/4 sm:max-w-sm border-r bg-background p-6 shadow-lg animate-slide-in-from-right {Class}".Trim(),
+        "left"   => $"fixed left-0 inset-y-0 h-full w-3/4 sm:max-w-sm border-r bg-background p-6 shadow-lg animate-slide-in-from-left {Class}".Trim(),
         "top"    => $"fixed top-0 inset-x-0 w-full border-b bg-background p-6 shadow-lg {Class}".Trim(),
         "bottom" => $"fixed bottom-0 inset-x-0 w-full border-t bg-background p-6 shadow-lg animate-slide-in-from-bottom {Class}".Trim(),
         _        => $"fixed right-0 inset-y-0 h-full w-3/4 sm:max-w-sm border-l bg-background p-6 shadow-lg animate-slide-in-from-right {Class}".Trim(),
