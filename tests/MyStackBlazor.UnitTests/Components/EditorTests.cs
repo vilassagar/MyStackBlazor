@@ -44,6 +44,23 @@ public class EditorTests : TestContext
     }
 
     [Fact]
+    public void Html_Source_Publishes_Sanitized_Output()
+    {
+        const string source = "<p onclick='alert(1)'>Hello</p>";
+        const string sanitized = "<p>Hello</p>";
+        JSInterop.Setup<string>("MyStackBlazor.editorSanitize", invocation => Equals(invocation.Arguments[0], source)).SetResult(sanitized);
+        string? published = null;
+        var cut = RenderComponent<StackEditor>(p => p
+            .Add(e => e.Tools, EditorToolSets.All)
+            .Add(e => e.ValueChanged, value => published = value));
+        cut.Find("button[aria-label='View HTML']").Click();
+        cut.Find("textarea[aria-label='HTML source']").Input(source);
+        cut.Find("button[aria-label='View HTML']").Click();
+
+        published.Should().Be(sanitized);
+    }
+
+    [Fact]
     public async Task Selection_State_Marks_Buttons_And_Format()
     {
         var cut = RenderComponent<StackEditor>();

@@ -64,6 +64,8 @@
     [Parameter] public string IncrementLabel { get; set; } = "Increase value";
     [Parameter] public string DecrementLabel { get; set; } = "Decrease value";
     [Parameter] public string ParsingErrorMessage { get; set; } = "Enter a valid number.";
+    [Parameter] public string PrecisionErrorMessage { get; set; } = "Enter an amount with fewer decimal places.";
+    [Parameter] public string RangeErrorMessage { get; set; } = "Enter an amount within the allowed range.";
     [Parameter] public CultureInfo? Culture { get; set; }
     [CascadingParameter] private EditContext? EditContext { get; set; }
 
@@ -71,12 +73,12 @@
     private FieldIdentifier? _field;
     private ValidationMessageStore? _messages;
     private string? _inputText;
-    private bool _parseError;
+    private string? _inputError;
     private decimal? _lastValue;
     private bool _focused;
     private CultureInfo ActiveCulture => Culture ?? CultureInfo.CurrentCulture;
 
-    private bool IsInvalid => _parseError ||
+    private bool IsInvalid => _inputError is not null ||
         (_field is { } fieldId && _validationContext?.GetValidationMessages(fieldId).Any() == true);
     private bool IsIncrementDisabled => Disabled || ReadOnly || (Max.HasValue && Value.HasValue && Value >= Max);
     private bool IsDecrementDisabled => Disabled || ReadOnly || (Min.HasValue && Value.HasValue && Value <= Min);
@@ -84,7 +86,15 @@
     private string ContainerClass =>
         $"relative flex h-10 w-full items-stretch overflow-hidden rounded-md border-2 border-input bg-background ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 {Class}".Trim();
 
-    private string? DisplayValue => _inputText ?? Value?.ToString(_focused ? $"F{DecimalPlaces}" : $"N{DecimalPlaces}", ActiveCulture);
+    private string? DisplayValue => _inputText ?? (Value is { } amount ? FormatAmount(amount, grouped: !_focused) : null);
+
+    private string FormatAmount(decimal amount, bool grouped)
+    {
+        var format = (grouped ? "#,0" : "0") +
+            (DecimalPlaces == 0 ? "." : "." + new string('0', DecimalPlaces)) +
+            new string('#', 28 - DecimalPlaces);
+        return amount.ToString(format, ActiveCulture);
+    }
 
     protected override void OnParametersSet()
     {
@@ -104,37 +114,37 @@
             {
                 _validationContext.OnValidationStateChanged += OnValidationStateChanged;
                 _messages = new ValidationMessageStore(_validationContext);
-                if (_parseError && _field is { } invalidField) _messages.Add(invalidField, ParsingErrorMessage);
+                if (_inputError is { } error && _field is { } invalidField) _messages.Add(invalidField, error);
             }
         }
         if (Value != _lastValue)
         {
             _lastValue = Value;
             _inputText = null;
-            SetParsingError(false);
+            SetInputError(null);
         }
     }
 
     private void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs args) =>
         _ = InvokeAsync(StateHasChanged);
 
-    private void SetParsingError(bool invalid)
+    private void SetInputError(string? error)
     {
-        _parseError = invalid;
+        _inputError = error;
         _messages?.Clear();
-        if (invalid && _field is { } fieldId) _messages?.Add(fieldId, ParsingErrorMessage);
+        if (error is not null && _field is { } fieldId) _messages?.Add(fieldId, error);
         _validationContext?.NotifyValidationStateChanged();
     }
 
     private void OnFocus()
     {
         _focused = true;
-        _inputText ??= Value?.ToString($"F{DecimalPlaces}", ActiveCulture);
+        _inputText ??= Value is { } amount ? FormatAmount(amount, grouped: false) : null;
     }
     private void OnBlur()
     {
         _focused = false;
-        if (!_parseError) _inputText = null;
+        if (_inputError is null) _inputText = null;
     }
 
     private async Task OnInputChanged(ChangeEventArgs e)
@@ -150,18 +160,26 @@
         // Parsing and formatting use the same culture, including decimal/group separators.
         var parseCulture = (CultureInfo)ActiveCulture.Clone();
         parseCulture.NumberFormat.CurrencySymbol = CurrencySymbol;
-        var valid = decimal.TryParse(raw, NumberStyles.Currency, parseCulture, out var parsed);
-        if (valid) await SetValueAsync(Clamp(parsed), preserveText: true);
+        string? error = null;
+        if (!decimal.TryParse(raw, NumberStyles.Currency, parseCulture, out var parsed))
+            error = ParsingErrorMessage;
+        else if (decimal.Round(parsed, DecimalPlaces) != parsed)
+            error = PrecisionErrorMessage;
+        else if (Clamp(parsed) != parsed)
+            error = RangeErrorMessage;
+
+        if (error is null)
+            await SetValueAsync(parsed, preserveText: true);
         else
         {
-            SetParsingError(true);
+            SetInputError(error);
             if (_field is { } fieldId) _validationContext?.NotifyFieldChanged(fieldId);
         }
     }
 
     private async Task SetValueAsync(decimal? value, bool preserveText = false)
     {
-        SetParsingError(false);
+        SetInputError(null);
         Value = value;
         _lastValue = value;
         if (!preserveText) _inputText = null;

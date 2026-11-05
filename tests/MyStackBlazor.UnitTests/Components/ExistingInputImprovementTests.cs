@@ -40,8 +40,11 @@ public class ExistingInputImprovementTests : TestContext
         cut.Find("input").GetAttribute("value").Should().Be("12.00");
     }
 
-    [Fact]
-    public void Currency_Invalid_Text_Preserves_Model_And_Blocks_Form_Validation()
+    [Theory]
+    [InlineData("invalid")]
+    [InlineData("12.345")]
+    [InlineData("101")]
+    public void Currency_Invalid_Text_Preserves_Model_And_Blocks_Form_Validation(string text)
     {
         var model = new AmountModel { Amount = 10m };
         var context = new EditContext(model);
@@ -49,9 +52,13 @@ public class ExistingInputImprovementTests : TestContext
             .Add(c => c.Value, context)
             .AddChildContent<StackCurrencyInput>(p => p
                 .Add(c => c.Value, model.Amount)
+                .Add(c => c.Max, 100m)
+                .Add(c => c.Culture, CultureInfo.InvariantCulture)
                 .Add(c => c.ValueExpression, () => model.Amount)
                 .Add(c => c.ValueChanged, value => model.Amount = value)));
-        cut.Find("input").Input("invalid");
+        cut.Find("input").Input(text);
+        cut.Find("input").Blur();
+        cut.Find("input").GetAttribute("value").Should().Be(text);
         model.Amount.Should().Be(10m);
         context.Validate().Should().BeFalse();
         context.GetValidationMessages(new FieldIdentifier(model, nameof(model.Amount))).Should().ContainSingle();
@@ -74,7 +81,7 @@ public class ExistingInputImprovementTests : TestContext
                 .Add(c => c.Step, 0.5)
                 .Add(c => c.ValueChanged, value => result = value));
             cut.Find("input").GetAttribute("value").Should().Be("1.5");
-            cut.Find("input").GetAttribute("step").Should().Be("0.5");
+            cut.Find("input").GetAttribute("inputmode").Should().Be("decimal");
             cut.Find("input").Input("2.75");
             result.Should().Be(2.75);
         }
@@ -92,7 +99,7 @@ public class ExistingInputImprovementTests : TestContext
                 .Add(c => c.Value, model.Quantity)
                 .Add(c => c.ValueExpression, () => model.Quantity)
                 .Add(c => c.ValueChanged, value => model.Quantity = value)));
-        cut.Find("input").Input("NaN");
+        cut.Find("input").Input("1e-");
         model.Quantity.Should().Be(5);
         context.Validate().Should().BeFalse();
         cut.Find("input").Input("");
@@ -101,13 +108,13 @@ public class ExistingInputImprovementTests : TestContext
     }
 
     [Fact]
-    public void Currency_Clamp_And_ReadOnly_Are_Enforced_By_Event_Handlers()
+    public void Currency_Stepper_Clamp_And_ReadOnly_Are_Enforced_By_Event_Handlers()
     {
         decimal? result = null;
         var cut = RenderComponent<StackCurrencyInput>(p => p
-            .Add(c => c.Min, 0m).Add(c => c.Max, 10m)
+            .Add(c => c.Min, 0m).Add(c => c.Max, 10m).Add(c => c.Value, 9m).Add(c => c.Step, 2m)
             .Add(c => c.ValueChanged, value => result = value));
-        cut.Find("input").Input("50");
+        cut.Find("button[aria-label='Increase value']").Click();
         result.Should().Be(10m);
         cut.SetParametersAndRender(p => p.Add(c => c.ReadOnly, true));
         cut.Find("input").Input("2");
