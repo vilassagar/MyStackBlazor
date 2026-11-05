@@ -1,7 +1,7 @@
 @namespace MyStackBlazor.Components.Common
 @inject ThemeService ThemeService
 @inject IJSRuntime JS
-@implements IDisposable
+@implements IAsyncDisposable
 
 <div id="msb-theme-root"
      class="@(ThemeService.IsDark ? "dark" : "") contents text-foreground bg-background">
@@ -11,7 +11,16 @@
 @code {
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
+    private readonly string _listenerId = Guid.NewGuid().ToString("N");
     private DotNetObjectReference<StackThemeProvider>? _dotnetRef;
+    private AppTheme _lastMode;
+    private bool _ready;
+    private bool _disposed;
+
+    private sealed record ThemePreferences(string? Mode, bool SystemDark);
+
+    protected override void OnInitialized() =>
+        ThemeService.OnThemeChanged += OnThemeChanged;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -20,39 +29,61 @@
         _dotnetRef = DotNetObjectReference.Create(this);
         try
         {
-            await JS.InvokeVoidAsync("MyStackBlazor.initTheme", _dotnetRef);
+            var preferences = await JS.InvokeAsync<ThemePreferences>(
+                "MyStackBlazor.initTheme", _listenerId, _dotnetRef);
+            if (_disposed)
+            {
+                await JS.InvokeVoidAsync("MyStackBlazor.disposeTheme", _listenerId);
+                return;
+            }
+
+            var mode = preferences.Mode switch
+            {
+                "light" => AppTheme.Light,
+                "dark" => AppTheme.Dark,
+                "system" => AppTheme.System,
+                _ => ThemeService.Theme
+            };
+            ThemeService.NotifySystemPreference(preferences.SystemDark);
+            ThemeService.SetTheme(mode);
+            _lastMode = mode;
+            _ready = true;
+            StateHasChanged();
         }
-        catch
-        {
-            // JS not available yet or MAUI startup — safe to ignore
-        }
+        catch (JSException) { }
     }
 
     [JSInvokable]
     public void NotifySystemDark(bool isDark)
     {
-        ThemeService.NotifySystemPreference(isDark);
-        StateHasChanged();
+        if (!_disposed) ThemeService.NotifySystemPreference(isDark);
     }
-
-    protected override void OnInitialized() =>
-        ThemeService.OnThemeChanged += OnThemeChanged;
 
     private void OnThemeChanged()
     {
-        _ = PersistAndRefresh();
+        if (!_ready || _disposed) return;
+
+        _ = InvokeAsync(async () =>
+        {
+            if (_disposed) return;
+            StateHasChanged();
+            var mode = ThemeService.Theme;
+            if (mode == _lastMode) return;
+
+            _lastMode = mode;
+            try { await JS.InvokeVoidAsync("MyStackBlazor.setTheme", mode.ToString().ToLowerInvariant()); }
+            catch (JSException) { }
+        });
     }
 
-    private async Task PersistAndRefresh()
+    public async ValueTask DisposeAsync()
     {
-        try { await JS.InvokeVoidAsync("MyStackBlazor.setTheme", ThemeService.IsDark); }
-        catch { }
-        await InvokeAsync(StateHasChanged);
-    }
-
-    public void Dispose()
-    {
+        _disposed = true;
         ThemeService.OnThemeChanged -= OnThemeChanged;
-        _dotnetRef?.Dispose();
+        if (_dotnetRef is null) return;
+
+        try { await JS.InvokeVoidAsync("MyStackBlazor.disposeTheme", _listenerId); }
+        catch (JSException) { }
+        finally { _dotnetRef.Dispose(); }
     }
 }

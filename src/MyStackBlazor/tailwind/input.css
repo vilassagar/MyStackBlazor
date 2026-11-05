@@ -36,10 +36,10 @@
   --color-muted-foreground:     hsl(215 20% 46%);
   --color-accent:               hsl(214 100% 91%);
   --color-accent-foreground:    hsl(224 76% 35%);
-  --color-destructive:          hsl(0 84.2% 60.2%);
+  --color-destructive:          hsl(0 74% 43%);
   --color-destructive-foreground: hsl(0 0% 100%);
   --color-border:               hsl(220 13% 75%);
-  --color-input:                hsl(220 13% 75%);
+  --color-input:                hsl(220 13% 52%);
   --color-ring:                 hsl(221 83% 53%);
 
   /* Border radius */
@@ -50,6 +50,7 @@
   /* Animations */
   --animate-accordion-down:       accordion-down 0.2s ease-out;
   --animate-accordion-up:         accordion-up 0.2s ease-out;
+  --animate-slide-in-from-left:   slide-in-from-left 0.3s ease-out;
   --animate-slide-in-from-right:  slide-in-from-right 0.3s ease-out;
   --animate-slide-out-to-right:   slide-out-to-right 0.3s ease-in;
   --animate-slide-in-from-bottom: slide-in-from-bottom 0.3s ease-out;
@@ -64,6 +65,10 @@
   @keyframes accordion-up {
     from { height: var(--radix-accordion-content-height, auto); }
     to   { height: 0; }
+  }
+  @keyframes slide-in-from-left {
+    from { transform: translateX(-100%); }
+    to   { transform: translateX(0); }
   }
   @keyframes slide-in-from-right {
     from { transform: translateX(100%); }
@@ -94,7 +99,9 @@
 /* ------------------------------------------------------------------ */
 /*  Dark theme token overrides  — deep navy + vivid-blue accents        */
 /* ------------------------------------------------------------------ */
-.dark {
+.dark,
+:root:has(#msb-theme-root.dark) {
+  color-scheme: dark;
   --color-background:           hsl(222.2 84% 4.9%);
   --color-foreground:           hsl(210 40% 98%);
   --color-card:                 hsl(222 75% 7.5%);
@@ -112,7 +119,7 @@
   --color-destructive:          hsl(0 62.8% 30.6%);
   --color-destructive-foreground: hsl(210 40% 98%);
   --color-border:               hsl(220 13% 28%);
-  --color-input:                hsl(220 13% 28%);
+  --color-input:                hsl(220 13% 48%);
   --color-ring:                 hsl(213 90% 68%);
 }
 
@@ -168,5 +175,15 @@
   /* MAUI / mobile: prevent tap highlight */
   button, [role="button"] {
     -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-accordion-down, .animate-accordion-up,
+  .animate-slide-in-from-left, .animate-slide-in-from-right,
+  .animate-slide-out-to-right, .animate-slide-in-from-bottom,
+  .animate-fade-in, .animate-fade-out, .animate-pulse {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
   }
 }

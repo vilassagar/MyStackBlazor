@@ -5,36 +5,29 @@ window.MyStackBlazor = {
     // ----------------------------------------------------------------
     THEME_KEY: 'msb-theme',
 
-    initTheme(dotnetRef) {
-        const saved = this._getStoredTheme();
-        const isDark = saved === 'dark' ||
-            (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    _themeListeners: new Map(),
 
-        // Notify Blazor of the resolved OS preference
-        if (dotnetRef) {
-            dotnetRef.invokeMethodAsync('NotifySystemDark',
-                window.matchMedia('(prefers-color-scheme: dark)').matches);
-        }
+    initTheme(id, dotnetRef) {
+        this.disposeTheme(id);
+        const media = window.matchMedia('(prefers-color-scheme: dark)');
+        const listener = e => {
+            dotnetRef.invokeMethodAsync('NotifySystemDark', e.matches).catch(() => {});
+        };
+        media.addEventListener('change', listener);
+        this._themeListeners.set(id, () => media.removeEventListener('change', listener));
 
-        // Watch OS changes
-        window.matchMedia('(prefers-color-scheme: dark)')
-            .addEventListener('change', e => {
-                if (dotnetRef) {
-                    dotnetRef.invokeMethodAsync('NotifySystemDark', e.matches);
-                }
-            });
-
-        return isDark;
+        let mode = null;
+        try { mode = localStorage.getItem(this.THEME_KEY); } catch { }
+        return { mode, systemDark: media.matches };
     },
 
-    setTheme(isDark) {
-        try {
-            localStorage.setItem(this.THEME_KEY, isDark ? 'dark' : 'light');
-        } catch { /* MAUI WebView may restrict localStorage */ }
+    disposeTheme(id) {
+        this._themeListeners.get(id)?.();
+        this._themeListeners.delete(id);
     },
 
-    _getStoredTheme() {
-        try { return localStorage.getItem(this.THEME_KEY); } catch { return null; }
+    setTheme(mode) {
+        try { localStorage.setItem(this.THEME_KEY, mode); } catch { }
     },
 
     // ----------------------------------------------------------------
