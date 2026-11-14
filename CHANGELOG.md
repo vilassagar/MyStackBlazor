@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.5.0](https://github.com/vilassagar/MyStackBlazor/compare/v1.4.0...v1.5.0) (2026-11-14)
+
+
+### Features
+
+* add TagInput, CopyButton, StatCard, DescriptionList, Sparkline, Countdown, InfiniteScroll, BottomNavigation ([a64abf5](https://github.com/vilassagar/MyStackBlazor/commit/a64abf52aad22ad056b5548f1229526df160a215))
+
+
+### Bug Fixes
+
+* avoid contextual field keyword in validation properties ([8548e93](https://github.com/vilassagar/MyStackBlazor/commit/8548e935979fc1a9b9a032fe28c4eb789ab58def))
+* compile on all .NET 10 SDK bands ([a38b412](https://github.com/vilassagar/MyStackBlazor/commit/a38b4128ca39932897213f4927af10b5c3cc6bbf))
+* improve numeric form validation and sheet drawer accessibility ([920cb18](https://github.com/vilassagar/MyStackBlazor/commit/920cb184027f1d5308b8af5d68ffce340fb41129))
+* isolate UI state and validate component releases ([0fd691f](https://github.com/vilassagar/MyStackBlazor/commit/0fd691fec2ee9f777d01b59b265a155928c7b1d2))
+
 ## [1.2.2] - 2026-06-20
 
 ### Bug Fixes
