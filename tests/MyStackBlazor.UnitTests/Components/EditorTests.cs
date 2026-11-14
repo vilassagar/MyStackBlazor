@@ -112,6 +112,9 @@ public class EditorTests : TestContext
     public void View_Html_Edits_Source()
     {
         string? value = "<p>a</p>";
+        // Source edits are sanitized in JS before they are applied; echo the input back here.
+        JSInterop.Setup<string>("MyStackBlazor.editorSanitize", invocation => Equals(invocation.Arguments[0], "<h1>b</h1>"))
+            .SetResult("<h1>b</h1>");
         var cut = RenderComponent<StackEditor>(p => p
             .Add(e => e.Value, "<p>a</p>")
             .Add(e => e.Tools, [new ViewHtml()])
