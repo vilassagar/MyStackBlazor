@@ -12,13 +12,13 @@
         <ul class="flex flex-col border-l border-border">
             @foreach (var s in _sections.Where(s => s.Level <= MaxLevel))
             {
-                var section = s;
-                var active = section.Id == _activeId;
+                var entry = s;
+                var active = entry.Id == _activeId;
                 <li>
-                    <a href="@($"#{section.Id}")"
-                       class="@($"-ml-px block border-l-2 py-1 transition-colors {Indent(section.Level)} {(active ? "border-primary font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}")"
+                    <a href="@($"#{entry.Id}")"
+                       class="@($"-ml-px block border-l-2 py-1 transition-colors {Indent(entry.Level)} {(active ? "border-primary font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}")"
                        aria-current="@(active ? "location" : null)"
-                       @onclick="() => GoToAsync(section.Id)" @onclick:preventDefault="true">@section.Text</a>
+                       @onclick="() => GoToAsync(entry.Id)" @onclick:preventDefault="true">@entry.Text</a>
                 </li>
             }
         </ul>
