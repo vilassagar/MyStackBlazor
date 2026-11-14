@@ -1,0 +1,74 @@
+@namespace MyStackBlazor.Components.Data
+
+@*
+    Key/value details (order summary, profile fields, record metadata) rendered as a semantic <dl>.
+    <StackDescriptionList Columns="2">
+        <StackDescriptionItem Term="Patient ID">MRN-0042</StackDescriptionItem>
+        <StackDescriptionItem Term="Status"><StackBadge>Active</StackBadge></StackDescriptionItem>
+    </StackDescriptionList>
+*@
+<CascadingValue Value="this" IsFixed="true">
+    <dl class="@ComputedClass" @attributes="AdditionalAttributes">
+        @if (Items is not null)
+        {
+            @foreach (var item in Items)
+            {
+                @if (string.IsNullOrEmpty(item.Value))
+                {
+                    <StackDescriptionItem Term="@item.Key" />
+                }
+                else
+                {
+                    <StackDescriptionItem Term="@item.Key">@item.Value</StackDescriptionItem>
+                }
+            }
+        }
+        @ChildContent
+    </dl>
+</CascadingValue>
+
+@code {
+    /// <summary><see cref="StackDescriptionItem"/> children.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Shortcut for plain text pairs: each key is a term, each value its description.</summary>
+    [Parameter] public IEnumerable<KeyValuePair<string, string?>>? Items { get; set; }
+
+    /// <summary>
+    /// horizontal (default): term on the left, description on the right (stacks on small screens).
+    /// vertical: term above description.
+    /// </summary>
+    [Parameter] public string Orientation { get; set; } = "horizontal";
+
+    /// <summary>Number of columns on medium screens and up (1-4). Vertical orientation only.</summary>
+    [Parameter] public int Columns { get; set; } = 1;
+
+    /// <summary>Draw a divider between rows.</summary>
+    [Parameter] public bool Divided { get; set; } = true;
+
+    /// <summary>Text shown when an item has no content.</summary>
+    [Parameter] public string EmptyText { get; set; } = "—";
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    internal bool IsHorizontal => !string.Equals(Orientation, "vertical", StringComparison.OrdinalIgnoreCase);
+
+    private string ComputedClass
+    {
+        get
+        {
+            if (IsHorizontal)
+                return $"text-sm {(Divided ? "divide-y divide-border" : "")} {Class}".Trim();
+
+            var cols = Math.Clamp(Columns, 1, 4) switch
+            {
+                2 => "md:grid-cols-2",
+                3 => "md:grid-cols-3",
+                4 => "md:grid-cols-4",
+                _ => "",
+            };
+            return $"grid grid-cols-1 gap-x-6 gap-y-4 text-sm {cols} {Class}".Trim();
+        }
+    }
+}

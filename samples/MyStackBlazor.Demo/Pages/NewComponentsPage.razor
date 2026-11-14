@@ -1,0 +1,160 @@
+@page "/new"
+
+<PageTitle>New in 1.5 — MyStackBlazor Demo</PageTitle>
+
+<h1 class="text-3xl font-bold mb-1">New in 1.5</h1>
+<p class="text-muted-foreground mb-8">Tag input, copy button, stat cards, description lists, sparklines, countdown, infinite scroll and mobile bottom navigation.</p>
+
+<DemoSection Title="Tag Input"
+             Description="Type and press Enter or comma. Paste &quot;a, b, c&quot; to add several. Backspace removes the last tag."
+             Code="@_tagCode">
+    <div class="w-full max-w-md space-y-2">
+        <StackTagInput @bind-Values="_tags" MaxTags="6" ShowCounter="true" AriaLabel="Skills" />
+        <p class="text-xs text-muted-foreground">Bound value: @string.Join(", ", _tags)</p>
+    </div>
+</DemoSection>
+
+<DemoSection Title="Copy Button"
+             Description="Copies text to the clipboard and confirms for two seconds. Falls back to execCommand in MAUI WebViews."
+             Code="@_copyCode">
+    <div class="flex items-center gap-2 rounded-md border bg-muted px-3 py-2 font-mono text-sm">
+        <span>dotnet add package MyStackBlazor</span>
+        <StackCopyButton Text="dotnet add package MyStackBlazor" Label="Copy install command" />
+    </div>
+    <StackCopyButton Text="MRN-000042" ShowText="true" Variant="outline" Label="Copy MRN" />
+</DemoSection>
+
+<DemoSection Title="Stat Cards + Sparklines"
+             Description="KPI tiles with trend colouring. InvertTrend makes a drop green (costs, churn, wait times)."
+             Code="@_statCode">
+    <div class="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <StackStatCard Label="Revenue" Value="₹4.2L" Change="12.5m" ChangeLabel="vs last month" Icon="indian-rupee">
+            <StackSparkline Values="_revenue" Fill="true" Responsive="true" AriaLabel="Revenue, last 12 weeks" />
+        </StackStatCard>
+        <StackStatCard Label="Avg. wait time" Value="14 min" Change="-8.2m" InvertTrend="true" ChangeLabel="vs last week" Icon="clock">
+            <StackSparkline Values="_wait" Type="bar" Responsive="true" ColorClass="text-muted-foreground" />
+        </StackStatCard>
+        <StackStatCard Label="Active users" Loading="true" Icon="users" />
+    </div>
+</DemoSection>
+
+<DemoSection Title="Description List"
+             Description="Semantic &lt;dl&gt; for record details. Horizontal by default; vertical supports up to four columns."
+             Code="@_dlCode">
+    <div class="grid w-full gap-8 lg:grid-cols-2">
+        <StackDescriptionList>
+            <StackDescriptionItem Term="Patient">Asha Patil</StackDescriptionItem>
+            <StackDescriptionItem Term="MRN">MRN-000042 <StackCopyButton Text="MRN-000042" Class="ml-1 h-6 w-6" /></StackDescriptionItem>
+            <StackDescriptionItem Term="Status"><StackBadge Variant="secondary">Admitted</StackBadge></StackDescriptionItem>
+            <StackDescriptionItem Term="Insurance" />
+        </StackDescriptionList>
+        <StackDescriptionList Orientation="vertical" Columns="2" Items="_order" />
+    </div>
+</DemoSection>
+
+<DemoSection Title="Countdown"
+             Description="Blocks or compact format; CompletedContent replaces the timer at zero."
+             Code="@_countdownCode">
+    <StackCountdown Target="_saleEnds" />
+    <div class="flex items-center gap-2 text-sm">
+        Resend OTP in
+        <StackCountdown Target="_otp" Format="compact" Class="font-medium">
+            <CompletedContent><StackButton Size="sm" Variant="link" OnClick="ResetOtp">Resend now</StackButton></CompletedContent>
+        </StackCountdown>
+    </div>
+</DemoSection>
+
+<DemoSection Title="Infinite Scroll"
+             Description="Loads the next page when the end scrolls into view (IntersectionObserver)."
+             Code="@_infiniteCode">
+    <StackInfiniteScroll OnLoadMore="LoadMoreAsync" HasMore="HasMoreFeed" MaxHeight="260px" ShowLoadMoreButton="true"
+                         Class="w-full max-w-md rounded-md border">
+        <ChildContent>
+            @foreach (var n in _feed)
+            {
+                <div class="border-b px-4 py-3 text-sm">Notification #@n</div>
+            }
+        </ChildContent>
+        <EndContent><p class="text-center text-xs text-muted-foreground">You're all caught up</p></EndContent>
+    </StackInfiniteScroll>
+</DemoSection>
+
+<DemoSection Title="Bottom Navigation"
+             Description="Mobile tab bar for phones and MAUI Hybrid. Shown inline here; it is fixed to the bottom by default and hidden on desktop."
+             Code="@_bottomNavCode">
+    <div class="w-full max-w-sm overflow-hidden rounded-xl border">
+        <div class="flex h-24 items-center justify-center text-sm text-muted-foreground">Selected: @_tab</div>
+        <StackBottomNavigation @bind-Value="_tab" Fixed="false" HideOnDesktop="false">
+            <StackBottomNavigationItem Value="home" Icon="house" Label="Home" />
+            <StackBottomNavigationItem Value="search" Icon="search" Label="Search" />
+            <StackBottomNavigationItem Value="inbox" Icon="inbox" Label="Inbox" Badge="3" />
+            <StackBottomNavigationItem Value="profile" Icon="user" Label="Profile" Badge="" />
+        </StackBottomNavigation>
+    </div>
+</DemoSection>
+
+@code {
+    private IReadOnlyList<string> _tags = ["Blazor", "MAUI", "Tailwind"];
+    private readonly double[] _revenue = [3.1, 3.4, 3.2, 3.6, 3.5, 3.9, 3.8, 4.0, 3.9, 4.1, 4.0, 4.2];
+    private readonly double[] _wait = [22, 19, 21, 18, 17, 16, 15, 14];
+    private readonly Dictionary<string, string?> _order = new()
+    {
+        ["Order"] = "#10482", ["Placed"] = "14 Nov 2026", ["Items"] = "3", ["Total"] = "₹2,340",
+    };
+    private readonly DateTimeOffset _saleEnds = DateTimeOffset.Now.AddDays(1).AddHours(5);
+    private DateTimeOffset _otp = DateTimeOffset.Now.AddSeconds(30);
+    private readonly List<int> _feed = Enumerable.Range(1, 15).ToList();
+    private string? _tab = "home";
+
+    private bool HasMoreFeed => _feed.Count < 60;
+
+    private void ResetOtp() => _otp = DateTimeOffset.Now.AddSeconds(30);
+
+    private async Task LoadMoreAsync()
+    {
+        await Task.Delay(600);
+        var next = _feed.Count + 1;
+        _feed.AddRange(Enumerable.Range(next, 15));
+    }
+
+    private const string _tagCode = """
+        <StackTagInput @bind-Values="_tags" MaxTags="6" ShowCounter="true" AriaLabel="Skills" />
+        """;
+    private const string _copyCode = """
+        <StackCopyButton Text="dotnet add package MyStackBlazor" />
+        <StackCopyButton Text="MRN-000042" ShowText="true" Variant="outline" Label="Copy MRN" />
+        """;
+    private const string _statCode = """
+        <StackStatCard Label="Revenue" Value="₹4.2L" Change="12.5m" ChangeLabel="vs last month" Icon="indian-rupee">
+            <StackSparkline Values="_revenue" Fill="true" Responsive="true" />
+        </StackStatCard>
+        <StackStatCard Label="Avg. wait time" Value="14 min" Change="-8.2m" InvertTrend="true" />
+        """;
+    private const string _dlCode = """
+        <StackDescriptionList>
+            <StackDescriptionItem Term="Patient">Asha Patil</StackDescriptionItem>
+            <StackDescriptionItem Term="Status"><StackBadge>Admitted</StackBadge></StackDescriptionItem>
+        </StackDescriptionList>
+        <StackDescriptionList Orientation="vertical" Columns="2" Items="_order" />
+        """;
+    private const string _countdownCode = """
+        <StackCountdown Target="_saleEnds" />
+        <StackCountdown Target="_otp" Format="compact">
+            <CompletedContent><StackButton Variant="link" OnClick="ResetOtp">Resend now</StackButton></CompletedContent>
+        </StackCountdown>
+        """;
+    private const string _infiniteCode = """
+        <StackInfiniteScroll OnLoadMore="LoadMoreAsync" HasMore="_hasMore" MaxHeight="260px">
+            @foreach (var n in _feed) { <div>Notification #@n</div> }
+        </StackInfiniteScroll>
+        """;
+    private const string _bottomNavCode = """
+        <StackBottomNavigation @bind-Value="_tab">
+            <StackBottomNavigationItem Value="home" Icon="house" Label="Home" />
+            <StackBottomNavigationItem Value="inbox" Icon="inbox" Label="Inbox" Badge="3" />
+        </StackBottomNavigation>
+
+        @* Route mode *@
+        <StackBottomNavigationItem Href="/orders" Icon="package" Label="Orders" />
+        """;
+}

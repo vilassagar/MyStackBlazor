@@ -10,7 +10,7 @@ A modern Blazor component library powered by Tailwind CSS v4.
 [![Tailwind CSS v4](https://img.shields.io/badge/Tailwind%20CSS-v4-06B6D4?logo=tailwindcss)](https://tailwindcss.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-192 components - Blazor WASM / Server / MAUI Hybrid - Light / Dark / System - Zero external JS dependencies
+280+ components - Blazor WASM / Server / MAUI Hybrid - Light / Dark / System - Zero external JS dependencies
 
 [Live Demo](https://vilassagar.github.io/MyStackBlazor/)
 
@@ -22,7 +22,7 @@ A modern Blazor component library powered by Tailwind CSS v4.
 
 MyStackBlazor is a production-ready UI library for .NET 10 Blazor applications.
 
-- 192 components across Common, Form, Layout, Navigation, Overlays, Data, Charts, Blocks, and Templates
+- 280+ components across Common, Form, Layout, Navigation, Overlays, Data, Charts, Media, Chat, Blocks, and Templates
 - Tailwind CSS v4 styling (precompiled CSS included)
 - Built-in theming via `ThemeService` and `StackThemeProvider`
 - Accessibility-focused patterns and keyboard support
@@ -34,10 +34,23 @@ MyStackBlazor is a production-ready UI library for .NET 10 Blazor applications.
 dotnet add package MyStackBlazor
 ```
 
+Optional add-on packages (each has its own README on nuget.org):
+
+| Package | What it adds | Register |
+|---|---|---|
+| [MyStackBlazor.DataGrid](https://www.nuget.org/packages/MyStackBlazor.DataGrid) | Virtualized server-side grid, grouping, Excel export | `AddMyStackBlazorDataGrid()` |
+| [MyStackBlazor.Calendar](https://www.nuget.org/packages/MyStackBlazor.Calendar) | Calendar / scheduler (day, week, month, timeline, agenda) | `AddMyStackBlazorCalendar()` |
+| [MyStackBlazor.Security](https://www.nuget.org/packages/MyStackBlazor.Security) | HTML sanitizer, token providers | `AddMyStackBlazorSecurity()` |
+| [MyStackBlazor.Localization](https://www.nuget.org/packages/MyStackBlazor.Localization) | RTL provider, localized labels | `AddMyStackBlazorLocalization()` |
+| [MyStackBlazor.Accessibility](https://www.nuget.org/packages/MyStackBlazor.Accessibility) | Focus management, ARIA helpers (included by MyStackBlazor) | `AddMyStackBlazorAccessibility()` |
+| [MyStackBlazor.Core](https://www.nuget.org/packages/MyStackBlazor.Core) | State primitives (included by MyStackBlazor) | — |
+
+All packages ship XML docs for IntelliSense and symbol packages with SourceLink, so you can step into library code while debugging.
+
 Or manually:
 
 ```xml
-<PackageReference Include="MyStackBlazor" Version="1.4.0" />
+<PackageReference Include="MyStackBlazor" Version="1.*" />
 ```
 
 ## Setup
@@ -153,19 +166,19 @@ bool isDark = ThemeService.IsDark;
 
 ### Common
 
-`StackButton`, `StackBadge`, `StackAvatar`, `StackIcon`, `StackTypography`, `StackLabel`, `StackSeparator`, `StackSkeleton`, `StackSpinner`, `StackThemeToggle`
+`StackButton`, `StackBadge`, `StackAvatar`, `StackIcon`, `StackTypography`, `StackLabel`, `StackSeparator`, `StackSkeleton`, `StackSpinner`, `StackThemeToggle`, `StackCopyButton`, `StackCountdown`
 
 ### Form
 
-`StackInput`, `StackTextarea`, `StackSelect`, `StackCheckbox`, `StackSwitch`, `StackRadioGroup`, `StackNumericInput`, `StackSlider`, `StackRangeSlider`, `StackDatePicker`, `StackDateRangePicker`, `StackDateTimePicker`, `StackTimePicker`, `StackInputOtp`, `StackColorPicker`, `StackColorPalette`, `StackMaskedTextBox`, `StackMultiSelect`, `StackCombobox`, `StackAutoComplete`, `StackListBox`, `StackFileUpload`
+`StackInput`, `StackTextarea`, `StackSelect`, `StackCheckbox`, `StackSwitch`, `StackRadioGroup`, `StackNumericInput`, `StackSlider`, `StackRangeSlider`, `StackDatePicker`, `StackDateRangePicker`, `StackDateTimePicker`, `StackTimePicker`, `StackInputOtp`, `StackColorPicker`, `StackColorPalette`, `StackMaskedTextBox`, `StackMultiSelect`, `StackCombobox`, `StackAutoComplete`, `StackListBox`, `StackFileUpload`, `StackTagInput`
 
 ### Layout
 
-`StackCard`, `StackAccordion`, `StackCollapsible`, `StackScrollArea`, `StackAspectRatio`, `StackGridLayout`, `StackLayout`, `StackSplitter`, `StackCarousel`, `StackPanelBar`, `StackLoader`, `StackAnimationContainer`
+`StackCard`, `StackAccordion`, `StackCollapsible`, `StackScrollArea`, `StackAspectRatio`, `StackGridLayout`, `StackLayout`, `StackSplitter`, `StackCarousel`, `StackPanelBar`, `StackLoader`, `StackAnimationContainer`, `StackInfiniteScroll`
 
 ### Navigation
 
-`StackTabs`, `StackBreadcrumb`, `StackPagination`, `StackSidebar`, `StackAppBar`, `StackMenubar`, `StackDropdownMenu`, `StackContextMenu`, `StackToggleButton`, `StackToolbar`, `StackStepper`, `StackWizard`, `StackWorkflow`
+`StackTabs`, `StackBreadcrumb`, `StackPagination`, `StackSidebar`, `StackAppBar`, `StackMenubar`, `StackDropdownMenu`, `StackContextMenu`, `StackToggleButton`, `StackToolbar`, `StackStepper`, `StackWizard`, `StackWorkflow`, `StackBottomNavigation`
 
 ### Overlays
 
@@ -173,11 +186,11 @@ bool isDark = ThemeService.IsDark;
 
 ### Data
 
-`StackAlert`, `StackTable`, `StackDataTable`, `StackAdvancedTable`, `StackPivotGrid`, `StackTreeView`, `StackTreeList`, `StackListView`, `StackFileManager`, `StackMsVirtualList`, `StackMsCalendar`, `StackMsPivotGrid`
+`StackAlert`, `StackStatCard`, `StackDescriptionList`, `StackTable`, `StackDataTable`, `StackAdvancedTable`, `StackPivotGrid`, `StackTreeView`, `StackTreeList`, `StackListView`, `StackFileManager`, `StackMsVirtualList`, `StackMsCalendar`, `StackMsPivotGrid`
 
 ### Charts
 
-`StackLineChart`, `StackBarChart`, `StackPieChart`, `StackGaugeChart`
+`StackLineChart`, `StackBarChart`, `StackPieChart`, `StackDoughnutChart`, `StackGaugeChart`, `StackRadarChart`, `StackScatterChart`, `StackHeatMapChart`, `StackSankeyChart`, `StackTimeSeriesChart`, `StackSparkline`
 
 ### Blocks and Templates
 
@@ -301,6 +314,16 @@ dotnet test tests/MyStackBlazor.E2ETests -c Release
 ```
 
 The browser tests use `http://127.0.0.1:5080/overlays` by default. Set `DEMO_BASE_URL` to the full overlays page URL to test another host.
+
+### Tailwind CSS and packaging
+
+The compiled `mystackblazor.css` is committed. Run `npm ci` once in `src/MyStackBlazor` and normal builds will rebuild it whenever a `.razor` file changes. Without `node_modules` the build uses the committed CSS. Pass `/p:SkipTailwind=true` to skip the step.
+
+The package version comes from `version.txt` (release-please bumps it). NuGet versions for every project live in `Directory.Packages.props`, and shared package metadata lives in `src/Directory.Build.props`.
+
+```bash
+dotnet pack src/MyStackBlazor -c Release   # -> nupkg/MyStackBlazor.<version>.nupkg + .snupkg
+```
 
 ## Contributing
 
