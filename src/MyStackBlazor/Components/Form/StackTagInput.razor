@@ -1,0 +1,201 @@
+@namespace MyStackBlazor.Components.Form
+@using System.Linq.Expressions
+
+@*
+    Free-text tag entry: type a value and press Enter (or a separator) to turn it into a tag.
+    Backspace on an empty box removes the last tag. Pasting "a, b, c" adds three tags.
+*@
+<div class="@BoxClass" @onclick="FocusInputAsync" @attributes="AdditionalAttributes">
+    <ul role="list" aria-label="@(AriaLabel ?? "Tags")" class="contents">
+        @foreach (var tag in _tags)
+        {
+            var current = tag;
+            <li class="inline-flex max-w-full items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
+                <span class="truncate">@current</span>
+                @if (!Disabled && !ReadOnly)
+                {
+                    <button type="button"
+                            class="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-background hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            aria-label="@($"Remove {current}")"
+                            @onclick="() => RemoveAsync(current)"
+                            @onclick:stopPropagation="true">
+                        <svg class="h-3 w-3" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                }
+            </li>
+        }
+    </ul>
+    @if (!ReadOnly && !IsFull)
+    {
+        <input @ref="_input"
+               id="@Id"
+               type="text"
+               class="h-7 min-w-[6rem] flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+               placeholder="@(_tags.Count == 0 ? Placeholder : null)"
+               disabled="@Disabled"
+               aria-label="@(AriaLabel ?? Placeholder ?? "Add tag")"
+               aria-invalid="@(IsInvalid ? "true" : null)"
+               value="@_text"
+               @oninput="OnInput"
+               @onkeydown="OnKeyDownAsync"
+               @onblur="OnBlurAsync" />
+    }
+</div>
+@if (MaxTags is int max && ShowCounter)
+{
+    <p class="mt-1 text-xs text-muted-foreground" aria-live="polite">@_tags.Count / @max</p>
+}
+
+@code {
+    private ElementReference _input;
+    private string _text = "";
+    private List<string> _tags = [];
+    private FieldIdentifier? _field;
+
+    /// <summary>The current tags. Use with <c>@bind-Values</c>.</summary>
+    [Parameter] public IReadOnlyList<string>? Values { get; set; }
+
+    /// <summary>Raised with the new tag list whenever a tag is added or removed.</summary>
+    [Parameter] public EventCallback<IReadOnlyList<string>> ValuesChanged { get; set; }
+
+    /// <summary>Identifies the bound field for <see cref="EditForm"/> validation.</summary>
+    [Parameter] public Expression<Func<IReadOnlyList<string>?>>? ValuesExpression { get; set; }
+
+    /// <summary>Raised when a single tag is added.</summary>
+    [Parameter] public EventCallback<string> OnTagAdded { get; set; }
+
+    /// <summary>Raised when a single tag is removed.</summary>
+    [Parameter] public EventCallback<string> OnTagRemoved { get; set; }
+
+    /// <summary>Characters (besides Enter) that commit the typed text as a tag. Default: comma.</summary>
+    [Parameter] public string Separators { get; set; } = ",";
+
+    /// <summary>Maximum number of tags. The input is hidden once reached.</summary>
+    [Parameter] public int? MaxTags { get; set; }
+
+    /// <summary>Show a "n / max" counter under the box when <see cref="MaxTags"/> is set.</summary>
+    [Parameter] public bool ShowCounter { get; set; }
+
+    /// <summary>Allow the same tag twice. Comparison follows <see cref="CaseSensitive"/>.</summary>
+    [Parameter] public bool AllowDuplicates { get; set; }
+
+    /// <summary>Treat "Blazor" and "blazor" as different tags.</summary>
+    [Parameter] public bool CaseSensitive { get; set; }
+
+    /// <summary>Commit the typed text as a tag when the input loses focus.</summary>
+    [Parameter] public bool AddOnBlur { get; set; } = true;
+
+    /// <summary>Optional rule; return false to reject a tag (for example, an e-mail check).</summary>
+    [Parameter] public Func<string, bool>? Validate { get; set; }
+
+    [Parameter] public string? Placeholder { get; set; } = "Add a tag…";
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    [CascadingParameter] private EditContext? EditContext { get; set; }
+
+    private bool IsFull => MaxTags is int max && _tags.Count >= max;
+
+    private bool IsInvalid => EditContext is not null && _field is { } f && EditContext.GetValidationMessages(f).Any();
+
+    private StringComparer Comparer => CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+
+    private string BoxClass =>
+        "flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-md border-2 border-input bg-background px-2 py-1.5 " +
+        "ring-offset-background transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 " +
+        (Disabled ? "cursor-not-allowed opacity-50 " : "cursor-text ") +
+        (IsInvalid ? "border-destructive focus-within:ring-destructive " : "") +
+        Class;
+
+    protected override void OnParametersSet()
+    {
+        _tags = Values?.ToList() ?? [];
+        if (ValuesExpression is not null && _field is null) _field = FieldIdentifier.Create(ValuesExpression);
+    }
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        var text = e.Value?.ToString() ?? "";
+        // Typing or pasting a separator commits everything before it.
+        if (Separators.Length > 0 && text.IndexOfAny(Separators.ToCharArray()) >= 0)
+        {
+            var parts = text.Split(Separators.ToCharArray());
+            _text = parts[^1];
+            await AddManyAsync(parts[..^1]);
+        }
+        else
+        {
+            _text = text;
+        }
+    }
+
+    private async Task OnKeyDownAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await AddManyAsync([_text]);
+            _text = "";
+        }
+        else if (e.Key == "Backspace" && _text.Length == 0 && _tags.Count > 0)
+        {
+            await RemoveAsync(_tags[^1]);
+        }
+    }
+
+    private async Task OnBlurAsync()
+    {
+        if (AddOnBlur && !string.IsNullOrWhiteSpace(_text))
+        {
+            await AddManyAsync([_text]);
+            _text = "";
+        }
+    }
+
+    /// <summary>Adds a tag from code. Returns false when it was rejected (blank, duplicate, invalid or full).</summary>
+    public async Task<bool> AddAsync(string tag) => await AddManyAsync([tag]) > 0;
+
+    private async Task<int> AddManyAsync(IEnumerable<string> candidates)
+    {
+        var added = new List<string>();
+        foreach (var raw in candidates)
+        {
+            var tag = raw.Trim();
+            if (tag.Length == 0 || IsFull) continue;
+            if (!AllowDuplicates && _tags.Contains(tag, Comparer)) continue;
+            if (Validate is not null && !Validate(tag)) continue;
+            _tags.Add(tag);
+            added.Add(tag);
+        }
+        if (added.Count == 0) return 0;
+
+        await NotifyAsync();
+        foreach (var tag in added) await OnTagAdded.InvokeAsync(tag);
+        return added.Count;
+    }
+
+    /// <summary>Removes a tag from code.</summary>
+    public async Task RemoveAsync(string tag)
+    {
+        if (!_tags.Remove(tag)) return;
+        await NotifyAsync();
+        await OnTagRemoved.InvokeAsync(tag);
+    }
+
+    private async Task NotifyAsync()
+    {
+        await ValuesChanged.InvokeAsync(_tags.ToList());
+        if (_field is { } f) EditContext?.NotifyFieldChanged(f);
+    }
+
+    private async Task FocusInputAsync()
+    {
+        if (Disabled || ReadOnly || IsFull) return;
+        try { await _input.FocusAsync(); } catch (InvalidOperationException) { /* not rendered yet */ }
+    }
+}

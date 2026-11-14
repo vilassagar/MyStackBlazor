@@ -1,0 +1,115 @@
+@namespace MyStackBlazor.Components.Common
+@inject IJSRuntime JS
+@implements IDisposable
+
+@*
+    Copies text to the clipboard and briefly shows a "copied" state.
+    Works in Blazor WASM, Server and MAUI Hybrid (falls back to execCommand where the Clipboard API is missing).
+*@
+<button type="button"
+        class="@ComputedClass"
+        disabled="@Disabled"
+        aria-label="@(_copied ? CopiedLabel : Label)"
+        title="@(_copied ? CopiedLabel : Label)"
+        data-state="@(_copied ? "copied" : "idle")"
+        @onclick="CopyAsync"
+        @attributes="AdditionalAttributes">
+    @if (_copied)
+    {
+        <StackLucideIcon Name="check" Size="sm" Class="text-green-600 dark:text-green-400" />
+    }
+    else
+    {
+        <StackLucideIcon Name="copy" Size="sm" />
+    }
+    @if (ShowText)
+    {
+        <span>@(_copied ? CopiedLabel : Label)</span>
+    }
+    <span class="sr-only" role="status">@(_copied ? CopiedLabel : "")</span>
+</button>
+
+@code {
+    private bool _copied;
+    private CancellationTokenSource? _resetCts;
+
+    /// <summary>Text to copy. Ignored when <see cref="TextFactory"/> is set.</summary>
+    [Parameter] public string? Text { get; set; }
+
+    /// <summary>Produces the text at click time (for example, the current editor content).</summary>
+    [Parameter] public Func<Task<string?>>? TextFactory { get; set; }
+
+    /// <summary>Raised after a successful copy with the copied text.</summary>
+    [Parameter] public EventCallback<string> OnCopied { get; set; }
+
+    /// <summary>Raised when the browser refuses clipboard access.</summary>
+    [Parameter] public EventCallback<Exception> OnError { get; set; }
+
+    [Parameter] public string Label { get; set; } = "Copy";
+    [Parameter] public string CopiedLabel { get; set; } = "Copied";
+
+    /// <summary>Show the label next to the icon. When false the button is icon-only.</summary>
+    [Parameter] public bool ShowText { get; set; }
+
+    /// <summary>How long the "copied" state stays visible.</summary>
+    [Parameter] public TimeSpan ResetAfter { get; set; } = TimeSpan.FromSeconds(2);
+
+    /// <summary>ghost (default), outline, secondary.</summary>
+    [Parameter] public string Variant { get; set; } = "ghost";
+
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string ComputedClass =>
+        $"inline-flex items-center justify-center gap-1.5 rounded-md text-sm font-medium transition-colors " +
+        $"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
+        $"disabled:pointer-events-none disabled:opacity-50 {(ShowText ? "h-8 px-3" : "h-8 w-8")} {VariantClass} {Class}".Trim();
+
+    private string VariantClass => Variant switch
+    {
+        "outline"   => "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+        "secondary" => "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        _           => "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+    };
+
+    private async Task CopyAsync()
+    {
+        var text = TextFactory is not null ? await TextFactory() : Text;
+        if (string.IsNullOrEmpty(text)) return;
+
+        try
+        {
+            await JS.InvokeVoidAsync("MyStackBlazor.copyToClipboard", text);
+        }
+        catch (JSException ex)
+        {
+            await OnError.InvokeAsync(ex);
+            return;
+        }
+
+        _copied = true;
+        await OnCopied.InvokeAsync(text);
+        _ = ResetLaterAsync();
+    }
+
+    private async Task ResetLaterAsync()
+    {
+        _resetCts?.Cancel();
+        _resetCts?.Dispose();
+        _resetCts = new CancellationTokenSource();
+        try
+        {
+            await Task.Delay(ResetAfter, _resetCts.Token);
+            _copied = false;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (TaskCanceledException) { }
+    }
+
+    public void Dispose()
+    {
+        _resetCts?.Cancel();
+        _resetCts?.Dispose();
+    }
+}

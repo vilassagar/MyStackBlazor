@@ -22,7 +22,8 @@ env:
 jobs:
   build-and-test:
     name: Build, Test & Pack
-    runs-on: ubuntu-latest
+    # Pinned: Playwright 1.52 cannot install Chromium on ubuntu-latest (26.04).
+    runs-on: ubuntu-24.04
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -101,7 +102,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: validated-packages
-          path: nupkgs/*.nupkg
+          path: |
+            nupkgs/*.nupkg
+            nupkgs/*.snupkg
           if-no-files-found: error
 
       - name: Upload test results

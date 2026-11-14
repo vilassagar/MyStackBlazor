@@ -1,10 +1,72 @@
 <Project>
-  <!-- NuGet links shared by every package under src/. nuget.org shows these in the package sidebar. -->
+  <!--
+    Shared build + NuGet settings for every package under src/.
+    Per-project csproj files only set what is unique to them: PackageId, Description, PackageTags (and Product).
+  -->
+
+  <!-- Version: single source of truth is /version.txt (bumped by release-please).
+       CI overrides with /p:Version=<tag> when publishing. -->
   <PropertyGroup>
+    <VersionPrefix>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)../version.txt').Trim())</VersionPrefix>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <!-- NuGet metadata shown on nuget.org -->
+  <PropertyGroup>
+    <Authors>Vilas Sagar</Authors>
+    <Company>MyStackBlazor</Company>
+    <Copyright>Copyright © 2025-$([System.DateTime]::UtcNow.Year) Vilas Sagar</Copyright>
+    <NeutralLanguage>en</NeutralLanguage>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <!-- "Project website" link: the live demo -->
     <PackageProjectUrl>https://vilassagar.github.io/MyStackBlazor/</PackageProjectUrl>
     <!-- "Source repository" link -->
     <RepositoryUrl>https://github.com/vilassagar/MyStackBlazor</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
+    <PackageReleaseNotes>See https://github.com/vilassagar/MyStackBlazor/blob/master/CHANGELOG.md</PackageReleaseNotes>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageOutputPath>$(MSBuildThisFileDirectory)../nupkg</PackageOutputPath>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <IncludeContentInPack>true</IncludeContentInPack>
   </PropertyGroup>
+
+  <!-- IntelliSense: ship XML docs. Undocumented public members are not treated as warnings. -->
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591;CS1573;CS1572;CS1574;CS1584;CS1580;CS1587;CS1658;CS1711;CS1734</NoWarn>
+  </PropertyGroup>
+
+  <!-- Debugging into the library: SourceLink (built into the .NET SDK) + symbol packages (.snupkg) -->
+  <PropertyGroup>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <EnablePackageValidation>true</EnablePackageValidation>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true' or '$(CI)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <!-- Package icon + README. A project-level README.md wins; otherwise the repo README is used. -->
+  <PropertyGroup>
+    <_MsbProjectReadme>$(MSBuildProjectDirectory)/README.md</_MsbProjectReadme>
+    <_MsbRepoReadme>$(MSBuildThisFileDirectory)../README.md</_MsbRepoReadme>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)../icon.png" Pack="true" PackagePath="/" Visible="false" />
+    <None Include="$(_MsbProjectReadme)" Pack="true" PackagePath="/" Visible="false" Condition="Exists('$(_MsbProjectReadme)')" />
+    <None Include="$(_MsbRepoReadme)" Pack="true" PackagePath="/" Visible="false" Condition="!Exists('$(_MsbProjectReadme)')" />
+  </ItemGroup>
 </Project>

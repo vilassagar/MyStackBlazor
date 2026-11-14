@@ -1,0 +1,134 @@
+@namespace MyStackBlazor.Components.Charts
+@using System.Globalization
+@using System.Text
+
+@*
+    Tiny inline trend chart (no axes) for tables, stat cards and lists. Pure SVG, no JavaScript.
+    <StackSparkline Values="@_last30Days" Fill="true" AriaLabel="Sign-ups, last 30 days" />
+*@
+<svg viewBox="0 0 @Width @Height"
+     width="@(Responsive ? "100%" : Width.ToString(CultureInfo.InvariantCulture))"
+     height="@Height"
+     preserveAspectRatio="none"
+     class="@ComputedClass"
+     role="img"
+     aria-label="@Description"
+     @attributes="AdditionalAttributes">
+    <title>@Description</title>
+    @if (_points.Count >= 2)
+    {
+        @if (Type == "bar")
+        {
+            var slot = (double)Width / _points.Count;
+            var barW = Math.Max(1, slot * 0.7);
+            @foreach (var (p, i) in _points.Select((p, i) => (p, i)))
+            {
+                <rect x="@F(i * slot + (slot - barW) / 2)" y="@F(p.Y)" width="@F(barW)" height="@F(Math.Max(1, _baseline - p.Y))"
+                      rx="1" fill="currentColor" opacity="@(i == _points.Count - 1 ? "1" : "0.6")" />
+            }
+        }
+        else
+        {
+            @if (Fill)
+            {
+                <path d="@AreaPath()" fill="currentColor" fill-opacity="0.12" stroke="none" />
+            }
+            <path d="@LinePath()" fill="none" stroke="currentColor" stroke-width="@F(StrokeWidth)"
+                  stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+            @if (ShowLastPoint)
+            {
+                var last = _points[^1];
+                <circle cx="@F(last.X)" cy="@F(last.Y)" r="@F(StrokeWidth + 1)" fill="currentColor" />
+            }
+        }
+    }
+</svg>
+
+@code {
+    private readonly List<(double X, double Y)> _points = [];
+    private double _baseline;
+
+    /// <summary>Data points in order. Fewer than two points renders an empty chart.</summary>
+    [Parameter, EditorRequired] public IEnumerable<double>? Values { get; set; }
+
+    /// <summary>line (default) or bar.</summary>
+    [Parameter] public string Type { get; set; } = "line";
+
+    [Parameter] public int Width { get; set; } = 120;
+    [Parameter] public int Height { get; set; } = 32;
+
+    /// <summary>Stretch to the container width instead of using <see cref="Width"/>.</summary>
+    [Parameter] public bool Responsive { get; set; }
+
+    /// <summary>Shade the area under the line.</summary>
+    [Parameter] public bool Fill { get; set; }
+
+    /// <summary>Mark the most recent value with a dot.</summary>
+    [Parameter] public bool ShowLastPoint { get; set; } = true;
+
+    [Parameter] public double StrokeWidth { get; set; } = 1.5;
+
+    /// <summary>Fix the Y range (for example 0-100 for percentages). Defaults to the data range.</summary>
+    [Parameter] public double? Min { get; set; }
+    [Parameter] public double? Max { get; set; }
+
+    /// <summary>Colour via Tailwind text classes, for example "text-green-600". Default: primary.</summary>
+    [Parameter] public string ColorClass { get; set; } = "text-primary";
+
+    /// <summary>Accessible description. A summary (first, last, min, max) is generated when omitted.</summary>
+    [Parameter] public string? AriaLabel { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private const double Pad = 2;
+    private double[] _values = [];
+
+    private string ComputedClass => $"inline-block overflow-visible {ColorClass} {Class}".Trim();
+
+    private string Description
+    {
+        get
+        {
+            if (AriaLabel is not null) return AriaLabel;
+            if (_values.Length == 0) return "Trend chart, no data";
+            return string.Create(CultureInfo.CurrentCulture,
+                $"Trend from {_values[0]:0.##} to {_values[^1]:0.##}, low {_values.Min():0.##}, high {_values.Max():0.##}");
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        _values = Values?.Where(double.IsFinite).ToArray() ?? [];
+        _points.Clear();
+        if (_values.Length < 2) return;
+
+        var min = Min ?? _values.Min();
+        var max = Max ?? _values.Max();
+        if (Type == "bar") min = Math.Min(min, 0);
+        var range = max - min;
+        var usableH = Height - 2 * Pad;
+        _baseline = Height - Pad;
+
+        for (var i = 0; i < _values.Length; i++)
+        {
+            var x = Type == "bar" ? 0 : Pad + i * (Width - 2 * Pad) / (_values.Length - 1);
+            // A flat series is drawn through the middle rather than on the floor.
+            var t = range == 0 ? 0.5 : (Math.Clamp(_values[i], min, max) - min) / range;
+            _points.Add((x, Pad + (1 - t) * usableH));
+        }
+    }
+
+    private string LinePath()
+    {
+        var sb = new StringBuilder();
+        for (var i = 0; i < _points.Count; i++)
+            sb.Append(i == 0 ? "M" : " L").Append(F(_points[i].X)).Append(' ').Append(F(_points[i].Y));
+        return sb.ToString();
+    }
+
+    private string AreaPath() =>
+        $"{LinePath()} L{F(_points[^1].X)} {F(_baseline)} L{F(_points[0].X)} {F(_baseline)} Z";
+
+    private static string F(double v) => v.ToString("0.##", CultureInfo.InvariantCulture);
+}

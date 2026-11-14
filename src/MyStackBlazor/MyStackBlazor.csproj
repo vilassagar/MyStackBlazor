@@ -1,29 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-
-    <!-- NuGet Package Metadata -->
     <PackageId>MyStackBlazor</PackageId>
-    <Version>1.4.0</Version>
-    <Authors>Vilas Sagar</Authors>
-    <Company>MyStackBlazor</Company>
     <Product>MyStackBlazor Component Library</Product>
     <Description>A modern Blazor component library styled with Tailwind CSS v4. Includes reusable components: buttons, forms, navigation, overlays, data display, theme support (light/dark/system), and more. Works with Blazor WASM, Blazor Server, and .NET MAUI Blazor Hybrid.</Description>
-    <PackageTags>blazor;components;tailwindcss;ui;razor;dotnet;dark-mode;maui;advanced data components</PackageTags>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <!-- Drop a 128x128 icon.png in the repo root to enable package icon -->
-    <PackageIcon Condition="Exists('..\..\icon.png')">icon.png</PackageIcon>
-    <RepositoryType>git</RepositoryType>
-    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
-    <IncludeContentInPack>true</IncludeContentInPack>
-    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageOutputPath>..\..\nupkg</PackageOutputPath>
-    <Copyright>Copyright © 2025 Vilas Sagar</Copyright>
-    <NeutralLanguage>en</NeutralLanguage>
+    <PackageTags>blazor;blazor-components;component-library;ui;tailwindcss;razor;dark-mode;maui;blazor-wasm;blazor-server;datagrid;charts;forms</PackageTags>
   </PropertyGroup>
 
   <!-- Exclude Node.js tooling files from the package -->
@@ -45,7 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.7" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
   </ItemGroup>
 
   <ItemGroup>
@@ -53,17 +34,27 @@
     <ProjectReference Include="..\MyStackBlazor.Accessibility\MyStackBlazor.Accessibility.csproj" />
   </ItemGroup>
 
-  <!-- Tailwind CSS: source lives in tailwind/input.css, output goes to wwwroot/css/mystackblazor.css -->
-  <!-- Skipped in CI — commit the pre-built CSS -->
-  <Target Name="BuildTailwind" BeforeTargets="Build" Condition="'$(CI)' != 'true'">
-    <Exec Command="npx @tailwindcss/cli -i ./tailwind/input.css -o ./wwwroot/css/mystackblazor.css --minify"
-          WorkingDirectory="$(MSBuildProjectDirectory)"
-          ContinueOnError="false" />
-  </Target>
-
+  <!--
+    Tailwind CSS: tailwind/input.css -> wwwroot/css/mystackblazor.css (the built CSS is committed).
+    Runs only when node_modules exists (run `npm ci` once in this folder) and something it scans has changed.
+    Skip explicitly with /p:SkipTailwind=true. CI builds the CSS in its own step and sets CI=true.
+  -->
   <ItemGroup>
-    <None Include="..\..\README.md" Pack="true" PackagePath="\" Condition="Exists('..\..\README.md')" />
-    <None Include="..\..\icon.png"  Pack="true" PackagePath="\" Condition="Exists('..\..\icon.png')" />
+    <TailwindInput Include="tailwind/**/*.css;tailwind.config.js;Components/**/*.razor;Components/**/*.cs" />
   </ItemGroup>
+
+  <Target Name="BuildTailwind"
+          BeforeTargets="BeforeBuild"
+          Condition="'$(CI)' != 'true' and '$(SkipTailwind)' != 'true'"
+          Inputs="@(TailwindInput)"
+          Outputs="wwwroot/css/mystackblazor.css">
+    <Message Importance="high" Condition="!Exists('$(MSBuildProjectDirectory)/node_modules')"
+             Text="MyStackBlazor: node_modules not found - using the committed mystackblazor.css. Run 'npm ci' in src/MyStackBlazor to rebuild it." />
+    <Exec Condition="Exists('$(MSBuildProjectDirectory)/node_modules')"
+          Command="npm run build:css"
+          WorkingDirectory="$(MSBuildProjectDirectory)" />
+    <!-- Tailwind skips the write when the CSS is unchanged; touch it so the next build is incremental. -->
+    <Touch Condition="Exists('$(MSBuildProjectDirectory)/node_modules')" Files="wwwroot/css/mystackblazor.css" />
+  </Target>
 
 </Project>

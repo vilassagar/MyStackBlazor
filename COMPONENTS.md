@@ -8,6 +8,7 @@
 
 ## Table of Contents
 
+- [New in 1.5](#new-in-15)
 - [Common / Display](#common--display)
 - [Navigation](#navigation)
 - [Form / Editors](#form--editors)
@@ -20,6 +21,21 @@
 - [Enterprise Packages](#enterprise-packages)
 - [MudBlazor Gap Analysis](#mudblazor-gap-analysis)
 - [Missing — Requires External Library](#missing--requires-external-library)
+
+---
+
+## New in 1.5
+
+| Status | Component | File | Notes |
+|--------|-----------|------|-------|
+| 🆕 | **StackTagInput** | `Components/Form/StackTagInput.razor` | Free-text tags: Enter/comma to add, paste "a, b, c", Backspace removes last; `@bind-Values`, `MaxTags`, `AllowDuplicates`, `CaseSensitive`, `Validate`, `EditForm` validation |
+| 🆕 | **StackCopyButton** | `Components/Common/StackCopyButton.razor` | Clipboard copy with "copied" state and screen-reader announcement; `Text` or `TextFactory`, `OnCopied`, `OnError`; MAUI fallback |
+| 🆕 | **StackStatCard** | `Components/Data/StackStatCard.razor` | KPI tile: label, value, % change with trend colour (`InvertTrend` for costs/churn), icon, loading skeleton, child slot for a sparkline |
+| 🆕 | **StackDescriptionList** / **StackDescriptionItem** | `Components/Data/StackDescriptionList.razor` | Semantic `<dl>` key/value details; horizontal or vertical (1-4 columns), `Items` shortcut, `EmptyText` |
+| 🆕 | **StackSparkline** | `Components/Charts/StackSparkline.razor` | Inline SVG line/bar trend, optional area fill and last-point dot, fixed `Min`/`Max`, auto aria summary |
+| 🆕 | **StackCountdown** | `Components/Common/StackCountdown.razor` | Countdown to a `DateTimeOffset`: blocks or compact format, `OnCompleted`, `CompletedContent`, custom template, injectable `TimeProvider` |
+| 🆕 | **StackInfiniteScroll** | `Components/Layout/StackInfiniteScroll.razor` | IntersectionObserver paging for any markup: `OnLoadMore`, `HasMore`, page or container scroll, loading/end/error-retry states, keyboard "Load more" fallback |
+| 🆕 | **StackBottomNavigation** / **StackBottomNavigationItem** | `Components/Navigation/StackBottomNavigation.razor` | Mobile / MAUI tab bar: route mode (`Href` + `Match`) or value mode (`@bind-Value`), badges, active icon, iOS safe-area padding |
 
 ---
 

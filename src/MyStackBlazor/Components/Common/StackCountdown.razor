@@ -1,0 +1,149 @@
+@namespace MyStackBlazor.Components.Common
+@implements IAsyncDisposable
+
+@*
+    Counts down to a moment in time: sale ends, OTP resend, session expiry, launch date.
+    <StackCountdown Target="@_otpExpiry" Format="compact" OnCompleted="EnableResend" />
+*@
+<span class="@ComputedClass" role="timer" aria-label="@AriaText" @attributes="AdditionalAttributes">
+    @if (_remaining <= TimeSpan.Zero && CompletedContent is not null)
+    {
+        @CompletedContent
+    }
+    else if (ChildContent is not null)
+    {
+        @ChildContent(_remaining)
+    }
+    else if (Format == "compact")
+    {
+        <span class="tabular-nums">@Compact(_remaining)</span>
+    }
+    else
+    {
+        @foreach (var (value, unit) in Segments(_remaining))
+        {
+            <span class="inline-flex flex-col items-center rounded-md bg-muted px-2.5 py-1.5">
+                <span class="text-xl font-bold tabular-nums leading-none text-foreground">@value.ToString("00")</span>
+                <span class="mt-1 text-[10px] uppercase tracking-wide text-muted-foreground">@unit</span>
+            </span>
+        }
+    }
+</span>
+
+@code {
+    private TimeSpan _remaining;
+    private DateTimeOffset _target;
+    private PeriodicTimer? _timer;
+    private CancellationTokenSource? _cts;
+    private bool _completedRaised;
+
+    /// <summary>The moment to count down to.</summary>
+    [Parameter, EditorRequired] public DateTimeOffset Target { get; set; }
+
+    /// <summary>Raised once when the countdown reaches zero.</summary>
+    [Parameter] public EventCallback OnCompleted { get; set; }
+
+    /// <summary>blocks (default): boxed DD HH MM SS. compact: "1d 02:03:04" or "04:59".</summary>
+    [Parameter] public string Format { get; set; } = "blocks";
+
+    /// <summary>Always show the days segment in blocks format, even when it is zero.</summary>
+    [Parameter] public bool ShowDays { get; set; }
+
+    /// <summary>Custom rendering of the remaining time.</summary>
+    [Parameter] public RenderFragment<TimeSpan>? ChildContent { get; set; }
+
+    /// <summary>Shown in place of the timer once it reaches zero.</summary>
+    [Parameter] public RenderFragment? CompletedContent { get; set; }
+
+    /// <summary>Clock source. Override in tests (for example with FakeTimeProvider).</summary>
+    [Parameter] public TimeProvider? TimeProvider { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    /// <summary>Time left, never negative.</summary>
+    public TimeSpan Remaining => _remaining;
+
+    private TimeProvider Clock => TimeProvider ?? TimeProvider.System;
+
+    private string ComputedClass => $"inline-flex items-center gap-1.5 {Class}".Trim();
+
+    private string AriaText
+    {
+        get
+        {
+            if (_remaining <= TimeSpan.Zero) return "Time is up";
+            // Screen readers get minute precision so the live region is not read out every second.
+            var parts = new List<string>();
+            if (_remaining.Days > 0) parts.Add($"{_remaining.Days} days");
+            if (_remaining.Hours > 0) parts.Add($"{_remaining.Hours} hours");
+            parts.Add($"{_remaining.Minutes} minutes");
+            return string.Join(" ", parts) + " remaining";
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Target != _target)
+        {
+            _target = Target;
+            _completedRaised = false;
+        }
+        Tick();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender) return;
+        _cts = new CancellationTokenSource();
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(1), Clock);
+        _ = RunAsync(_timer, _cts.Token);
+    }
+
+    private async Task RunAsync(PeriodicTimer timer, CancellationToken ct)
+    {
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                Tick();
+                await InvokeAsync(StateHasChanged);
+                if (_remaining <= TimeSpan.Zero && !_completedRaised)
+                {
+                    _completedRaised = true;
+                    await InvokeAsync(() => OnCompleted.InvokeAsync());
+                }
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (ObjectDisposedException) { }
+    }
+
+    private void Tick()
+    {
+        var left = _target - Clock.GetUtcNow();
+        _remaining = left > TimeSpan.Zero ? TimeSpan.FromSeconds(Math.Ceiling(left.TotalSeconds)) : TimeSpan.Zero;
+    }
+
+    private IEnumerable<(int Value, string Unit)> Segments(TimeSpan t)
+    {
+        if (ShowDays || t.Days > 0) yield return (t.Days, "days");
+        yield return (t.Hours, "hrs");
+        yield return (t.Minutes, "min");
+        yield return (t.Seconds, "sec");
+    }
+
+    private static string Compact(TimeSpan t)
+    {
+        if (t.Days > 0) return $"{t.Days}d {t:hh\\:mm\\:ss}";
+        return t.Hours > 0 ? t.ToString(@"hh\:mm\:ss") : t.ToString(@"mm\:ss");
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _cts?.Cancel();
+        _timer?.Dispose();
+        _cts?.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

@@ -3,7 +3,7 @@
 @if (IsOpen)
 {
     <div class="fixed inset-0 z-50 flex items-center justify-center @(Modal ? "bg-black/50" : "pointer-events-none")"
-         @onclick="@(Modal ? Close : null)">
+         @onclick="OnBackdropClick">
         <div class="pointer-events-auto relative flex flex-col rounded-lg border bg-background shadow-xl @WidthClass @HeightClass @Class"
              @onclick:stopPropagation="true"
              @attributes="AdditionalAttributes">
@@ -63,6 +63,8 @@
         "full" => "h-[90vh]",
         _      => "max-h-[90vh]",
     };
+
+    private Task OnBackdropClick() => Modal ? Close() : Task.CompletedTask;
 
     private async Task Close()
     {

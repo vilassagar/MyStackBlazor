@@ -1,0 +1,162 @@
+@namespace MyStackBlazor.Components.Layout
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@*
+    Loads the next page when the user scrolls near the end, for feeds, chat history and long lists.
+    Works with any markup inside; uses IntersectionObserver (no scroll listeners).
+
+    <StackInfiniteScroll OnLoadMore="LoadNextPageAsync" HasMore="@_hasMore" MaxHeight="480px">
+        @foreach (var p in _posts) { <PostCard Post="p" /> }
+    </StackInfiniteScroll>
+*@
+<div id="@_containerId"
+     class="@ComputedClass"
+     style="@(MaxHeight is null ? null : $"max-height:{MaxHeight}")"
+     aria-busy="@(_loading ? "true" : "false")"
+     @attributes="AdditionalAttributes">
+    @ChildContent
+
+    <div id="@_sentinelId" class="h-px w-full" aria-hidden="true"></div>
+
+    @if (_loading)
+    {
+        <div class="flex items-center justify-center py-4" role="status">
+            @if (LoadingContent is not null)
+            {
+                @LoadingContent
+            }
+            else
+            {
+                <StackSpinner />
+                <span class="sr-only">Loading more</span>
+            }
+        </div>
+    }
+    else if (_error is not null)
+    {
+        <div class="flex flex-col items-center gap-2 py-4 text-sm text-muted-foreground" role="alert">
+            <span>@ErrorText</span>
+            <button type="button"
+                    class="rounded-md border border-input px-3 py-1 text-xs font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    @onclick="LoadMoreAsync">
+                Retry
+            </button>
+        </div>
+    }
+    else if (!HasMore && EndContent is not null)
+    {
+        <div class="py-4">@EndContent</div>
+    }
+    else if (HasMore && ShowLoadMoreButton)
+    {
+        @* Keyboard / no-IntersectionObserver fallback *@
+        <div class="flex justify-center py-3">
+            <button type="button"
+                    class="rounded-md px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    @onclick="LoadMoreAsync">
+                @LoadMoreText
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly string _containerId = $"msb-inf-{Guid.NewGuid():N}";
+    private readonly string _sentinelId = $"msb-inf-s-{Guid.NewGuid():N}";
+    private DotNetObjectReference<StackInfiniteScroll>? _selfRef;
+    private bool _loading;
+    private bool _observing;
+    private Exception? _error;
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Called when more items are needed. Append them to your list; the component waits for the task.</summary>
+    [Parameter] public EventCallback OnLoadMore { get; set; }
+
+    /// <summary>Set to false when the last page has been loaded; observing stops.</summary>
+    [Parameter] public bool HasMore { get; set; } = true;
+
+    /// <summary>
+    /// Scroll inside this box (for example "480px"). When null the page itself scrolls
+    /// and loading starts as the end of the content enters the viewport.
+    /// </summary>
+    [Parameter] public string? MaxHeight { get; set; }
+
+    [Parameter] public RenderFragment? LoadingContent { get; set; }
+
+    /// <summary>Shown once <see cref="HasMore"/> is false, for example "You're all caught up".</summary>
+    [Parameter] public RenderFragment? EndContent { get; set; }
+
+    /// <summary>Show a "Load more" button as a keyboard-friendly fallback.</summary>
+    [Parameter] public bool ShowLoadMoreButton { get; set; }
+
+    [Parameter] public string LoadMoreText { get; set; } = "Load more";
+    [Parameter] public string ErrorText { get; set; } = "Couldn't load more items.";
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string ComputedClass => $"{(MaxHeight is null ? "" : "overflow-y-auto")} {Class}".Trim();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (HasMore && !_observing)
+        {
+            _selfRef ??= DotNetObjectReference.Create(this);
+            _observing = true;
+            await JS.InvokeVoidAsync("MyStackBlazor.observeInfiniteScroll",
+                _sentinelId, MaxHeight is null ? null : _containerId, _selfRef);
+        }
+        else if (!HasMore && _observing)
+        {
+            _observing = false;
+            await JS.InvokeVoidAsync("MyStackBlazor.disconnectInfiniteScroll", _sentinelId);
+        }
+    }
+
+    /// <summary>Invoked by the IntersectionObserver when the sentinel becomes visible.</summary>
+    [JSInvokable]
+    public Task TriggerLoadMore() => InvokeAsync(LoadMoreAsync);
+
+    /// <summary>Load the next page now (also used by the Retry and Load more buttons).</summary>
+    public async Task LoadMoreAsync()
+    {
+        if (_loading || !HasMore) return;
+        _loading = true;
+        _error = null;
+        StateHasChanged();
+        try
+        {
+            await OnLoadMore.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex;
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+
+        // If the new items did not fill the viewport the sentinel is still visible and the
+        // observer will not fire again, so re-arm it.
+        if (_error is null && HasMore && _observing)
+        {
+            _observing = false;
+            StateHasChanged();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_observing)
+        {
+            try { await JS.InvokeVoidAsync("MyStackBlazor.disconnectInfiniteScroll", _sentinelId); }
+            catch (JSDisconnectedException) { }
+            catch (InvalidOperationException) { }
+        }
+        _selfRef?.Dispose();
+    }
+}

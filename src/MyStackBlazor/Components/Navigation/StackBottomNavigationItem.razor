@@ -1,0 +1,134 @@
+@namespace MyStackBlazor.Components.Navigation
+@using Microsoft.AspNetCore.Components.Routing
+@inject NavigationManager Nav
+@implements IDisposable
+
+<li class="flex flex-1">
+    @if (Href is not null && !Disabled)
+    {
+        <a href="@Href"
+           class="@ItemClass"
+           aria-current="@(IsActive ? "page" : null)"
+           @onclick="HandleClickAsync"
+           @attributes="AdditionalAttributes">
+            @Inner
+        </a>
+    }
+    else
+    {
+        <button type="button"
+                class="@ItemClass"
+                disabled="@Disabled"
+                aria-current="@(IsActive ? "page" : null)"
+                @onclick="HandleClickAsync"
+                @attributes="AdditionalAttributes">
+            @Inner
+        </button>
+    }
+</li>
+
+@code {
+    [CascadingParameter] private StackBottomNavigation? Parent { get; set; }
+
+    /// <summary>Lucide icon name, for example "home".</summary>
+    [Parameter] public string? Icon { get; set; }
+
+    /// <summary>Icon shown while the item is active (for example a filled variant). Defaults to <see cref="Icon"/>.</summary>
+    [Parameter] public string? ActiveIcon { get; set; }
+
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Custom label markup. Overrides <see cref="Label"/>.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Route mode: navigate here; the item is active when the URL matches.</summary>
+    [Parameter] public string? Href { get; set; }
+
+    [Parameter] public NavLinkMatch Match { get; set; } = NavLinkMatch.Prefix;
+
+    /// <summary>Value mode: key compared with <see cref="StackBottomNavigation.Value"/>.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    /// <summary>Count or short text on a badge ("3", "99+"). A dot is shown for an empty string.</summary>
+    [Parameter] public string? Badge { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool IsActive =>
+        Value is not null && Parent is not null
+            ? Value == Parent.Value
+            : NavMatcher.IsActive(Nav, Href, Match);
+
+    private bool ShowLabel => (Parent?.ShowLabels ?? "always") switch
+    {
+        "never"  => false,
+        "active" => IsActive,
+        _        => true,
+    };
+
+    private string ItemClass =>
+        "relative flex flex-1 flex-col items-center justify-center gap-0.5 px-2 text-xs font-medium transition-colors " +
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring " +
+        "disabled:pointer-events-none disabled:opacity-50 " +
+        (IsActive ? "text-primary " : "text-muted-foreground hover:text-foreground ") +
+        Class;
+
+    private RenderFragment Inner => __builder =>
+    {
+        <span class="@($"relative flex h-7 w-14 items-center justify-center rounded-full transition-colors {(IsActive ? "bg-primary/10" : "")}")">
+            @if (!string.IsNullOrEmpty(Icon))
+            {
+                <StackLucideIcon Name="@(IsActive && ActiveIcon is not null ? ActiveIcon : Icon)" Size="default" />
+            }
+            @if (Badge is not null)
+            {
+                @if (Badge.Length == 0)
+                {
+                    <span class="absolute right-3 top-0.5 h-2 w-2 rounded-full bg-destructive" aria-hidden="true"></span>
+                }
+                else
+                {
+                    <span class="absolute -top-1 right-1 min-w-[1.125rem] rounded-full bg-destructive px-1 text-center text-[10px] font-semibold leading-[1.125rem] text-destructive-foreground">@Badge</span>
+                }
+            }
+        </span>
+        <span class="@(ShowLabel ? "truncate" : "sr-only")">
+            @if (ChildContent is not null) { @ChildContent } else { @Label }
+            @if (!string.IsNullOrEmpty(Badge))
+            {
+                <span class="sr-only">, @Badge new</span>
+            }
+        </span>
+    };
+
+    protected override void OnInitialized()
+    {
+        Parent?.Register(this);
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    internal void Refresh() => InvokeAsync(StateHasChanged);
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        if (Href is not null) InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleClickAsync(MouseEventArgs e)
+    {
+        if (Disabled) return;
+        await OnClick.InvokeAsync(e);
+        if (Parent is not null && Value is not null) await Parent.SelectAsync(Value);
+    }
+
+    public void Dispose()
+    {
+        Parent?.Unregister(this);
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}
