@@ -1,17 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
     <PackageId>MyStackBlazor.Accessibility</PackageId>
-    <Version>1.4.0</Version>
-    <Authors>Vilas Sagar</Authors>
     <Description>WCAG 2.2 accessibility helpers for MyStackBlazor: ARIA binding base class, focus management, keyboard navigation utilities.</Description>
     <PackageTags>blazor;accessibility;wcag;aria;a11y</PackageTags>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageOutputPath>..\..\..\nupkg</PackageOutputPath>
-    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,8 +11,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.7" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.7" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
   </ItemGroup>
 
   <ItemGroup>

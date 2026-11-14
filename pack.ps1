@@ -1,7 +1,8 @@
-# MyStackBlazor — build Tailwind CSS then pack the NuGet package
+# MyStackBlazor — build Tailwind CSS, then pack every NuGet package under src/
 # Usage:
-#   .\pack.ps1                  # build + pack (default version from csproj)
-#   .\pack.ps1 -Version 1.2.0  # override version
+#   .\pack.ps1                   # version from version.txt
+#   .\pack.ps1 -Version 1.5.0    # override version
+#   .\pack.ps1 -SkipTailwind     # use the committed CSS
 
 param(
     [string]$Version = "",
@@ -9,38 +10,34 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$lib = "src\MyStackBlazor"
+$root = $PSScriptRoot
+$lib  = Join-Path $root "src\MyStackBlazor"
+$out  = Join-Path $root "nupkg"
 
-# ── 1. Tailwind CSS ──────────────────────────────────────────────────────────
+if (-not $Version) { $Version = (Get-Content (Join-Path $root "version.txt") -Raw).Trim() }
+
+# ── 1. Tailwind CSS (locked version from package-lock.json) ──────────────────
 if (-not $SkipTailwind) {
     Write-Host "Building Tailwind CSS..." -ForegroundColor Cyan
     Push-Location $lib
-    npx @tailwindcss/cli -i ./tailwind/input.css -o ./wwwroot/css/mystackblazor.css --minify
-    if ($LASTEXITCODE -ne 0) { Write-Error "Tailwind build failed." }
-    Pop-Location
+    try {
+        if (-not (Test-Path "node_modules")) { npm ci --no-audit --no-fund; if ($LASTEXITCODE -ne 0) { throw "npm ci failed." } }
+        npm run build:css
+        if ($LASTEXITCODE -ne 0) { throw "Tailwind build failed." }
+    } finally { Pop-Location }
 }
 
-# ── 2. dotnet build ──────────────────────────────────────────────────────────
-Write-Host "Building library..." -ForegroundColor Cyan
-$buildArgs = @("build", $lib, "-c", "Release", "--nologo")
-if ($Version) { $buildArgs += "/p:Version=$Version" }
-dotnet @buildArgs
-if ($LASTEXITCODE -ne 0) { Write-Error "Build failed." }
-
-# ── 3. dotnet pack ───────────────────────────────────────────────────────────
-Write-Host "Packing NuGet..." -ForegroundColor Cyan
-$packArgs = @("pack", $lib, "-c", "Release", "--no-build", "--nologo")
-if ($Version) { $packArgs += "/p:Version=$Version" }
-dotnet @packArgs
-if ($LASTEXITCODE -ne 0) { Write-Error "Pack failed." }
-
-$nupkgVer = if ($Version) { $Version } else {
-    (Select-Xml -Path "$lib\MyStackBlazor.csproj" -XPath "//Version").Node.InnerText
+# ── 2. Build + pack every library (packages + .snupkg symbols) ──────────────
+Write-Host "Packing $Version..." -ForegroundColor Cyan
+Get-ChildItem (Join-Path $root "src") -Filter *.csproj -Recurse | ForEach-Object {
+    dotnet pack $_.FullName -c Release -o $out --nologo /p:Version=$Version /p:SkipTailwind=true
+    if ($LASTEXITCODE -ne 0) { throw "Pack failed: $($_.Name)" }
 }
-$nupkg = "nupkg\MyStackBlazor.$nupkgVer.nupkg"
 
 Write-Host ""
-Write-Host "Package ready: $nupkg" -ForegroundColor Green
+Write-Host "Packages ready in $out" -ForegroundColor Green
+Get-ChildItem $out -Filter "*.$Version.*nupkg" | ForEach-Object { Write-Host "  $($_.Name)" }
 Write-Host ""
-Write-Host "To publish to NuGet.org:" -ForegroundColor Yellow
-Write-Host "  dotnet nuget push $nupkg --api-key YOUR_API_KEY --source https://api.nuget.org/v3/index.json" -ForegroundColor Yellow
+Write-Host "Releases are published by CI (release-please -> ci.yml, NuGet Trusted Publishing)." -ForegroundColor Yellow
+Write-Host "Manual publish, if ever needed:" -ForegroundColor Yellow
+Write-Host "  dotnet nuget push `"$out\*.$Version.nupkg`" --api-key <KEY> --source https://api.nuget.org/v3/index.json" -ForegroundColor Yellow
