@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.6.0](https://github.com/vilassagar/MyStackBlazor/compare/v1.5.0...v1.6.0) (2026-11-18)
+
+
+### Features
+
+* add TagInput, CopyButton, StatCard, DescriptionList, Sparkline, Countdown, InfiniteScroll, BottomNavigation ([a64abf5](https://github.com/vilassagar/MyStackBlazor/commit/a64abf52aad22ad056b5548f1229526df160a215))
+* fill BlazorBootstrap component gaps, extend DataGrid, add docs site ([e812708](https://github.com/vilassagar/MyStackBlazor/commit/e812708025d2c4459782f13b280f9fc449d96220))
+
+
+### Bug Fixes
+
+* avoid contextual field keyword in validation properties ([8548e93](https://github.com/vilassagar/MyStackBlazor/commit/8548e935979fc1a9b9a032fe28c4eb789ab58def))
+* compile on all .NET 10 SDK bands ([a38b412](https://github.com/vilassagar/MyStackBlazor/commit/a38b4128ca39932897213f4927af10b5c3cc6bbf))
+* correct stale Switch unchecked-state test assertion ([2d7531c](https://github.com/vilassagar/MyStackBlazor/commit/2d7531c24d8e8bea7e1faaed3a8732fe2629ea6a))
+* improve numeric form validation and sheet drawer accessibility ([920cb18](https://github.com/vilassagar/MyStackBlazor/commit/920cb184027f1d5308b8af5d68ffce340fb41129))
+* isolate UI state and validate component releases ([0fd691f](https://github.com/vilassagar/MyStackBlazor/commit/0fd691fec2ee9f777d01b59b265a155928c7b1d2))
+
 ## [1.5.0](https://github.com/vilassagar/MyStackBlazor/compare/v1.4.0...v1.5.0) (2026-11-14)
 
 
